@@ -1,0 +1,839 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>VULKANSCHNEGGE 5.7</title>
+<style>
+  :root{
+    --ui-bg: rgba(0,0,0,0.6);
+  }
+  html, body {
+    margin:0; padding:0; height:100%;
+    background:black; color:white; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    touch-action: manipulation;
+    overscroll-behavior: none;
+  }
+
+  /* ----- Orientation Overlay (blocks play in Portrait on Mobile) ----- */
+  #rotateOverlay{
+    position: fixed; inset:0;
+    display:none; align-items:center; justify-content:center; flex-direction:column;
+    background: #000;
+    z-index: 9999;
+    text-align:center;
+    padding: 24px;
+  }
+  #rotateOverlay h2{ margin: 0 0 8px; font-size: clamp(22px, 6vw, 36px); }
+  #rotateOverlay p { margin: 0 0 16px; opacity: .9; font-size: clamp(14px, 4vw, 18px); }
+  #rotateOverlay .hint{
+    display:inline-flex; align-items:center; gap:10px;
+    background:#111; border:1px solid #333; border-radius:12px; padding:10px 14px;
+    font-weight:600;
+  }
+
+  /* Title */
+  #titleBar {
+    width: 100%;
+    text-align: center;
+    padding: 8px 10px;
+    box-sizing: border-box;
+  }
+  #titleBar h1 {
+    margin:0;
+    font-size: clamp(20px, 4vw, 48px);
+    text-shadow:2px 2px 5px #000;
+  }
+  #titleBar h2 {
+    margin:0;
+    font-size: clamp(12px, 2.5vw, 20px);
+    opacity: 0.85;
+  }
+
+  /* Stage wrapper (we'll size with JS for max area; keeps 2:1 ratio) */
+  #stage {
+    position: relative;
+    margin: 0 auto;
+    width: 800px;
+    height: 400px;
+    overflow: hidden;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    background: linear-gradient(to bottom, #5ca0ff, #2b4faa);
+    touch-action: none;
+  }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* UI overlay */
+  #uiOverlay {
+    position: absolute;
+    top: 8px; left: 8px; right: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    pointer-events: none;
+  }
+  .hud {
+    background: var(--ui-bg);
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.2;
+    pointer-events: auto;
+  }
+  #meters {
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    gap: 6px 10px;
+    align-items: center;
+  }
+  #meters div { white-space: nowrap; }
+
+  #resetBtn {
+    position: absolute;
+    right: 8px; bottom: 8px;
+    padding: 10px 14px;
+    font-size: 16px;
+    border: none; border-radius: 10px;
+    background: #ff5252;
+    color: white; font-weight: 700;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+    cursor: pointer;
+  }
+  #resetBtn:active { transform: translateY(1px); }
+
+  #charBtn {
+  position: absolute;
+  right: 8px; bottom: 56px;
+  padding: 10px 14px;
+  font-size: 16px;
+  border: none; border-radius: 10px;
+  background: #4CAF50;
+  color: white; font-weight: 700;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+  cursor: pointer;
+}
+#charBtn:active { transform: translateY(1px); }
+
+
+  /* Modals */
+  #upgradeScreen, #playerSelect {
+    position:absolute; inset: 0;
+    display:none;
+    align-items:center; justify-content:center;
+    background: rgba(0,0,0,0.55);
+  }
+  .modal {
+    background: rgba(15,15,15,0.95);
+    padding: 14px 16px;
+    border-radius: 12px;
+    text-align:center;
+    width: min(90%, 520px);
+  }
+  .modal h3{ margin: 6px 0 12px; }
+  .modal .choices{
+    display:flex; flex-wrap:wrap; gap:8px; justify-content:center;
+  }
+  .modal button {
+    margin:0; padding: 10px 12px;
+    font-size: 16px;
+    border-radius: 10px; border: 1px solid #333;
+    background: #222; color: white; cursor: pointer;
+  }
+  .modal button:hover { background:#2e2e2e; }
+
+  /* Bigger touch targets on small screens */
+  @media (max-width: 768px) {
+    .hud { font-size: 16px; }
+    #resetBtn{ font-size: 18px; padding: 12px 16px; }
+    .modal button{ font-size: 18px; padding: 12px 14px; }
+  }
+
+  
+  
+/* 🔊 Musiksteuerung jetzt oben links */
+#musicControls {
+  position: fixed;
+  top: 45px;       /* sitzt direkt unter dem Fullscreen-Button */
+  left: 10px;
+  z-index: 9999;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: system-ui, sans-serif;
+}
+#volumeSlider {
+  width: 100px;
+}
+#muteBtn {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+}
+#muteBtn:hover {
+  opacity: 0.7;
+}
+/* 🖥️ Fullscreen-Checkbox oben links */
+#fullscreenToggle {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 9999;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+}
+#fullscreenCheckbox {
+  accent-color: #ff5252; /* schönes Lava-Rot passend zum Game */
+  transform: scale(1.2);
+  cursor: pointer;
+}
+
+/* ✨ Fullscreen: Titel ausblenden */
+#titleBar {
+  transition: opacity 0.4s ease;
+}
+body.fullscreen-active #titleBar {
+  opacity: 0;
+  pointer-events: none;
+}
+
+
+/* 📱 Auf Handys: Lautstärkeregler ausblenden */
+@media (max-width: 768px), (pointer: coarse) {
+  #volumeSlider { display: none !important; }
+}
+
+
+  
+</style>
+</head>
+<body>
+  <div id="rotateOverlay" aria-hidden="true">
+    <h2>Bitte ins Querformat drehen</h2>
+    <p>Vulkanschnegge 5.7 ist auf dem Handy nur im Querformat spielbar.</p>
+    <div class="hint">🔁 Handy drehen für maximales Spielfeld</div>
+  </div>
+
+  <div id="titleBar">
+    <h1>VULKANSCHNEGGE 5.7</h1>
+    <h2>Reach for the Stars</h2>
+  </div>
+
+  <div id="stage" aria-label="Spielfeld">
+    <canvas id="game" width="800" height="400"></canvas>
+
+    <div id="uiOverlay">
+      <div id="meters" class="hud">
+        <div id="highscoreDisplay">Highscore: 0</div>
+        <div id="freeHitDisplay"></div>
+        <div id="scoreDisplay">Score: 0</div>
+        <div id="speedDisplay">Speed: 600.00 px/s</div>
+        <div id="coinDisplay">Coins: 0</div>
+      </div>
+      <div class="hud">Tippen/Klicken zum Springen</div>
+    </div>
+
+    <button id="resetBtn" title="Spiel zurücksetzen">🔄 Reset</button>
+    <button id="charBtn" title="Charakter wechseln">🎭 Charakter</button>
+
+    <!-- Upgrade-Overlay -->
+    <div id="upgradeScreen">
+      <div class="modal">
+        <h3>Upgrade auswählen</h3>
+        <div id="upgradeChoices" class="choices"></div>
+      </div>
+    </div>
+
+    <!-- Spielerwahl -->
+    <div id="playerSelect">
+      <div class="modal">
+        <h3>Wähle deinen Charakter</h3>
+        <div class="choices">
+          <button id="chooseSnail">🐌 Schnegg</button>
+          <button id="chooseOtter">🦦 Otter im Eimer</button>
+          <button id="chooseFrog">🐸 Frogo</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// ======== Device helpers ========
+const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(navigator.userAgent);
+function isPortrait(){ return window.innerHeight > window.innerWidth; }
+
+// Try to lock orientation & go fullscreen on first user input (best effort)
+async function requestBestView(){
+  try {
+    if (document.documentElement.requestFullscreen) {
+      await document.documentElement.requestFullscreen();
+    }
+  } catch(e){ /* ignore */ }
+  try {
+    if (screen.orientation && screen.orientation.lock) {
+      await screen.orientation.lock('landscape');
+    }
+  } catch(e){ /* ignore - many browsers block this */ }
+}
+
+// ======== Responsive Fit (2:1 Ratio) ========
+const stage = document.getElementById('stage');
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const titleBar = document.getElementById('titleBar');
+const rotateOverlay = document.getElementById('rotateOverlay');
+
+function fitToScreen(){
+  const overlayShouldShow = isMobile && isPortrait();
+  rotateOverlay.style.display = overlayShouldShow ? 'flex' : 'none';
+
+  // On mobile landscape: use almost the full viewport height for max size
+  const maxW = window.innerWidth;
+  const headH = overlayShouldShow ? 0 : titleBar.offsetHeight;
+  const maxH = window.innerHeight - headH - 4;
+
+  // Keep 2:1 ratio
+  const scale = Math.min(maxW / 800, maxH / 400);
+  const w = Math.max(320, Math.floor(800 * scale));
+  const h = Math.max(160, Math.floor(400 * scale));
+
+  stage.style.width = w + 'px';
+  stage.style.height = h + 'px';
+}
+window.addEventListener('resize', fitToScreen);
+window.addEventListener('orientationchange', fitToScreen);
+document.addEventListener('visibilitychange', fitToScreen);
+fitToScreen();
+
+// Block inputs when overlay is shown (portrait on mobile)
+function inputBlocked(){ return rotateOverlay.style.display === 'flex'; }
+
+// Best-view attempt on first interaction
+let firstInteraction = false;
+function onFirstInteract(){
+  if (!firstInteraction){
+    firstInteraction = true;
+    requestBestView().finally(()=>fitToScreen());
+  }
+}
+document.addEventListener('pointerdown', onFirstInteract, { once: true });
+
+// ======== Assets ========
+const snailImg = new Image(); snailImg.src = "https://i.imgur.com/NqwMXsb.png";
+const otterImg = new Image(); otterImg.src = "https://i.imgur.com/66Den9G.png";
+const frogImg = new Image(); frogImg.src = "https://i.imgur.com/gLAdS1x.png";
+
+const obstacleImg = new Image(); obstacleImg.src = "https://i.imgur.com/8gsW8Y5.png";
+
+let playerImg = snailImg; // Standardcharakter
+
+// Spielerwahl
+const selectMenu = document.getElementById("playerSelect");
+selectMenu.style.display = "flex";
+
+document.getElementById("chooseSnail").addEventListener("click", () => {
+  selectedCharacter = "snail";
+  playerImg = snailImg;
+  applyCharacterStats();
+  selectMenu.style.display = "none";
+});
+
+document.getElementById("chooseOtter").addEventListener("click", () => {
+  selectedCharacter = "otter";
+  playerImg = otterImg;
+  applyCharacterStats();
+  selectMenu.style.display = "none";
+});
+
+document.getElementById("chooseFrog").addEventListener("click", () => {
+  selectedCharacter = "frog";
+  playerImg = frogImg;
+  applyCharacterStats();
+  selectMenu.style.display = "none";
+});
+
+
+
+// ======== Physik/Timing (frame-unabhängig) ========
+const TARGET_FPS = 60;
+const BASE_SPEED_PXS = 10 * TARGET_FPS;               // 600 px/s
+const GRAVITY_PXSS = 0.8 * TARGET_FPS * TARGET_FPS;   // 2880 px/s^2
+const JUMP_VY1_PXS = -13 * TARGET_FPS;                // -780 px/s
+const JUMP_VY2_PXS = -12 * TARGET_FPS;                // -720 px/s
+const SPEED_GROWTH_PER_SEC = (0.001 * TARGET_FPS) * TARGET_FPS; 
+const SCORE_GROWTH_PER_SEC = 0.15 * TARGET_FPS;       // ~9 Punkte/s
+const ANGLE_DEG_PER_SEC_BASE = 15 * TARGET_FPS;       // 900°/s
+
+const OBSTACLE_SPAWN_INTERVAL = 65 / TARGET_FPS;  // ≈ 1.083 s
+let bonusSpawnInterval = 160 / TARGET_FPS;    // ≈ 2.667 s (kann verändert werden)
+
+let player = {};
+let selectedCharacter = "snail"; // default
+let obstacles = [], bonuses = [];
+let speed = BASE_SPEED_PXS; // px/s
+let score = 0;
+let multiplier = 1, multiplierScale=1, targetScale=1;
+let gameOver = false;
+let spawnAccum=0, bonusAccum=0, missedBonus=false, redTint=0, targetRedTint=0;
+
+let upgradeAvailable=false, paused=false;
+let freeHit=0, goldMultiplier=1, extraJump=0;
+let coins = 0;
+let magnetLevel = 0;
+
+const MIN_DISTANCE_FROM_OBSTACLE = 200;
+let highscore = localStorage.getItem('vulkanschneckeHighscore') || 0;
+document.getElementById('highscoreDisplay').innerText = `Highscore: ${highscore}`;
+
+// ======== Upgrades ========
+let upgrades = [
+  { id:"jump", name:"+1 Jump", effect:()=>extraJump++, uses:2 },
+  { id:"gold", name:"Gold-Multiplier + 1 | Speed + 300", effect:()=>{goldMultiplier++; speed+=5*TARGET_FPS;}, uses:1 },
+  { id:"freehit", name:"+1 HP", effect:()=>{freeHit++; renderHP();}, uses:0 },
+  { id:"gravityBoost", name:"Jump Boost (-20% Gravity)", effect:()=>{player.gravity*=0.8;}, uses:0 },
+  { id:"slowMo", name:"Zeitkrümmung (-40% Speed)", effect:()=>{speed*=0.4;}, uses:2 },
+  { id:"hyperMode", name:"Hypermodus (+25% Speed, +2 Multiplier)", effect:()=>{speed*=1.25; multiplier+=2;}, uses:1 },
+  { id:"tinyMode", name:"Kleiner Körper (-50% Größe -40% Gravity)", effect:()=>{player.width*=0.5; player.height*=0.5; player.gravity*=0.6;}, uses:1 },
+  { id:"fatMode", name:"Fettmodus (+50% Größe, +3 HP)", effect:()=>{player.width*=1.5; player.height*=1.5; freeHit+=3; renderHP();}, uses:1 },
+  { id:"spinGod", name:"Spin-Gott (+200% Spin-Speed, -10% Gravity, +12,5% Coin Reichweite)", effect:()=>{player.spinBoost=(player.spinBoost||1)*3; player.gravity*=0.9; magnetLevel+= 0.5;}, uses:0 },
+  { id:"magnet", name:"Magnet (+25% Coin-Reichweite)", effect:()=>{magnetLevel++;}, uses:3 },
+  { id:"coinSpawnBoost", name:"Coin-Spawnrate + 25%", effect:()=>{bonusSpawnInterval *= 0.75;}, uses:1 },
+  { id:"sisyphos", name: "Sisyphos (+3 Jump, +50% Gravity)", effect:()=>{extraJump+=3; player.gravity*=1.5;}, uses:1 }
+];
+
+function getRandomUpgrades(count){
+  const available = upgrades.filter(u => u.uses === 0 || (u.uses > 0 && !u.selected || u.uses > u.selected));
+  const shuffled = available.sort(()=>Math.random()-0.5);
+  return shuffled.slice(0,count);
+}
+
+function showUpgradeScreen(){
+  paused = true;
+  obstacles = []; 
+  const choices = getRandomUpgrades(3);
+  const container = document.getElementById('upgradeChoices');
+  container.innerHTML = "";
+  choices.forEach(up=>{
+    const btn = document.createElement('button');
+    btn.textContent = up.name;
+    btn.onclick = ()=>chooseUpgrade(up);
+    container.appendChild(btn);
+  });
+  document.getElementById('upgradeScreen').style.display = "flex";
+}
+function chooseUpgrade(up){
+  up.effect();
+  up.selected = (up.selected || 0) + 1;
+  if(up.uses > 0 && up.selected >= up.uses) upgrades = upgrades.filter(u=>u.id!==up.id);
+  hideUpgrade();
+}
+function hideUpgrade(){
+  paused = false;
+  document.getElementById('upgradeScreen').style.display="none";
+}
+
+// ======== Player/Reset ========
+function initPlayer() {
+  player = { x:100, y:360-64, width:64, height:64, vy:0, gravity:GRAVITY_PXSS, grounded:false, jumps:0, angle:0, spinBoost:1 };
+}
+function renderHP(){
+  const hp = document.getElementById('freeHitDisplay');
+  hp.innerText = freeHit>0 ? (freeHit+" HP") : "";
+}
+function resetGame() {
+  initPlayer();
+  obstacles=[]; bonuses=[];
+  speed=BASE_SPEED_PXS; score=0; multiplier=1; multiplierScale=1; targetScale=1;
+  gameOver=false; spawnAccum=0; bonusAccum=0; redTint=0; targetRedTint=0;
+  upgradeAvailable=false; paused=false; freeHit=0; goldMultiplier=1; extraJump=0;
+  coins = 0; magnetLevel = 0;
+  renderHP();
+  document.getElementById('scoreDisplay').innerText="Score: 0";
+  document.getElementById('speedDisplay').innerText=`Speed: ${speed.toFixed(2)} px/s`; 
+  document.getElementById('coinDisplay').innerText="Coins: 0";
+  document.getElementById('upgradeScreen').style.display="none";
+  player.gravity = GRAVITY_PXSS;
+  applyCharacterStats();
+  if (document.activeElement) document.activeElement.blur();
+}
+document.getElementById('resetBtn').addEventListener('click', resetGame);
+
+function applyCharacterStats(){
+  freeHit = 0;
+  speed = BASE_SPEED_PXS;
+  player.gravity = GRAVITY_PXSS;
+  magnetLevel = 0;
+
+  if(selectedCharacter === "snail"){
+    freeHit += 1;                       // +1 HP
+    speed -= 5 * TARGET_FPS;            // -300px/s
+    player.gravity *= 1.1;              // +10% Gravity
+  }
+
+  if(selectedCharacter === "otter"){
+    magnetLevel += 0.8;                 // ~20% Coin Reichweite
+  }
+
+  if(selectedCharacter === "frog"){
+    player.gravity *= 0.8;              // -20% Gravity
+  }
+  renderHP();
+}
+
+
+// ======== Input: Keyboard + Touch + Click (hybrid) ========
+function jump(){
+  if (inputBlocked()) return;
+  if (!paused && !gameOver && player.jumps < 2 + extraJump) {
+    player.vy = (player.jumps===0 ? JUMP_VY1_PXS : JUMP_VY2_PXS);
+    player.jumps++;
+  }
+}
+document.addEventListener("keydown", (e)=>{
+  if (e.code === "Space") { e.preventDefault(); jump(); }
+});
+stage.addEventListener('pointerdown', (e)=>{
+  if (e.target.closest('button') || e.target.closest('.modal')) return;
+  e.preventDefault();
+  jump();
+}, {passive:false});
+
+// ======== Spawns ========
+function spawnObstacle() {
+  let width=40+Math.random()*60, height=50+Math.random()*70;
+  obstacles.push({x:canvas.width,y:360-height,width,height});
+}
+function spawnBonus() {
+  let valid=false,x,y,attempts=0;
+  while(!valid && attempts<20){
+    x=canvas.width; y=200+Math.random()*100; valid=true; attempts++;
+    for(let o of obstacles){
+      if(Math.abs(o.x-x)<100 || (y>o.y-20 && y<o.y+o.height+20)){valid=false; break;}
+    }
+  }
+  if(valid) bonuses.push({x,y,size:15,collected:false});
+}
+
+// ======== Game Loop ========
+let lastTime = performance.now();
+
+let particles = [];
+
+function update(now){
+  const dt = Math.min((now - lastTime)/1000, 0.05); // Sekunden; clamp
+  lastTime = now;
+
+// 🌊 Hintergrund – sanfter Unterwasserverlauf
+ctx.clearRect(0,0,canvas.width,canvas.height);
+const seaGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+seaGrad.addColorStop(0, "#0d3b66");  // oben dunkles Tiefseeblau
+seaGrad.addColorStop(0.5, "#145DA0"); // mittleres Ozeanblau
+seaGrad.addColorStop(1, "#0A2472");  // unten leicht violett-blau für Tiefe
+ctx.fillStyle = seaGrad;
+ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+// 🌊 Boden – sandiger Meeresgrund
+const sandGrad = ctx.createLinearGradient(0, 340, 0, 400);
+sandGrad.addColorStop(0, "#c2b280"); // heller Sand oben
+sandGrad.addColorStop(1, "#9c8f65"); // dunkler Sand unten
+ctx.fillStyle = sandGrad;
+ctx.fillRect(0, 340, canvas.width, 60);
+
+  // Hindernisse
+  for(let i=obstacles.length-1;i>=0;i--){
+    let o=obstacles[i];
+    o.x -= (paused || gameOver || inputBlocked() ? 0 : speed*dt);
+    ctx.drawImage(obstacleImg,o.x,o.y,o.width,o.height);
+
+    let hitX = o.x + o.width * 0.2;
+    let hitY = o.y + o.height * 0.15;
+    let hitW = o.width * 0.6;
+    let hitH = o.height * 0.7;
+
+    if(player.x < hitX + hitW && player.x + player.width > hitX &&
+       player.y < hitY + hitH && player.y + player.height > hitY){
+      if(freeHit>0){
+        freeHit--; renderHP();
+        obstacles.splice(i,1);
+      } else if(!gameOver){
+        gameOver = true;
+        paused = true;
+        player.vy = 0; player.gravity = 0;
+        if(score>highscore){
+          highscore = Math.floor(score);
+          localStorage.setItem('vulkanschneckeHighscore', highscore);
+          document.getElementById('highscoreDisplay').innerText = `Highscore: ${highscore}`;
+        }
+        break;
+      }
+    }
+
+    if(o.x + o.width < 0) obstacles.splice(i,1);
+  }
+
+  // ✨ Partikel-Update
+for (let i = particles.length - 1; i >= 0; i--) {
+  const p = particles[i];
+  p.x += p.vx * dt;
+  p.y += p.vy * dt;
+  p.life -= dt;
+
+  // Verblassen über Zeit
+  const alpha = Math.max(0, p.life / p.maxLife);
+  ctx.fillStyle = `rgba(${p.color},${alpha})`;
+  ctx.fillRect(p.x, p.y, p.size, p.size);
+
+  if (p.life <= 0) particles.splice(i, 1);
+}
+
+  if(!paused && !gameOver && !inputBlocked()){
+    // Physik
+    player.vy += player.gravity * dt; 
+    player.y  += player.vy * dt;
+
+// === Spielerboden-Physik + Partikeleffekt ===
+if (player.y >= 360 - player.height) {
+  player.y = 360 - player.height;
+  player.vy = 0;
+  player.jumps = 0;
+  player.grounded = true;
+  player.angle = 0;
+
+ // 🚀 Wenn auf Boden → Partikelrate skaliert mit Geschwindigkeit
+// Mehr Speed = mehr Partikel, aber seltener bei niedriger Geschwindigkeit
+const baseSpawnChance = 0.15; // Grundwahrscheinlichkeit bei geringer Geschwindigkeit
+const maxSpawnChance = 0.6;   // Max bei sehr hoher Geschwindigkeit
+const normalizedSpeed = Math.min(speed / 1500, 1); // 0–1 Skala, ab ~900px/s gesättigt
+const spawnChance = baseSpawnChance + (maxSpawnChance - baseSpawnChance) * normalizedSpeed;
+
+if (Math.random() < spawnChance) {
+  // Partikelanzahl leicht mit Geschwindigkeit skalieren
+  const particleCount = 1 + Math.floor(normalizedSpeed * 4); // max 4 pro Frame bei hohem Speed
+  for (let i = 0; i < particleCount; i++) {
+    particles.push({
+      x: player.x + player.width * 0.15 + (Math.random() * 6 - 3),
+      y: player.y + player.height - 10 + (Math.random() * 4 - 2),
+      vx: -100 - Math.random() * (150 + normalizedSpeed * 100),  // schneller Drift bei hohem Speed
+      vy: (Math.random() - 0.5) * (20 + normalizedSpeed * 30),   // etwas stärkerer vertikaler Spread
+      size: 2 + Math.random() * (1.5 + normalizedSpeed * 1.5),
+      color: "255,255,255",
+      life: 1.3 + Math.random() * 1.2,
+      maxLife: 2
+    });
+  }
+
+  // Limit
+  if (particles.length > 250) particles.splice(0, particles.length - 250);
+}
+
+
+
+
+
+
+} else {
+  player.grounded = false;
+}
+
+
+    if(player.jumps >= 2){
+      const spinFactor = (1 + (multiplier-1)*0.1) * (player.spinBoost||1);
+      player.angle += ANGLE_DEG_PER_SEC_BASE * spinFactor * dt;
+    }
+
+    missedBonus=false;
+    for(let i=bonuses.length-1;i>=0;i--){
+      let b=bonuses[i]; b.x -= speed*dt; 
+      ctx.beginPath(); ctx.fillStyle="yellow"; ctx.arc(b.x,b.y,b.size,0,Math.PI*2); ctx.fill();
+
+      let magnetRange = 1 + magnetLevel*0.25;
+      let hitbox = b.size * magnetRange;
+
+      if(player.x<b.x+hitbox && player.x+player.width>b.x-hitbox && player.y<b.y+hitbox && player.y+player.height>b.y-hitbox){
+        coins++;
+        score += 10*multiplier*goldMultiplier;
+        multiplier++; targetScale=1+multiplier*0.1; targetRedTint=Math.min(255,multiplier*20);
+        bonuses.splice(i,1);
+
+        if(coins >= 10){
+          paused = true;
+          showUpgradeScreen();
+          coins = 0;
+        }
+        continue;
+      }
+      if(b.x+b.size<0 && !b.collected){ missedBonus=true; bonuses.splice(i,1);}
+    }
+
+    if(missedBonus){ multiplier=1; targetScale=1; targetRedTint=0; redTint=0; }
+
+    redTint+=(targetRedTint-redTint)*0.05;
+    multiplierScale+=(targetScale-multiplierScale)*0.1;
+
+    // Spawns & Fortschritt zeitbasiert
+    spawnAccum += dt;
+    bonusAccum += dt;
+    if(spawnAccum>OBSTACLE_SPAWN_INTERVAL){ spawnObstacle(); spawnAccum=0; }
+    if(bonusAccum>bonusSpawnInterval){ spawnBonus(); bonusAccum=0; }
+
+    speed += SPEED_GROWTH_PER_SEC * dt; 
+    score += SCORE_GROWTH_PER_SEC * dt;
+  }
+
+  // Spieler
+  ctx.save(); 
+  ctx.translate(player.x+player.width/2, player.y+player.height/2); 
+  ctx.rotate(player.angle*Math.PI/180);
+  ctx.drawImage(playerImg,-player.width/2,-player.height/2,player.width,player.height); 
+  ctx.restore();
+
+  // HUD
+  document.getElementById('scoreDisplay').innerText = "Score: " + Math.floor(score);
+  document.getElementById('speedDisplay').innerText = "Speed: " + speed.toFixed(2) + " px/s";
+  document.getElementById('coinDisplay').innerText = "Coins: " + coins;
+
+  // Multiplier Anzeige
+  ctx.save(); 
+  ctx.translate(canvas.width-120,40); 
+  ctx.scale(multiplierScale,multiplierScale); 
+  ctx.fillStyle="#FFD700"; 
+  ctx.font="24px Arial"; 
+  ctx.textAlign="center"; 
+  ctx.fillText("x"+multiplier,0,0); 
+  ctx.restore();
+
+  requestAnimationFrame(update);
+}
+
+function startGame(){
+  initPlayer();
+  lastTime = performance.now();
+  requestAnimationFrame(update);
+}
+startGame();
+</script>
+
+<!-- 🔊 Hintergrundmusik -->
+<audio id="bgMusic" loop>
+  <source src="https://raw.githubusercontent.com/trollick98-maker/Vulkanschnegge/main/Vulkanschnegge%20Theme.mp3" type="audio/mpeg">
+</audio>
+
+<!-- 🖥️ Fullscreen Toggle -->
+<div id="fullscreenToggle">
+  <input type="checkbox" id="fullscreenCheckbox">
+  <label for="fullscreenCheckbox">Fullscreen</label>
+</div>
+
+<div id="musicControls">
+  <button id="muteBtn">🔇</button>
+  <input type="range" id="volumeSlider" min="0" max="1" step="0.01" value="0.3">
+</div>
+
+<script>
+const audio = document.getElementById('bgMusic');
+const muteBtn = document.getElementById('muteBtn');
+const volumeSlider = document.getElementById('volumeSlider');
+
+// Lautstärke Startwert
+audio.volume = 0.3;
+
+// Klick startet Musik (Autoplay umgehen)
+document.addEventListener('click', () => {
+  if (audio.paused) audio.play().catch(()=>{});
+}, { once: true });
+
+// Mute / Unmute
+muteBtn.addEventListener('click', () => {
+  audio.muted = !audio.muted;
+  muteBtn.textContent = audio.muted ? '🔈' : '🔇';
+});
+
+// Lautstärke ändern
+volumeSlider.addEventListener('input', (e) => {
+  audio.volume = e.target.value;
+});
+
+// 🖥️ Fullscreen-Steuerung
+const fsCheckbox = document.getElementById('fullscreenCheckbox');
+
+fsCheckbox.addEventListener('change', async () => {
+  try {
+    if (fsCheckbox.checked) {
+      await document.documentElement.requestFullscreen();
+    } else {
+      await document.exitFullscreen();
+    }
+  } catch (err) {
+    console.warn('Fullscreen-Request fehlgeschlagen:', err);
+  }
+});
+
+document.addEventListener('fullscreenchange', () => {
+  const active = !!document.fullscreenElement;
+  fsCheckbox.checked = active;
+  document.body.classList.toggle('fullscreen-active', active);
+
+  // 🧠 Titel ausblenden UND Canvas anpassen
+  if (active) {
+    // Titel aus dem Layout „entfernen“, damit mehr Platz da ist
+    titleBar.style.display = "none";
+  } else {
+    // Titel wieder anzeigen
+    titleBar.style.display = "";
+  }
+
+  // Spiel neu an Fenstergröße anpassen
+  fitToScreen();
+});
+</script>
+
+<script>
+// 💤 Mobile Battery Saver: Stoppe Musik, wenn Seite nicht aktiv ist
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    audio.pause();   // Stoppe Musik wenn Tab/Seite im Hintergrund
+  } else {
+    // Nur wieder starten, wenn Nutzer zurückkehrt UND nicht gemutet
+    if (!audio.muted) {
+      audio.play().catch(()=>{});
+    }
+  }
+});
+
+// Charakter-Auswahl Button
+document.getElementById("charBtn").addEventListener("click", () => {
+  paused = true;
+  gameOver = false;  
+
+  // Menü anzeigen
+  selectMenu.style.display = "flex";
+
+  // Bewegung stoppen
+  player.angle = 0;
+  player.vy = 0;
+});
+
+
+</script>
+
+
+</body>
+</html>
