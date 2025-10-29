@@ -612,7 +612,7 @@ let upgrades = [
   { id:"coinSpawnBoost", name:"Coin-Spawnrate + 25%", effect:()=>{bonusSpawnInterval*=0.75;}, uses:1, allowed:0 },
   { id:"sisyphos", name:"Sisyphos (+3 Jump, +50% Gravity)", effect:()=>{extraJump+=3; player.gravity*=1.5;}, uses:1, allowed:0 },
   { id:"turboHunter", name:"Turbo-Jäger (2× Speed-Score, 50% Coin-Wert)", effect:()=>{ SCORE_PER_SPEED*=2; goldMultiplier*=0.5; }, uses:1, allowed:0 },
-  { id:"hardplastic", name:"Eimer aus Hartplastik (+ 2HP)", effect:()=>{freeHit++; renderHP();}, uses:1, allowed:2 },
+  { id:"hardplastic", name:"Eimer aus Hartplastik (+ 2HP)", effect:()=>{freeHit+=2; renderHP();}, uses:1, allowed:2 },
   { id:"springLegs", name:"Federnde Beine (+25% Double Jump)", effect:()=>{player.vy*=1.25;}, uses:1, allowed:3 },
   { id:"snailRage", name:"Schneckenzorn (+20% Speed Scaling)", effect:()=>{SPEED_GROWTH_PER_SEC*=1.2;}, uses:1, allowed:1 },
 ];
