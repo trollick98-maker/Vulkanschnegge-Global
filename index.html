@@ -178,6 +178,17 @@
     .modal button{ font-size: 18px; padding: 12px 14px; }
   }
 
+  /* ✅ iOS Safari – Menü leicht nach oben schieben */
+@supports (-webkit-touch-callout: none) {
+  #startMenu .modal {
+    transform: translateY(-20px);
+  }
+  #playerNameInput {
+    margin-bottom: 20px;
+  }
+}
+
+
   
   
 /* 🔊 Musiksteuerung jetzt oben links */
@@ -245,6 +256,16 @@ body.fullscreen-active #titleBar {
   #volumeSlider { display: none !important; }
 }
 
+/* ✅ Safari iOS Input Zoom verhindern */
+input[type="text"], input[type="number"], input[type="email"], input[type="password"] {
+  font-size: 20px !important;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ✅ iOS Safari Fullscreen-Höhenbug fix */
+:root, body {
+  height: -webkit-fill-available;
+}
 
   
 </style>
@@ -355,7 +376,14 @@ body.fullscreen-active #titleBar {
 <script>
 // ======== Device helpers ========
 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|Windows Phone/i.test(navigator.userAgent);
+// ✅ iOS: UI stabil halten, wenn Tastatur erscheint
+document.getElementById("playerNameInput").addEventListener("focus", () => {
+  document.body.style.zoom = "1";
+  window.scrollTo(0, 0);
+});
+
 function isPortrait(){ return window.innerHeight > window.innerWidth; }
+
 
 // Try to lock orientation & go fullscreen on first user input (best effort)
 async function requestBestView(){
