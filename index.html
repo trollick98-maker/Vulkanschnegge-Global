@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>VULKANSCHNEGGE 6.1</title>
+<title>VULKANSCHNEGGE 6.2</title>
 <style>
   :root{
     --ui-bg: rgba(0,0,0,0.6);
@@ -273,12 +273,12 @@ input[type="text"], input[type="number"], input[type="email"], input[type="passw
 <body>
   <div id="rotateOverlay" aria-hidden="true">
     <h2>Bitte ins Querformat drehen</h2>
-    <p>Vulkanschnegge 6.1 ist auf dem Handy nur im Querformat spielbar.</p>
+    <p>Vulkanschnegge 6.2 ist auf dem Handy nur im Querformat spielbar.</p>
     <div class="hint">🔁 Handy drehen für maximales Spielfeld</div>
   </div>
 
   <div id="titleBar">
-    <h1>VULKANSCHNEGGE 6.1</h1>
+    <h1>VULKANSCHNEGGE 6.2</h1>
     <h2>Reach for the Stars</h2>
   </div>
 
@@ -321,13 +321,10 @@ input[type="text"], input[type="number"], input[type="email"], input[type="passw
     </div>
     <!-- 📝 Patchnotes direkt im Menü -->
 <div style="margin-top:14px; font-size:15px; line-height:1.4; color:#ddd; text-align:left;">
-  <strong>Vulkanschnegge 6.1</strong><br>
-  • Charakter-Karussell eingebaut<br>
-  • Score skaliert jetzt dynamisch mit Speed (NEW META???)<br>
-  • UI Optimierungen im Auswahlmenü<br>
-  • Upgrade-Problem gefixt!<br>
-  • Neue Perks!<br>
-  • Charakterspezifische Perks!<br>
+  <strong>Vulkanschnegge 6.2</strong><br>
+  • Score per Speed Buff!!! (von 2 pro 100px/s auf 10)<br>
+  • Adaptive Musik!<br>
+  • UI Optimierungen<br>
   <br>
   <em>(7.0 – Bigger & Better Soon™ 🐌🔥)</em>
 </div>
@@ -509,14 +506,14 @@ document.getElementById('startToChars').addEventListener('click', ()=>{
 
 // ======== Physik/Timing (frame-unabhängig) ========
 const TARGET_FPS = 60;
-const SPEED_ZONE_SLOW = 700;
-const SPEED_ZONE_MID = 1400;
+const SPEED_ZONE_SLOW = 900;
+const SPEED_ZONE_MID = 1200;
 const BASE_SPEED_PXS = 10 * TARGET_FPS;               // 600 px/s
 const GRAVITY_PXSS = 0.8 * TARGET_FPS * TARGET_FPS;   // 2880 px/s^2
 const JUMP_VY1_PXS = -13 * TARGET_FPS;                // -780 px/s
 const JUMP_VY2_PXS = -12 * TARGET_FPS;                // -720 px/s
 const SPEED_GROWTH_PER_SEC = (0.001 * TARGET_FPS) * TARGET_FPS; 
-let SCORE_PER_SPEED = 0.02; // 100px/s → 4 Punkte/s
+let SCORE_PER_SPEED = 0.10; // 100px/s → 10 Punkte/s
 const ANGLE_DEG_PER_SEC_BASE = 15 * TARGET_FPS;       // 900°/s
 
 const OBSTACLE_SPAWN_INTERVAL = 65 / TARGET_FPS;  // ≈ 1.083 s
@@ -573,6 +570,9 @@ async function loadLeaderboard(){
 function escapeHTML(s){ return (s||"").replace(/[&<>"']/g,m=>({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[m])); }
 
 let selectedCharacter = "snail"; // default
+let tempSelectedCharacter = "snail"; // ✅ Default gesetzt
+updateCharacterStatsPreview(selectedCharacter);
+
 // ========== Neuer Charakter-Karussell-Selector ==========
 const characters = [
   { id:"snail", img:snailImg },
@@ -907,6 +907,8 @@ for (let i = particles.length - 1; i >= 0; i--) {
 }
 
   if(!paused && !gameOver && !inputBlocked()){
+    updateMusicBySpeed(); // 🎵 adaptive Musiksteuerung
+
     // Physik
     player.vy += player.gravity * dt; 
     player.y  += player.vy * dt;
@@ -1036,18 +1038,18 @@ startGame();
 
 <!-- Adaptive Music Tracks -->
 <audio id="musicSlow" loop preload="auto">
-  <source src="https://raw.githubusercontent.com/trollick98-maker/Vulkanschnegge/main/Pixel%20Depths.mp3" type="audio/mpeg">
+  <source src="https://raw.githubusercontent.com/trollick98-maker/Vulkanschnegge/main/Pixel%20Depths.mp3?raw=1" type="audio/mpeg">
 </audio>
 
 <audio id="musicMid" loop preload="auto">
-  <source src="https://raw.githubusercontent.com/trollick98-maker/Vulkanschnegge/main/Into%20the%20Deep.mp3" type="audio/mpeg">
+  <source src="https://raw.githubusercontent.com/trollick98-maker/Vulkanschnegge/main/Into%20the%20Deep.mp3?raw=1" type="audio/mpeg">
 </audio>
 
-
-<!-- 🔊 Hintergrundmusik -->
-<audio id="bgMusic" loop>
-  <source src="https://raw.githubusercontent.com/trollick98-maker/Vulkanschnegge/main/Vulkanschnegge%20Theme.mp3" type="audio/mpeg">
+<!-- 🔊 Hintergrundmusik (Fast Pace) -->
+<audio id="bgMusic" loop preload="auto">
+  <source src="https://raw.githubusercontent.com/trollick98-maker/Vulkanschnegge/main/Vulkanschnegge%20Theme.mp3?raw=1" type="audio/mpeg">
 </audio>
+
 
 <!-- 🖥️ Fullscreen Toggle -->
 <div id="fullscreenToggle">
@@ -1061,27 +1063,86 @@ startGame();
 </div>
 
 <script>
-const audio = document.getElementById('bgMusic');
+// 🎵 Adaptive Music System
+let currentMusic = document.getElementById("bgMusic");
+const slowMusic = document.getElementById("musicSlow");
+const midMusic  = document.getElementById("musicMid");
+const fastMusic = document.getElementById("bgMusic");
+
+let activeTrack = "fast";
+
 const muteBtn = document.getElementById('muteBtn');
 const volumeSlider = document.getElementById('volumeSlider');
 
+// ✅ adaptive Musik nach Speed wählen
+function updateMusicBySpeed() {
+  let newTrack = activeTrack;
+
+  if (speed < SPEED_ZONE_SLOW) newTrack = "slow";
+  else if (speed < SPEED_ZONE_MID) newTrack = "mid";
+  else newTrack = "fast";
+
+  if (newTrack !== activeTrack) {
+    switchMusic(newTrack);
+    activeTrack = newTrack;
+  }
+}
+
+// ✅ Track-Wechsel MIT SMOOTH CROSSFADE ✨
+function switchMusic(mode) {
+  let newAudio = fastMusic;
+  if (mode === "slow") newAudio = slowMusic;
+  if (mode === "mid")  newAudio = midMusic;
+
+  if (newAudio === currentMusic) return;
+
+  const oldAudio = currentMusic;
+  const startVolume = oldAudio.volume;
+  const fadeTime = 2; // Dauer der Überblendung in Sekunden
+
+  let t = 0;
+  function fade() {
+    t += 1/60;
+    const p = Math.min(t / fadeTime, 1);
+
+    oldAudio.volume = startVolume * (1 - p);
+    newAudio.volume = startVolume * p;
+
+    if (p < 1) {
+      requestAnimationFrame(fade);
+    } else {
+      oldAudio.pause();
+      oldAudio.volume = startVolume;
+    }
+  }
+
+  newAudio.currentTime = 0;
+  newAudio.muted = oldAudio.muted;
+  newAudio.play().catch(()=>{});
+
+  fade();
+
+  currentMusic = newAudio;
+}
+
+
 // Lautstärke Startwert
-audio.volume = 0.3;
+currentMusic.volume = 0.3;
 
 // Klick startet Musik (Autoplay umgehen)
 document.addEventListener('click', () => {
-  if (audio.paused) audio.play().catch(()=>{});
+  if (currentMusic.paused) currentMusic.play().catch(()=>{});
 }, { once: true });
 
 // Mute / Unmute
 muteBtn.addEventListener('click', () => {
-  audio.muted = !audio.muted;
-  muteBtn.textContent = audio.muted ? '🔈' : '🔇';
+  currentMusic.muted = !currentMusic.muted;
+  muteBtn.textContent = currentMusic.muted ? '🔈' : '🔇';
 });
 
 // Lautstärke ändern
 volumeSlider.addEventListener('input', (e) => {
-  audio.volume = e.target.value;
+  currentMusic.volume = e.target.value;
 });
 
 // 🖥️ Fullscreen-Steuerung
@@ -1146,11 +1207,11 @@ async function applyBestMessage(){
 // 💤 Mobile Battery Saver: Stoppe Musik, wenn Seite nicht aktiv ist
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) {
-    audio.pause();   // Stoppe Musik wenn Tab/Seite im Hintergrund
+    currentMusic.pause();   // Stoppe Musik wenn Tab/Seite im Hintergrund
   } else {
     // Nur wieder starten, wenn Nutzer zurückkehrt UND nicht gemutet
-    if (!audio.muted) {
-      audio.play().catch(()=>{});
+    if (!currentMusic.muted) {
+      currentMusic.play().catch(()=>{});
     }
   }
 });
