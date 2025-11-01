@@ -143,6 +143,9 @@
   transform: translateY(1px);
 }
 
+  #leaderboardOverlay {
+  z-index: 10002; /* Über Startmenü */
+}
 
 
   /* Modals */
@@ -419,13 +422,22 @@ input[type="text"], input[type="number"], input[type="email"], input[type="passw
 </div>
 
 <!-- Schneggboard Modal -->
-<div id="leaderboardOverlay" style="position:absolute; inset:0; display:none; align-items:center; justify-content:center; background: rgba(0,0,0,0.55);">
+<div id="leaderboardOverlay" style="
+  position:absolute;
+  inset:0;
+  display:none;
+  align-items:center;
+  justify-content:center;
+  background: rgba(0,0,0,0.55);
+  z-index:10002; /* ✅ Fix für Overlay-Vordergrund */
+">
   <div class="modal" style="max-height:80vh; overflow:auto;">
     <h3>🏆 Schneggboard — Top 10</h3>
     <div id="leaderboardList" style="text-align:left; margin:10px 0;"></div>
     <button id="closeLeaderboard">Schließen</button>
   </div>
 </div>
+
 
 
     <!-- Spielerwahl -->
