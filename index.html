@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>VULKANSCHNEGGE 6.2</title>
+<title>VULKANSCHNEGGE 6.3</title>
 <style>
   :root{
     --ui-bg: rgba(0,0,0,0.6);
@@ -62,6 +62,13 @@
     background: linear-gradient(to bottom, #5ca0ff, #2b4faa);
     touch-action: none;
   }
+  #startMenu {
+  z-index: 10001;
+}
+#stage {
+  z-index: 1;
+}
+
   canvas {
     display: block;
     width: 100%;
@@ -188,6 +195,33 @@
   }
 }
 
+#hpCanvasDisplay {
+  position: absolute;
+  top: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.hpHeart {
+  font-size: 26px;
+  filter: drop-shadow(0 0 6px rgba(255,0,0,0.8));
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.hpHit {
+  transform: scale(1.4);
+  color: #ff0000;
+  opacity: 0.7;
+}
+
+.hpHeal {
+  transform: scale(1.3);
+  color: #ff8888;
+}
 
   
   
@@ -258,8 +292,9 @@ body.fullscreen-active #titleBar {
 
 /* ✅ Safari iOS Input Zoom verhindern */
 input[type="text"], input[type="number"], input[type="email"], input[type="password"] {
-  font-size: 20px !important;
+  font-size: 22px !important;
   -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
 }
 
 /* ✅ iOS Safari Fullscreen-Höhenbug fix */
@@ -267,33 +302,71 @@ input[type="text"], input[type="number"], input[type="email"], input[type="passw
   height: -webkit-fill-available;
 }
 
+#upgradeProgressBar {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 300px;
+  height: 20px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.15);
+  overflow: hidden;
+  z-index: 2000;
+}
+
+#upgradeFill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #00ff99, #00ccff);
+  transition: width 0.25s ease;
+}
+#upgradeText {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 0 4px black;
+  pointer-events: none;
+}
+
+
   
 </style>
 </head>
 <body>
   <div id="rotateOverlay" aria-hidden="true">
     <h2>Bitte ins Querformat drehen</h2>
-    <p>Vulkanschnegge 6.2 ist auf dem Handy nur im Querformat spielbar.</p>
+    <p>Vulkanschnegge 6.3 ist auf dem Handy nur im Querformat spielbar.</p>
     <div class="hint">🔁 Handy drehen für maximales Spielfeld</div>
   </div>
 
   <div id="titleBar">
-    <h1>VULKANSCHNEGGE 6.2</h1>
+    <h1>VULKANSCHNEGGE 6.3</h1>
     <h2>Reach for the Stars</h2>
   </div>
 
   <div id="stage" aria-label="Spielfeld">
     <canvas id="game" width="800" height="400"></canvas>
 
+    <div id="hpCanvasDisplay"></div>
+    <div id="upgradeProgressBar">
+    <div id="upgradeFill"></div>
+    <span id="upgradeText">0 / 10</span> <!-- ✅ NEU -->
+    </div>
+
+
+
     <div id="uiOverlay">
       <div id="meters" class="hud">
         <div id="highscoreDisplay">Highscore: 0</div>
-        <div id="freeHitDisplay"></div>
         <div id="scoreDisplay">Score: 0</div>
         <div id="speedDisplay">Speed: 600.00 px/s</div>
-        <div id="coinDisplay">Coins: 0</div>
       </div>
-      <div class="hud">Tippen/Klicken zum Springen</div>
+      <!--<div class="hud">Tippen/Klicken zum Springen</div>-->
     </div>
 
     <button id="resetBtn" title="Spiel zurücksetzen">🔄 Reset</button>
@@ -310,7 +383,18 @@ input[type="text"], input[type="number"], input[type="email"], input[type="passw
     </div>
 
     <!-- Start-Menü (Name + Buttons) -->
-<div id="startMenu" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background: rgba(0,0,0,0.55);">
+<div id="startMenu" style="
+  position:absolute;
+  inset:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  padding-top: 20px;
+  background: rgba(0,0,0,0.55);
+  overflow:auto;
+">
+
   <div class="modal">
     <h3>Willkommen bei Vulkanschnegge</h3>
     <p>Wie heißt du?</p>
@@ -321,9 +405,11 @@ input[type="text"], input[type="number"], input[type="email"], input[type="passw
     </div>
     <!-- 📝 Patchnotes direkt im Menü -->
 <div style="margin-top:14px; font-size:15px; line-height:1.4; color:#ddd; text-align:left;">
-  <strong>Vulkanschnegge 6.2</strong><br>
-  • Score per Speed Buff!!! (von 2 pro 100px/s auf 10)<br>
-  • Adaptive Musik!<br>
+  <strong>Vulkanschnegge 6.3</strong><br>
+  • Perks werden jetzt basierend auf gemeisterten Hindernissen vergeben<br>
+  • Neue Lebensanzeige<br>
+  • Neue Progressbar<br>
+  • Musikzonen angepasst<br>
   • UI Optimierungen<br>
   <br>
   <em>(7.0 – Bigger & Better Soon™ 🐌🔥)</em>
@@ -381,21 +467,6 @@ document.getElementById("playerNameInput").addEventListener("focus", () => {
 
 function isPortrait(){ return window.innerHeight > window.innerWidth; }
 
-
-// Try to lock orientation & go fullscreen on first user input (best effort)
-async function requestBestView(){
-  try {
-    if (document.documentElement.requestFullscreen) {
-      await document.documentElement.requestFullscreen();
-    }
-  } catch(e){ /* ignore */ }
-  try {
-    if (screen.orientation && screen.orientation.lock) {
-      await screen.orientation.lock('landscape');
-    }
-  } catch(e){ /* ignore - many browsers block this */ }
-}
-
 // ======== Responsive Fit (2:1 Ratio) ========
 const stage = document.getElementById('stage');
 const canvas = document.getElementById('game');
@@ -428,15 +499,7 @@ fitToScreen();
 // Block inputs when overlay is shown (portrait on mobile)
 function inputBlocked(){ return rotateOverlay.style.display === 'flex'; }
 
-// Best-view attempt on first interaction
-let firstInteraction = false;
-function onFirstInteract(){
-  if (!firstInteraction){
-    firstInteraction = true;
-    requestBestView().finally(()=>fitToScreen());
-  }
-}
-document.addEventListener('pointerdown', onFirstInteract, { once: true });
+
 
 // ======== Assets ========
 const snailImg = new Image(); snailImg.src = "https://i.imgur.com/NqwMXsb.png";
@@ -506,8 +569,8 @@ document.getElementById('startToChars').addEventListener('click', ()=>{
 
 // ======== Physik/Timing (frame-unabhängig) ========
 const TARGET_FPS = 60;
-const SPEED_ZONE_SLOW = 900;
-const SPEED_ZONE_MID = 1200;
+const SPEED_ZONE_SLOW = 1000;
+const SPEED_ZONE_MID = 1500;
 const BASE_SPEED_PXS = 10 * TARGET_FPS;               // 600 px/s
 const GRAVITY_PXSS = 0.8 * TARGET_FPS * TARGET_FPS;   // 2880 px/s^2
 const JUMP_VY1_PXS = -13 * TARGET_FPS;                // -780 px/s
@@ -620,6 +683,10 @@ let upgradeAvailable=false, paused=false;
 let freeHit=0, goldMultiplier=1, extraJump=0;
 let coins = 0;
 let magnetLevel = 0;
+let obstacleCleared = 0;
+let nextUpgradeCost = 15; // ✅ erstes Upgrade kostet 15
+
+
 
 const MIN_DISTANCE_FROM_OBSTACLE = 200;
 let highscore = localStorage.getItem('vulkanschneckeHighscore') || 0;
@@ -631,7 +698,7 @@ let upgrades = [
   { id:"gold", name:"Gold-Multiplier + 1 | Speed + 300", effect:()=>{goldMultiplier++; speed+=5*TARGET_FPS;}, uses:1, allowed:0 },
   { id:"freehit", name:"+1 HP", effect:()=>{freeHit++; renderHP();}, uses:0, allowed:0 },
   { id:"gravityBoost", name:"Jump Boost (-20% Gravity)", effect:()=>{player.gravity*=0.8;}, uses:0, allowed:0 },
-  { id:"slowMo", name:"Zeitkrümmung (-40% Speed)", effect:()=>{speed*=0.4;}, uses:2, allowed:0 },
+  { id:"slowMo", name:"Zeitkrümmung (-400 Speed)", effect:()=>{speed -=400;}, uses:2, allowed:0 },
   { id:"hyperMode", name:"Hypermodus (+25% Speed, +2 Multiplier)", effect:()=>{speed*=1.25; multiplier+=2;}, uses:1, allowed:0 },
   { id:"tinyMode", name:"Kleiner Körper (-50% Größe -40% Gravity)", effect:()=>{player.width*=0.5; player.height*=0.5; player.gravity*=0.6;}, uses:1, allowed:0 },
   { id:"fatMode", name:"Fettmodus (+50% Größe, +3 HP)", effect:()=>{player.width*=1.5; player.height*=1.5; freeHit+=3; renderHP();}, uses:1, allowed:0 },
@@ -642,7 +709,7 @@ let upgrades = [
   { id:"turboHunter", name:"Turbo-Jäger (2× Speed-Score, 50% Coin-Wert)", effect:()=>{ SCORE_PER_SPEED*=2; goldMultiplier*=0.5; }, uses:1, allowed:0 },
   { id:"hardplastic", name:"Eimer aus Hartplastik (+ 2HP)", effect:()=>{freeHit+=2; renderHP();}, uses:1, allowed:2 },
   { id:"springLegs", name:"Federnde Beine (+25% Double Jump)", effect:()=>{player.vy*=1.25;}, uses:1, allowed:3 },
-  { id:"snailRage", name:"Schneckenzorn (+20% Speed Scaling)", effect:()=>{SPEED_GROWTH_PER_SEC*=1.2;}, uses:1, allowed:1 },
+  { id:"snailRage", name:"Schneckenzorn (+20% Speed, + 15 Upgrade Punkte)", effect:()=>{speed *= 1.2; obstacleCleared += 15}, uses:1, allowed:1 },
 ];
 
 // 🧠 Original ohne JSON – Funktionen bleiben erhalten!
@@ -710,10 +777,33 @@ function hideUpgrade(){
 function initPlayer() {
   player = { x:100, y:360-64, width:64, height:64, vy:0, gravity:GRAVITY_PXSS, grounded:false, jumps:0, angle:0, spinBoost:1 };
 }
-function renderHP(){
-  const hp = document.getElementById('freeHitDisplay');
-  hp.innerText = freeHit>0 ? (freeHit+" HP") : "";
+function renderHP(animationType){
+  const hpBox = document.getElementById('hpCanvasDisplay');
+  hpBox.innerHTML = "";
+
+  for(let i = 0; i < freeHit; i++){
+    const heart = document.createElement('span');
+    heart.innerText = "❤️";
+    heart.classList.add("hpHeart");
+
+    if(i === freeHit-1 && animationType){
+      heart.classList.add(animationType);
+      setTimeout(()=>heart.classList.remove(animationType), 180);
+    }
+
+    hpBox.appendChild(heart);
+  }
 }
+
+function updateUpgradeBar() {
+  const percentage = Math.min(100, (obstacleCleared / nextUpgradeCost) * 100);
+  document.getElementById('upgradeFill').style.width = percentage + "%";
+  document.getElementById('upgradeText').innerText =
+  obstacleCleared + " / " + nextUpgradeCost;
+
+}
+
+
 function resetGame() {
   initPlayer();
   obstacles=[]; bonuses=[];
@@ -724,12 +814,15 @@ function resetGame() {
   renderHP();
   document.getElementById('scoreDisplay').innerText="Score: 0";
   document.getElementById('speedDisplay').innerText=`Speed: ${speed.toFixed(2)} px/s`; 
-  document.getElementById('coinDisplay').innerText="Coins: 0";
+
   document.getElementById('upgradeScreen').style.display="none";
   player.gravity = GRAVITY_PXSS;
   applyCharacterStats();
   if (document.activeElement) document.activeElement.blur();
   resetUpgrades(); // ✅ der neue Weg
+  nextUpgradeCost = 15; // ✅ Reset des Systems
+  obstacleCleared = 0;
+  updateUpgradeBar(); // ✅ Bar resetten
 }
 document.getElementById('resetBtn').addEventListener('click', resetGame);
 
@@ -869,7 +962,7 @@ ctx.fillRect(0, 340, canvas.width, 60);
     if(player.x < hitX + hitW && player.x + player.width > hitX &&
        player.y < hitY + hitH && player.y + player.height > hitY){
       if(freeHit>0){
-        freeHit--; renderHP();
+        freeHit--; renderHP("hpHit");
         obstacles.splice(i,1);
       } else if(!gameOver){
         gameOver = true;
@@ -888,7 +981,22 @@ ctx.fillRect(0, 340, canvas.width, 60);
       }
     }
 
-    if(o.x + o.width < 0) obstacles.splice(i,1);
+    if (o.x + o.width < 0) {
+    obstacles.splice(i,1);
+    obstacleCleared++;
+    updateUpgradeBar(); // ✅ NEU
+
+    if (obstacleCleared >= nextUpgradeCost) {
+    paused = true;
+    showUpgradeScreen();
+    obstacleCleared = 0;
+    nextUpgradeCost++; // ✅ nächstes Upgrade wird teurer
+    updateUpgradeBar(); // ✅ Bar wieder zurücksetzen
+    }
+
+    }
+
+
   }
 
   // ✨ Partikel-Update
@@ -977,11 +1085,6 @@ if (Math.random() < spawnChance) {
         multiplier++; targetScale=1+multiplier*0.1; targetRedTint=Math.min(255,multiplier*20);
         bonuses.splice(i,1);
 
-        if(coins >= 10){
-          paused = true;
-          showUpgradeScreen();
-          coins = 0;
-        }
         continue;
       }
       if(b.x+b.size<0 && !b.collected){ missedBonus=true; bonuses.splice(i,1);}
@@ -1012,11 +1115,11 @@ if (Math.random() < spawnChance) {
   // HUD
   document.getElementById('scoreDisplay').innerText = "Score: " + Math.floor(score);
   document.getElementById('speedDisplay').innerText = "Speed: " + speed.toFixed(2) + " px/s";
-  document.getElementById('coinDisplay').innerText = "Coins: " + coins;
+
 
   // Multiplier Anzeige
   ctx.save(); 
-  ctx.translate(canvas.width-120,40); 
+  ctx.translate(canvas.width-100,60); 
   ctx.scale(multiplierScale,multiplierScale); 
   ctx.fillStyle="#FFD700"; 
   ctx.font="24px Arial"; 
