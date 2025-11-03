@@ -835,47 +835,48 @@ function resetGame() {
   nextUpgradeCost = 15; // ✅ Reset des Systems
   obstacleCleared = 0;
   updateUpgradeBar(); // ✅ Bar resetten
-  startTimestamp = 0;
-  maxSpeedReached = 0;
-
 }
 document.getElementById('resetBtn').addEventListener('click', resetGame);
 
 // ======== Online Highscore Speicherung ========
 async function submitGlobalScore(finalScore){
   try {
-    const user = firebase.auth().currentUser;
-    const uid = user ? user.uid : null;
     const name = getPlayerName() || "Unbenannt";
     const char = selectedCharacter || "unknown";
 
-    // Dauer in Sekunden (falls startTimestamp 0 wäre, setze 0)
-    const duration = startTimestamp ? Math.max(0.1, (performance.now() / 1000) - startTimestamp) : 0;
-
-    // Telemetrie-Objekt
-    const newPending = {
-      uid: uid,
-      name: String(name).slice(0,24),
-      score: Math.floor(finalScore),
+    const newScore = {
+      name,
+      score: finalScore,
       character: char,
-      duration: duration,
-      maxSpeedReached: Math.round(maxSpeedReached),
-      obstaclesCleared: obstacleCleared || 0,
-      coinsCollected: coins || 0,
-      createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      createdAt: firebase.firestore.Timestamp.now()
     };
 
-    // Schreibe in 'pendingScores' — Cloud Function oder Admin prüft später
-    await db.collection('pendingScores').add(newPending);
+    // Highscore prüfen
+    const snap = await db.collection('scores')
+      .orderBy('score', 'desc').limit(1).get();
 
-    // Option: Lokales Feedback
-    console.log("Score queued for validation:", newPending);
+    let isNewRecord = (!snap || snap.empty || finalScore > (snap.docs[0].data().score || 0));
+
+    if(isNewRecord){
+      // Popup für persönlichen Satz
+      let message = prompt("NEUER WELTREKORD!\nSchreibe einen Satz, der oben angezeigt wird:");
+      if(message){
+        newScore.bestMessage = message.trim().slice(0,80);
+      }
+    }
+
+    // Score speichern
+    await db.collection('scores').add(newScore);
+
+    // Falls mit Satz → Untertitel aktualisieren
+    if(isNewRecord){
+      applyBestMessage();
+    }
 
   }catch(e){
     console.warn("Score submit failed:", e);
   }
 }
-
 
 
 function applyCharacterStats(){
@@ -938,10 +939,6 @@ function spawnBonus() {
 let lastTime = performance.now();
 
 let particles = [];
-// Telemetrie für Server-Validation
-let startTimestamp = 0;   // zeitstempel in sekunden, wenn Spiel gestartet wurde
-let maxSpeedReached = 0;  // tracke höchste speed während der Runde
-
 
 function update(now){
   const dt = Math.min((now - lastTime)/1000, 0.05); // Sekunden; clamp
@@ -1117,9 +1114,6 @@ if (Math.random() < spawnChance) {
     if(bonusAccum>bonusSpawnInterval){ spawnBonus(); bonusAccum=0; }
 
     speed += SPEED_GROWTH_PER_SEC * dt; 
-    // track max speed in dieser Runde
-    if (speed > maxSpeedReached) maxSpeedReached = speed;
-
     score += (speed * SCORE_PER_SPEED) * dt;
   }
 
@@ -1151,12 +1145,8 @@ if (Math.random() < spawnChance) {
 function startGame(){
   initPlayer();
   lastTime = performance.now();
-  // start timestamp in sekunden
-  startTimestamp = performance.now() / 1000;
-  maxSpeedReached = speed;
   requestAnimationFrame(update);
 }
-
 startGame();
 showStartMenu();
 paused = true;
@@ -1385,16 +1375,10 @@ document.getElementById('leaderBtn').addEventListener('click', async ()=>{
     messagingSenderId: "891045383199",
     appId: "1:891045383199:web:19a884cd95e75f4629592a"
   };
-    // Init
+  // Init
   firebase.initializeApp(firebaseConfig);
-
-  // ✅ Anonyme Auth, damit jeder Spieler eine stabile uid bekommt
-  firebase.auth().signInAnonymously()
-    .catch((err)=>{ console.warn("Firebase anon auth failed:", err); });
-
   const db = firebase.firestore();
   applyBestMessage();
-
 </script>
 
 </body>
