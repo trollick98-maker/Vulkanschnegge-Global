@@ -688,6 +688,8 @@ let obstacles = [], bonuses = [];
 let speed = BASE_SPEED_PXS; // px/s
 let score = 0;
 let multiplier = 1, multiplierScale=1, targetScale=1;
+let distance = 0;
+let totalTime = 0;
 let gameOver = false;
 let spawnAccum=0, bonusAccum=0, missedBonus=false, redTint=0, targetRedTint=0;
 
@@ -820,6 +822,8 @@ function resetGame() {
   initPlayer();
   obstacles=[]; bonuses=[];
   speed=BASE_SPEED_PXS; score=0; multiplier=1; multiplierScale=1; targetScale=1;
+  distance = 0;
+  totalTime = 0;
   gameOver=false; spawnAccum=0; bonusAccum=0; redTint=0; targetRedTint=0;
   upgradeAvailable=false; paused=false; freeHit=0; goldMultiplier=1; extraJump=0;
   coins = 0; magnetLevel = 0;
@@ -839,44 +843,65 @@ function resetGame() {
 document.getElementById('resetBtn').addEventListener('click', resetGame);
 
 // ======== Online Highscore Speicherung ========
-async function submitGlobalScore(finalScore){
+async function submitGlobalScore(finalScore, extraData){
   try {
     const name = getPlayerName() || "Unbenannt";
-    const char = selectedCharacter || "unknown";
+    const char = extraData.character || "unknown";
 
     const newScore = {
       name,
       score: finalScore,
+      distance: extraData.distance,
+      duration: extraData.duration,
       character: char,
       createdAt: firebase.firestore.Timestamp.now()
     };
 
-    // Highscore prüfen
+    // Highscore (optional)
     const snap = await db.collection('scores')
       .orderBy('score', 'desc').limit(1).get();
 
     let isNewRecord = (!snap || snap.empty || finalScore > (snap.docs[0].data().score || 0));
 
     if(isNewRecord){
-      // Popup für persönlichen Satz
       let message = prompt("NEUER WELTREKORD!\nSchreibe einen Satz, der oben angezeigt wird:");
       if(message){
         newScore.bestMessage = message.trim().slice(0,80);
       }
     }
 
-    // Score speichern
     await db.collection('scores').add(newScore);
 
-    // Falls mit Satz → Untertitel aktualisieren
     if(isNewRecord){
       applyBestMessage();
     }
 
-  }catch(e){
-    console.warn("Score submit failed:", e);
+    console.log("✅ Score gespeichert:", newScore);
+
+  } catch(e){
+    console.error("❌ Score submit failed:", e);
   }
 }
+
+
+// ✅ SPEICHERT SICHERE RUN-DATEN
+async function submitPendingRun(run){
+  try{
+    const name = getPlayerName() || "Unbenannt";
+
+    await db.collection('pendingScores').add({
+      name,
+      distance: Math.floor(run.distance),
+      duration: Math.floor(run.duration),
+      character: run.character,
+      createdAt: firebase.firestore.Timestamp.now()
+    });
+
+  } catch(e){
+    console.warn("Pending score submit failed:", e);
+  }
+}
+
 
 
 function applyCharacterStats(){
@@ -986,8 +1011,14 @@ ctx.fillRect(0, 340, canvas.width, 60);
           document.getElementById('highscoreDisplay').innerText = `Highscore: ${highscore}`;
           applyBestMessage();
         }
-        // ➕ Globalen Score eintragen
-        submitGlobalScore(Math.floor(score)).catch(()=>{ /* still ok */ });
+        // ✅ Score direkt speichern (validiert durch Firestore Regeln)
+        submitGlobalScore(Math.floor(score), {
+          distance: Math.floor(distance),
+          duration: Math.floor(totalTime),
+          character: selectedCharacter
+        });
+
+
 
         break;
       }
@@ -1028,6 +1059,8 @@ for (let i = particles.length - 1; i >= 0; i--) {
 
   if(!paused && !gameOver && !inputBlocked()){
     updateMusicBySpeed(); // 🎵 adaptive Musiksteuerung
+    distance += speed * dt;
+    totalTime += dt;
 
     // Physik
     player.vy += player.gravity * dt; 
