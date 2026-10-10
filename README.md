@@ -1,19 +1,29 @@
-# Vulkanschnegge 6.4 – modulare Entwicklungsfassung
+# Vulkanschnegge – Phase A (Stabilität und Struktur)
 
-Diese Fassung ist eine **strukturelle Kopie** von Version 6.4 auf dem separaten Branch `refactor/modular-v6-4`. Der ursprüngliche Branch `main` bleibt unverändert.
+Entwicklungsbranch: `phase-a/stability-modules`, erstellt von `refactor/modular-v6-4`. Weder `main` noch der Ausgangsbranch wurden verändert.
 
-## Dateien
-- `index.html` – Seitenaufbau und eingebundene Ressourcen
-- `styles.css` – Layout, Responsive Design und UI
-- `js/game.js` – Spiellogik, Bewegung, Physik, Charaktere, Upgrades, Darstellung
-- `js/audio.js` – adaptive Musik, Lautstärke und Vollbild
-- `js/leaderboard.js` – Aktualisierung des Rekordtextes
-- `js/ui.js` – zusätzliche Events für Menüs, Charakterwahl und Sichtbarkeit
-- `js/firebase.js` – Firebase-Konfiguration und Firestore-Initialisierung
+## Laufzeit-Dateien
 
-## Hinweise
-Die Reihenfolge der Script-Einbindungen wurde gegenüber der Originaldatei beibehalten. Die MP3-Dateien liegen weiterhin im separaten Repository `Vulkanschnegge`, Bilder werden weiterhin extern geladen. Firebase verwendet dasselbe Backend wie die bestehende Version.
+1. `index.html` – HTML-Struktur und Script-Ladereihenfolge
+2. `styles.css` – Darstellung
+3. `js/setup.js` – Geräteerkennung, Assets, Hauptmenü, Charakterauswahl und zentrale Variablen
+4. `js/upgrades.js` – Upgrade-Katalog und Auswahl
+5. `js/player.js` – Spieler, Run-Reset, Score-Übermittlung, Bewegungsinputs und Spawns
+6. `js/engine.js` – Canvas-Rendering und Game-Loop
+7. `js/audio.js`, `js/leaderboard.js`, `js/ui.js`, `js/firebase.js` – weitere Dienste
 
-**Wichtig:** Der Dateiinhaltsvergleich wurde geprüft: CSS und JavaScript sind gegenüber `main` bytegetreu übernommen, und nach Rückeinsetzen dieser Inhalte ergibt sich exakt die alte HTML-Datei. Ein tatsächlicher Browser-/Spieltest wurde bislang nicht ausgeführt.
+`js/game.js` bleibt vorerst **als unveränderte Referenzdatei** im Branch, wird aber von `index.html` nicht mehr geladen.
 
-Bei lokalem Testen einen kleinen HTTP-Server verwenden, z. B. `python -m http.server 8000`, und dann `http://localhost:8000` öffnen. Die tatsächlichen Firestore-Regeln und Deployment-Konfiguration sollten vor Veröffentlichung geprüft werden.
+## Fehlerkorrekturen
+
+- Nach Bestätigung einer Charakterwahl wird ein neuer Run vollständig zurückgesetzt. Damit bleiben keine gekauften Upgrades, alten Scores oder Geschwindigkeitsänderungen vom vorherigen Charakter erhalten.
+- Die erste Charakterwahl bleibt pausiert, bis sie bestätigt wurde.
+- Ein Reset entfernt zurückgebliebene Partikel des vorherigen Runs.
+
+## Testen
+
+Für lokales Testen im Repository-Ordner: `py -m http.server 8000`, danach `http://localhost:8000`.
+
+**Manuelle Testfälle:** Startmenü → Namen eingeben → Figur auswählen → Sprung → Münze sammeln → Upgrade erhalten → Reset → Figur wechseln → Game Over → Leaderboard → Mobile/Fullscreen/Audio.
+
+**Status:** Struktur und Quelltext wurden statisch abgeglichen, aber ein interaktiver Browser-Test wurde nicht durchgeführt. Gleiche externe Bilder, Audiodateien und Firebase-Datenbank wie Version 6.4. Firestore-Regeln und serverseitige Anti-Cheat-Prüfung sind nicht Teil dieser Phase.
