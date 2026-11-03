@@ -119,11 +119,13 @@ const GRAVITY_PXSS = 0.8 * TARGET_FPS * TARGET_FPS;   // 2880 px/s^2
 const JUMP_VY1_PXS = -13 * TARGET_FPS;                // -780 px/s
 const JUMP_VY2_PXS = -12 * TARGET_FPS;                // -720 px/s
 const SPEED_GROWTH_PER_SEC = (0.001 * TARGET_FPS) * TARGET_FPS; 
-let SCORE_PER_SPEED = 0.10; // 100px/s → 10 Punkte/s
+const DEFAULT_SCORE_PER_SPEED = 0.10;
+let SCORE_PER_SPEED = DEFAULT_SCORE_PER_SPEED; // 100px/s → 10 Punkte/s
 const ANGLE_DEG_PER_SEC_BASE = 15 * TARGET_FPS;       // 900°/s
 
 const OBSTACLE_SPAWN_INTERVAL = 65 / TARGET_FPS;  // ≈ 1.083 s
-let bonusSpawnInterval = 160 / TARGET_FPS;    // ≈ 2.667 s (kann verändert werden)
+const DEFAULT_BONUS_SPAWN_INTERVAL = 160 / TARGET_FPS;
+let bonusSpawnInterval = DEFAULT_BONUS_SPAWN_INTERVAL; // ≈ 2.667 s (kann verändert werden)
 
 let player = {};
 // Spielername
