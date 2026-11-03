@@ -62,6 +62,7 @@ function createGame() {
     localStorage: {getItem:k => saved.get(k) ?? null, setItem:(k,v) => saved.set(k,v)},
     performance: {now: () => 1000},
     requestAnimationFrame(){},
+    updateMusicBySpeed(){}, // Audio is browser-driven; collision test uses a minimal stub.
     setTimeout(){},
     console,
   });
