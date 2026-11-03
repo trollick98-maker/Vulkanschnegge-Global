@@ -11,29 +11,38 @@
   <main class="app">
     <header class="masthead">
       <div class="brand"><span class="brand-icon" aria-hidden="true">🐌</span><div><span class="eyebrow">SPIELBARER PROTOTYP · 7.0</span><h1>VULKANSCHNEGGE <span>7.0</span></h1></div></div>
-      <div class="header-right"><span class="live-indicator"></span> WORLD / RUNNER / COMBAT</div>
+      <div class="header-right"><button id="fullscreen-btn" class="top-control" title="Vollbild">⛶ VOLLBILD</button><button id="sound-btn" class="top-control" title="Musik ein/aus">♫ MUSIK AN</button><label class="volume-label">LAUTSTÄRKE <input id="volume" type="range" min="0" max="1" step=".05" value=".3" aria-label="Musiklautstärke"></label></div>
     </header>
     <div class="game-frame">
       <canvas id="game" width="960" height="540" aria-label="Spielwelt der Vulkanschnegge"></canvas>
       <div id="world-ui" class="world-ui" aria-label="Weltkarte und Levelauswahl">
-        <div class="map-head"><span class="eyebrow">KAPITEL 01 · DIE ERSTEN STRÖMUNGEN</span><h2>Wohin, kleine Schnecke?</h2><p>Zwei Wege, zwei Spielstile. Beide sind sofort spielbar.</p></div>
+        <div class="map-head"><span class="eyebrow">KAPITEL 01 · DIE ERSTEN STRÖMUNGEN</span><h2>Wohin, kleine Schnecke?</h2><p>Drei Wege: kurze Story-Strecke, Kampf oder Endless-Run.</p></div>
         <button class="map-node runner-node" data-level="runner"><span class="map-icon">⚡</span><span class="map-name">STRÖMUNGSKANAL</span><span class="map-sub">RUNNER · ~21 SEKUNDEN</span><span class="map-done" id="runner-done"></span></button>
+        <button class="map-node arcade-node" data-level="arcade"><span class="map-icon">♾</span><span class="map-name">ENDLOS-MODUS</span><span class="map-sub">CLASSIC · HIGHSCORE-JAGD</span></button>
         <button class="map-node arena-node" data-level="combat"><span class="map-icon">⚔</span><span class="map-name">MURÄNENRING</span><span class="map-sub">COMBAT · MINIBOSS</span><span class="map-done" id="combat-done"></span></button>
         <div class="map-hub"><span>🐌</span><b>HEIMATBUCHT</b><small>DEIN AUSGANGSPUNKT</small></div>
-        <div class="map-legend">✦ Eine kleine Welt, zwei spielbare Abenteuer</div>
+        <div class="map-profile" aria-label="Spieler und Charakterauswahl"><label>SPIELERNAME <input id="player-name" type="text" maxlength="24" placeholder="Dein Name"></label><div class="map-character" id="character-options"><button data-character="snail" title="Schnegg"><img data-sprite="snail" alt="Schnegg">SCHNEGG</button><button data-character="otter" title="Otter im Eimer"><img data-sprite="otter" alt="Otter">OTTER</button><button data-character="frog" title="Frogo"><img data-sprite="frog" alt="Frogo">FROGO</button></div><div id="character-detail" class="character-detail"></div><button id="board-btn" class="board-btn">🏆 SCHNEGGBOARD · REKORDE</button></div>
+        <div class="map-legend">✦ ORIGINAL-CHARAKTERE · WELT / RUNNER / COMBAT</div>
       </div>
       <div class="game-hud hidden" id="hud">
-        <div class="hud-left"><div class="hud-kicker" id="level-kind">RUNNER</div><div class="hud-title" id="level-title">Strömungskanal</div><div class="hud-stats" id="hud-stats">♥ ♥ ♥</div></div>
+        <div class="hud-left"><div class="hud-kicker" id="level-kind">RUNNER</div><div class="hud-title" id="level-title">Strömungskanal</div><div class="hud-stats" id="hud-stats">♥ ♥ ♥</div><div class="hud-score" id="hud-score">SCORE 0 · x1</div><div class="hud-perk" id="hud-perk">PERK 0/3</div><div class="hud-speed" id="hud-speed">SPEED 0</div></div>
         <div class="hud-right"><div class="hud-number" id="hud-number">0 / 100</div><div class="meter"><div class="meter-fill" id="hud-meter"></div></div><div class="hud-label" id="hud-label">FORTSCHRITT</div></div>
-        <button id="back-btn" class="back-btn" title="Zur Weltkarte (Escape)">↶ <span>KARTE</span></button>
+        <button id="back-btn" class="back-btn" title="Zur Weltkarte (Escape)">↶ <span>KARTE</span></button><button id="restart-btn" class="restart-btn" title="Level neu starten">⟳ RESET</button>
       </div>
       <div class="game-bottom hidden" id="game-bottom"><span id="level-tip">LEERTASTE · SPRINGEN</span><span id="level-message"></span></div>
       <div class="touch-controls hidden" id="touch-controls"><div class="touch-move"><button data-key="left" aria-label="Links">◀</button><button data-key="right" aria-label="Rechts">▶</button></div><div class="touch-actions"><button data-key="jump" aria-label="Springen">↥</button><button data-key="dash" aria-label="Dash">⚡</button></div></div>
+      <div class="overlay hidden" id="upgrade-overlay" role="dialog" aria-modal="true" aria-label="Upgrade auswählen"><div class="overlay-card"><span class="eyebrow">UPGRADE FREIGESCHALTET</span><h2>Wähle einen Perk</h2><div id="upgrade-choices" class="upgrade-choices"></div><p>Nur für diesen Run. Wie in Version 6.4.</p></div></div>
+      <div class="overlay hidden" id="leaderboard-overlay" role="dialog" aria-modal="true" aria-label="Schneggboard"><div class="overlay-card"><span class="eyebrow">LOKALE 7.0-REKORDE</span><h2>🏆 Schneggboard</h2><div id="leaderboard-rows" class="record-list"></div><p>Test-Scores bleiben lokal und verändern das bisherige Schneggboard nicht.</p><button id="online-board-btn" class="board-btn">🌐 ORIGINAL SCHNEGGBOARD 6.4 LADEN</button><div id="online-board-rows" class="record-list online-rows"></div><button id="board-close" class="board-btn">SCHLIESSEN</button></div></div>
       <div class="result hidden" id="result" role="dialog" aria-modal="true"><div class="result-card"><span class="eyebrow" id="result-tag">RUN ABGESCHLOSSEN</span><div class="result-symbol" id="result-symbol">🏁</div><h2 id="result-title">Geschafft!</h2><p id="result-description"></p><div class="result-actions"><button id="replay" class="primary">NOCHMAL SPIELEN</button><button id="home" class="secondary">ZUR WELTKARTE</button></div></div></div>
     </div>
-    <footer class="foot"><div><span class="key">A</span><span class="key">D</span> Bewegen <span class="separator">·</span> <span class="key wide">LEERTASTE</span> Springen <span class="separator">·</span> <span class="key wide">SHIFT</span> Panzer-Dash <span class="separator">·</span> <span class="key">ESC</span> Karte</div><span class="foot-note">Keine Downloads von Grafiken notwendig · Spielstände lokal</span></footer>
+    <footer class="foot"><div><span class="key">A</span><span class="key">D</span> Bewegen <span class="separator">·</span> <span class="key wide">LEERTASTE</span> Springen <span class="separator">·</span> <span class="key wide">SHIFT</span> Panzer-Dash <span class="separator">·</span> <span class="key">ESC</span> Karte</div><span class="foot-note">Original-Sprites und Musik benötigen Internet · Test-Scores lokal</span></footer>
   </main>
   <script src="js/config.js"></script>
+  <script src="js/assets.js"></script>
+  <script src="js/profile.js"></script>
+  <script src="js/upgrades.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/online-board.js"></script>
   <script src="js/input.js"></script>
   <script src="js/runner.js"></script>
   <script src="js/combat.js"></script>

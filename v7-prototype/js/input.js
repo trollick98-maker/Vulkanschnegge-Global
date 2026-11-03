@@ -9,6 +9,7 @@
     I[key]=on;
   }
   window.addEventListener('keydown',e=>{
+    if(e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName))return;
     if(e.code==='Escape' && !e.repeat){ V.backToMap?.(); return; }
     const key=translate[e.code];if(key){e.preventDefault();set(key,true);}
   });
