@@ -1,0 +1,22 @@
+name: Vulkanschnegge 7 prototype tests
+
+on:
+  push:
+    branches: ['prototype/**']
+  pull_request:
+    paths:
+      - 'v7-prototype/**'
+      - '.github/workflows/v7-prototype.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test v7-prototype/tests/smoke.test.js
