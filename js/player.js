@@ -1,6 +1,6 @@
 // ======== Player/Reset ========
 function initPlayer() {
-  player = { x:100, y:360-64, width:64, height:64, vy:0, gravity:GRAVITY_PXSS, grounded:false, jumps:0, angle:0, spinBoost:1 };
+  player = { x:100, y:360-64, width:64, height:64, vy:0, gravity:GRAVITY_PXSS, grounded:false, jumps:0, angle:0, spinBoost:1, doubleJumpBoost:1 };
 }
 function renderHP(animationType){
   const hpBox = document.getElementById('hpCanvasDisplay');
@@ -33,9 +33,11 @@ function resetGame() {
   initPlayer();
   obstacles=[]; bonuses=[];
   speed=BASE_SPEED_PXS; score=0; multiplier=1; multiplierScale=1; targetScale=1;
+  SCORE_PER_SPEED = DEFAULT_SCORE_PER_SPEED;
+  bonusSpawnInterval = DEFAULT_BONUS_SPAWN_INTERVAL;
   distance = 0;
   totalTime = 0;
-  gameOver=false; spawnAccum=0; bonusAccum=0; redTint=0; targetRedTint=0;
+  gameOver=false; spawnAccum=0; bonusAccum=0; missedBonus=false; redTint=0; targetRedTint=0;
   upgradeAvailable=false; paused=false; freeHit=0; goldMultiplier=1; extraJump=0;
   coins = 0; magnetLevel = 0;
   particles = []; // Clear visual effects left from the previous run.
@@ -143,7 +145,7 @@ function applyCharacterStats(){
 function jump(){
   if (inputBlocked()) return;
   if (!paused && !gameOver && player.jumps < 2 + extraJump) {
-    player.vy = (player.jumps===0 ? JUMP_VY1_PXS : JUMP_VY2_PXS);
+    player.vy = player.jumps === 0 ? JUMP_VY1_PXS : JUMP_VY2_PXS * player.doubleJumpBoost;
     player.jumps++;
   }
 }
