@@ -1,0 +1,334 @@
+
+  :root{
+    --ui-bg: rgba(0,0,0,0.6);
+  }
+  html, body {
+    margin:0; padding:0; height:100%;
+    background:black; color:white; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    touch-action: manipulation;
+    overscroll-behavior: none;
+  }
+
+  /* ----- Orientation Overlay (blocks play in Portrait on Mobile) ----- */
+  #rotateOverlay{
+    position: fixed; inset:0;
+    display:none; align-items:center; justify-content:center; flex-direction:column;
+    background: #000;
+    z-index: 9999;
+    text-align:center;
+    padding: 24px;
+  }
+  #rotateOverlay h2{ margin: 0 0 8px; font-size: clamp(22px, 6vw, 36px); }
+  #rotateOverlay p { margin: 0 0 16px; opacity: .9; font-size: clamp(14px, 4vw, 18px); }
+  #rotateOverlay .hint{
+    display:inline-flex; align-items:center; gap:10px;
+    background:#111; border:1px solid #333; border-radius:12px; padding:10px 14px;
+    font-weight:600;
+  }
+
+  /* Title */
+  #titleBar {
+    width: 100%;
+    text-align: center;
+    padding: 8px 10px;
+    box-sizing: border-box;
+  }
+  #titleBar h1 {
+    margin:0;
+    font-size: clamp(20px, 4vw, 48px);
+    text-shadow:2px 2px 5px #000;
+  }
+  #titleBar h2 {
+    margin:0;
+    font-size: clamp(12px, 2.5vw, 20px);
+    opacity: 0.85;
+  }
+
+  /* Stage wrapper (we'll size with JS for max area; keeps 2:1 ratio) */
+  #stage {
+    position: relative;
+    margin: 0 auto;
+    width: 800px;
+    height: 400px;
+    overflow: hidden;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    background: linear-gradient(to bottom, #5ca0ff, #2b4faa);
+    touch-action: none;
+  }
+  #startMenu {
+  z-index: 10001;
+}
+#stage {
+  z-index: 1;
+}
+
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+
+  /* UI overlay */
+  #uiOverlay {
+    position: absolute;
+    top: 8px; left: 8px; right: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    pointer-events: none;
+  }
+  .hud {
+    background: var(--ui-bg);
+    padding: 6px 8px;
+    border-radius: 8px;
+    font-size: 14px;
+    line-height: 1.2;
+    pointer-events: auto;
+  }
+  #meters {
+    display: grid;
+    grid-template-columns: repeat(2, auto);
+    gap: 6px 10px;
+    align-items: center;
+  }
+  #meters div { white-space: nowrap; }
+
+  #resetBtn {
+    position: absolute;
+    right: 8px; bottom: 8px;
+    padding: 10px 14px;
+    font-size: 16px;
+    border: none; border-radius: 10px;
+    background: #ff5252;
+    color: white; font-weight: 700;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+    cursor: pointer;
+  }
+  #resetBtn:active { transform: translateY(1px); }
+
+  #charBtn { 
+  position: absolute;
+  right: 8px; bottom: 56px;
+  padding: 10px 14px;
+  font-size: 16px;
+  border: none; border-radius: 10px;
+  background: #4CAF50;
+  color: white; font-weight: 700;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+  cursor: pointer;
+}
+#charBtn:active { transform: translateY(1px); }
+
+#leaderBtn {
+  position: absolute;
+  right: 8px; bottom: 104px; /* über Charakter-Button */
+  padding: 10px 14px;
+  font-size: 16px;
+  border: none; border-radius: 10px;
+  background: #FFD700;
+  color: black;
+  font-weight: 700;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+  cursor: pointer;
+}
+#leaderBtn:active {
+  transform: translateY(1px);
+}
+
+  #leaderboardOverlay {
+  z-index: 10002; /* Über Startmenü */
+}
+
+
+  /* Modals */
+  #upgradeScreen, #playerSelect {
+    position:absolute; inset: 0;
+    display:none;
+    align-items:center; justify-content:center;
+    background: rgba(0,0,0,0.55);
+  }
+  .modal {
+    background: rgba(15,15,15,0.95);
+    padding: 14px 16px;
+    border-radius: 12px;
+    text-align:center;
+    width: min(90%, 520px);
+  }
+  .modal h3{ margin: 6px 0 12px; }
+  .modal .choices{
+    display:flex; flex-wrap:wrap; gap:8px; justify-content:center;
+  }
+  .modal button {
+    margin:0; padding: 10px 12px;
+    font-size: 16px;
+    border-radius: 10px; border: 1px solid #333;
+    background: #222; color: white; cursor: pointer;
+  }
+  .modal button:hover { background:#2e2e2e; }
+
+  /* ✅ Markierung des vorläufig ausgewählten Charakters */
+.charActive {
+  outline: 3px solid #00ffcc;
+  background: #224;
+}
+
+
+  /* Bigger touch targets on small screens */
+  @media (max-width: 768px) {
+    .hud { font-size: 16px; }
+    #resetBtn{ font-size: 18px; padding: 12px 16px; }
+    .modal button{ font-size: 18px; padding: 12px 14px; }
+  }
+
+  /* ✅ iOS Safari – Menü leicht nach oben schieben */
+@supports (-webkit-touch-callout: none) {
+  #startMenu .modal {
+    transform: translateY(-20px);
+  }
+  #playerNameInput {
+    margin-bottom: 20px;
+  }
+}
+
+#hpCanvasDisplay {
+  position: absolute;
+  top: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  pointer-events: none;
+  z-index: 1000;
+}
+
+.hpHeart {
+  font-size: 26px;
+  filter: drop-shadow(0 0 6px rgba(255,0,0,0.8));
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.hpHit {
+  transform: scale(1.4);
+  color: #ff0000;
+  opacity: 0.7;
+}
+
+.hpHeal {
+  transform: scale(1.3);
+  color: #ff8888;
+}
+
+  
+  
+/* 🔊 Musiksteuerung jetzt oben links */
+#musicControls {
+  position: fixed;
+  top: 45px;       /* sitzt direkt unter dem Fullscreen-Button */
+  left: 10px;
+  z-index: 9999;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: system-ui, sans-serif;
+}
+#volumeSlider {
+  width: 100px;
+}
+#muteBtn {
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 18px;
+  cursor: pointer;
+}
+#muteBtn:hover {
+  opacity: 0.7;
+}
+/* 🖥️ Fullscreen-Checkbox oben links */
+#fullscreenToggle {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 9999;
+  background: rgba(0,0,0,0.6);
+  color: white;
+  padding: 6px 10px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: system-ui, sans-serif;
+  font-size: 14px;
+}
+#fullscreenCheckbox {
+  accent-color: #ff5252; /* schönes Lava-Rot passend zum Game */
+  transform: scale(1.2);
+  cursor: pointer;
+}
+
+/* ✨ Fullscreen: Titel ausblenden */
+#titleBar {
+  transition: opacity 0.4s ease;
+}
+body.fullscreen-active #titleBar {
+  opacity: 0;
+  pointer-events: none;
+}
+
+
+/* 📱 Auf Handys: Lautstärkeregler ausblenden */
+@media (max-width: 768px), (pointer: coarse) {
+  #volumeSlider { display: none !important; }
+}
+
+/* ✅ Safari iOS Input Zoom verhindern */
+input[type="text"], input[type="number"], input[type="email"], input[type="password"] {
+  font-size: 22px !important;
+  -webkit-text-size-adjust: 100%;
+  touch-action: manipulation;
+}
+
+/* ✅ iOS Safari Fullscreen-Höhenbug fix */
+:root, body {
+  height: -webkit-fill-available;
+}
+
+#upgradeProgressBar {
+  position: absolute;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 50%;
+  height: 4%;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.15);
+  overflow: hidden;
+  z-index: 2000;
+}
+
+#upgradeFill {
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, #00ff99, #00ccff);
+  transition: width 0.25s ease;
+}
+#upgradeText {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 12px;
+  font-weight: 700;
+  color: white;
+  text-shadow: 0 0 4px black;
+  pointer-events: none;
+}
+
+
+  
