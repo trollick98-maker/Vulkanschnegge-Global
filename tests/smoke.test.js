@@ -100,3 +100,31 @@ test('spring legs affect future second jumps and reset with the run', () => {
   vm.runInContext('resetGame()', context);
   assert.equal(vm.runInContext('player.doubleJumpBoost', context), 1);
 });
+
+
+test('paused or portrait-blocked frames never consume HP on overlapping obstacles', () => {
+  const context = createGame();
+  vm.runInContext(`
+    resetGame();
+    freeHit = 2;
+    obstacles.push({x:player.x, y:player.y, width:player.width, height:player.height});
+    paused = true;
+    update(1016);
+  `, context);
+  assert.equal(vm.runInContext('freeHit', context), 2);
+  assert.equal(vm.runInContext('obstacles.length', context), 1);
+  assert.equal(vm.runInContext('gameOver', context), false);
+  vm.runInContext(`
+    paused = false;
+    rotateOverlay.style.display = 'flex';
+    update(1032);
+  `, context);
+  assert.equal(vm.runInContext('freeHit', context), 2);
+  assert.equal(vm.runInContext('obstacles.length', context), 1);
+  vm.runInContext(`
+    rotateOverlay.style.display = 'none';
+    update(1048);
+  `, context);
+  assert.equal(vm.runInContext('freeHit', context), 1);
+  assert.equal(vm.runInContext('obstacles.length', context), 0);
+});
