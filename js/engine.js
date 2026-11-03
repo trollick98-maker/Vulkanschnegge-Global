@@ -34,7 +34,9 @@ ctx.fillRect(0, 340, canvas.width, 60);
     let hitW = o.width * 0.6;
     let hitH = o.height * 0.7;
 
-    if(player.x < hitX + hitW && player.x + player.width > hitX &&
+    // Menus and portrait lock freeze gameplay, including collision damage.
+    if(!paused && !gameOver && !inputBlocked() &&
+       player.x < hitX + hitW && player.x + player.width > hitX &&
        player.y < hitY + hitH && player.y + player.height > hitY){
       if(freeHit>0){
         freeHit--; renderHP("hpHit");
