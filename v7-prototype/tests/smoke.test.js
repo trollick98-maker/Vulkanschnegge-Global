@@ -112,3 +112,39 @@ test('V7 saves profile and runs separately from the original game',()=>{
   assert.equal(V.records[0].mode,'arcade');
   assert.equal(V.records[0].score,525);
 });
+
+test('endless spawn cursors survive pruned or reordered object lists',()=>{
+  const {V,lastResult}=logic();
+  const s=V.newRunner(true);
+  const initialCoinCursor=s.spawnCursor.coin;
+  assert.equal(V.applyUpgrade(s,'coinSpawnBoost'),true);
+  assert.equal(s.spawnCursor.coin,initialCoinCursor,'the bonus perk must not advance regular spawn cursor');
+  s.dist=8000;
+  s.obstacles=[];s.coins=[];
+  s.player.invuln=100;
+  V.offerUpgrades=()=>{};
+  assert.doesNotThrow(()=>V.updateRunner(s,.016,{jump:false,dash:false}));
+  assert.ok(s.obstacles.length>0&&s.coins.length>0);
+  assert.ok(s.spawnCursor.obstacle>=8000+1800);
+  assert.ok(s.spawnCursor.coin>=8000+1550);
+  assert.equal(lastResult(),undefined);
+});
+
+test('music begins audibly on first start and stops on map transition',()=>{
+  const players=[];
+  class FakeAudio{
+    constructor(src){this.src=src;this.loop=false;this.preload='none';this.volume=0;this.paused=true;players.push(this);}
+    play(){this.paused=false;return Promise.resolve();}
+    pause(){this.paused=true;}
+  }
+  const env=vm.createContext({window:{VS7:{}},Audio:FakeAudio,
+    document:{hidden:false,addEventListener(){}},console});
+  vm.runInContext(read('js/audio.js'),env,{filename:'js/audio.js'});
+  const a=env.window.VS7.audio;
+  a.start();
+  a.tick(.5);
+  assert.equal(players.filter(p=>!p.paused).length,1);
+  assert.ok(players.some(p=>p.volume>0),'the first track must not remain muted');
+  a.stop();
+  assert.ok(players.every(p=>p.paused));
+});
