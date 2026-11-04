@@ -13,7 +13,11 @@
       await script('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
       await script('https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js');
       return window.firebase;
-    })();
+    })().catch(err=>{
+      // Permit a fresh request after a temporary network failure.
+      loading=null;
+      throw err;
+    });
     return loading;
   }
   V.loadLegacyLeaderboard=async()=>{
