@@ -57,11 +57,15 @@ node --test tests/smoke.test.js
 
 Dies ist ein Prototyp, **kein vollständiges V7-Spiel**. Animationen und Bossgrafiken sind teilweise Platzhalter. Es fehlt die vollständige 6.4-Online-Score-Übermittlung (bewusst isoliert), der alte Weltrekord-Spruch als interaktives Schreibfeature und der 6.4-Endloscode wurde für 7.0 neu adaptiert, nicht bytegenau kopiert. Spätere Arbeit: Sound-/Sprite-Dateien lokal paketieren, Level-Balancing, Browser-/Mobiltest, sichere V7-Server-Rangliste und weitere Story-Gebiete.
 
-## Stabilitätspflege (04.11.2026)
+## Integrierte Stabilitätskorrekturen (04.11.2026)
 
-- Endlos-Strecke nutzt unabhängige Spawn-Zähler für neue Münzen und Hindernisse. Dadurch funktionieren Spawn und Bereinigung auch nach der Münz-Spawnperk-Auswahl oder leer gewordenen Objektlisten stabil.
-- Adaptive Musik initialisiert den aktiven Track über dieselbe Logik wie spätere Musikwechsel; die erste Wiedergabe bleibt nicht versehentlich lautlos.
-- Münz-Spawnperk klont keine bereits eingesammelten oder verpassten Münzen mehr.
-- Überschüssiger Upgrade-Fortschritt wird in die folgende Stufe übernommen (wichtig für Schneckenzorn).
-- Vier zusätzliche Regressionstests für diese Fälle; insgesamt 15 Tests, ausführbar mit `node --test tests/smoke.test.js`.
-- Alte Version 6.4 und die bisherigen Entwicklungsstände bleiben unverändert; Änderungen nur im dedizierten Bugfix-Branch.
+Diese Korrekturen wurden in den spielbaren V7-Entwicklungsstand integriert:
+- Stabile, unabhängige Spawn-Zähler für Hindernisse und Münzen im Endlosmodus.
+- Korrekter erster Start der adaptiven Musik.
+- Der Coin-Spawnperk dupliziert keine bereits verpassten oder eingesammelten Münzen.
+- Überschüssige Upgrade-Punkte bleiben nach der Auswahl erhalten.
+- Das read-only Online-Schneggboard kann nach einem Netzwerkfehler neu geladen werden.
+
+**Tests:** 16/16 Node-Regressionstests; zusätzlich Browser-Prüfung für die Weltkarte, Story-Runner, Endlos-Runner, Perks, Charakterwechsel, Bosskampf und Reset auf Desktop und simuliertem Mobilgerät. Diese Browser-Prüfung wurde ohne externe Medien-Netzwerkverbindungen durchgeführt. Für originale Sprites und die drei Musikdateien ist weiterhin Internetzugang nötig.
+
+Die alten Spielversionen (insbesondere Version 6.4 und `main`) wurden nicht verändert. V7-Prototypen schreiben keine Test-Scores in das ursprüngliche Firebase-Schneggboard.
