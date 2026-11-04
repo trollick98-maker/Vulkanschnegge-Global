@@ -74,7 +74,9 @@
     }
     if(!s.endless&&s.dist>=s.course){V.finish(true);return;}
     if(s.upgrades.cleared>=s.upgrades.nextCost){
-      s.upgrades.cleared=0;s.upgrades.nextCost++;
+      // Preserve surplus progress granted by perks such as Schneckenzorn.
+      s.upgrades.cleared-=s.upgrades.nextCost;
+      s.upgrades.nextCost++;
       V.offerUpgrades(s);return;
     }
   };
