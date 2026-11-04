@@ -61,5 +61,7 @@ Dies ist ein Prototyp, **kein vollständiges V7-Spiel**. Animationen und Bossgra
 
 - Endlos-Strecke nutzt unabhängige Spawn-Zähler für neue Münzen und Hindernisse. Dadurch funktionieren Spawn und Bereinigung auch nach der Münz-Spawnperk-Auswahl oder leer gewordenen Objektlisten stabil.
 - Adaptive Musik initialisiert den aktiven Track über dieselbe Logik wie spätere Musikwechsel; die erste Wiedergabe bleibt nicht versehentlich lautlos.
-- Zwei zusätzliche Regressionstests für diese Fälle, ausführbar mit `node --test tests/smoke.test.js`.
+- Münz-Spawnperk klont keine bereits eingesammelten oder verpassten Münzen mehr.
+- Überschüssiger Upgrade-Fortschritt wird in die folgende Stufe übernommen (wichtig für Schneckenzorn).
+- Vier zusätzliche Regressionstests für diese Fälle; insgesamt 15 Tests, ausführbar mit `node --test tests/smoke.test.js`.
 - Alte Version 6.4 und die bisherigen Entwicklungsstände bleiben unverändert; Änderungen nur im dedizierten Bugfix-Branch.
