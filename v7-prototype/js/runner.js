@@ -17,7 +17,7 @@
     const ch=V.characters[V.profile.character];
     return {dist:0,elapsed:0,endless,course:endless?Infinity:COURSE,speed:345+ch.speed,bonusSpeed:0,speedFactor:1,
       player:{x:215,y:V.GROUND-43,w:44,h:43,vy:0,jumps:0,gravity:1790*ch.gravity,doubleJumpBoost:1,spinBoost:1,invuln:0,dashTime:0,dashCooldown:0,angle:0},
-      obstacles,coins,coinsTaken:0,hp:3+ch.hp,score:0,multiplier:1,goldMultiplier:1,coinValue:1,scoreRate:.10,
+      obstacles,coins,spawnCursor:{obstacle:obstacles.at(-1).worldX,coin:coins.at(-1).worldX},coinsTaken:0,hp:3+ch.hp,score:0,multiplier:1,goldMultiplier:1,coinValue:1,scoreRate:.10,
       magnetRange:ch.magnet,extraJumps:0,upgrades:V.createUpgradeState(),boost:0};
   };
   V.updateRunner=function(s,dt,actions){
@@ -31,12 +31,16 @@
     s.elapsed+=dt;
     // A finite story route and the original endless mode use the same mechanics.
     if(s.endless){
-      while(s.obstacles.at(-1).worldX<s.dist+1800){
-        const last=s.obstacles.at(-1),worldX=last.worldX+520+(s.obstacles.length%3)*75;
+      // Spawn cursors must not depend on list order: perks can append bonus coins,
+      // and pruning can remove old objects entirely.
+      while(s.spawnCursor.obstacle<s.dist+1800){
+        const worldX=s.spawnCursor.obstacle+520+(s.obstacles.length%3)*75;
+        s.spawnCursor.obstacle=worldX;
         s.obstacles.push({worldX,w:50,h:55+(s.obstacles.length%4)*11,fragile:s.obstacles.length%3===1,dead:false});
       }
-      while(s.coins.at(-1).worldX<s.dist+1550){
-        const worldX=s.coins.at(-1).worldX+340;
+      while(s.spawnCursor.coin<s.dist+1550){
+        const worldX=s.spawnCursor.coin+340;
+        s.spawnCursor.coin=worldX;
         s.coins.push({worldX,y:305+Math.sin(worldX*.004)*45,r:10,taken:false});
       }
       if(s.obstacles.length>60)s.obstacles=s.obstacles.filter(o=>o.worldX>s.dist-700);
