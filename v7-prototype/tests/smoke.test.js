@@ -148,3 +148,32 @@ test('music begins audibly on first start and stops on map transition',()=>{
   a.stop();
   assert.ok(players.every(p=>p.paused));
 });
+
+test('extra upgrade points survive purchasing an upgrade',()=>{
+  const {V}=logic();
+  const s=V.newRunner(true);
+  s.upgrades.nextCost=3;
+  s.upgrades.cleared=17;
+  let offered=0;
+  V.offerUpgrades=()=>offered++;
+  V.updateRunner(s,0,{jump:false,dash:false});
+  assert.equal(offered,1);
+  assert.equal(s.upgrades.cleared,14);
+  assert.equal(s.upgrades.nextCost,4);
+});
+
+test('coin-spawn perk never resurrects missed or already collected coins',()=>{
+  const {V}=logic();
+  const s=V.newRunner(true);
+  s.dist=3000;
+  s.coins[0].missed=true;
+  s.coins[1].taken=true;
+  const originalSize=s.coins.length;
+  assert.equal(V.applyUpgrade(s,'coinSpawnBoost'),true);
+  const additions=s.coins.slice(originalSize);
+  assert.ok(additions.length>0);
+  assert.ok(additions.every(c=>c.worldX>s.dist));
+  assert.ok(additions.every(c=>!c.missed&&!c.taken));
+  // No added coin should be derived from an already missed starting coin.
+  assert.ok(!additions.some(c=>c.worldX===s.coins[0].worldX+85));
+});
