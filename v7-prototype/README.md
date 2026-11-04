@@ -56,3 +56,12 @@ node --test tests/smoke.test.js
 ## Noch offen
 
 Dies ist ein Prototyp, **kein vollständiges V7-Spiel**. Animationen und Bossgrafiken sind teilweise Platzhalter. Es fehlt die vollständige 6.4-Online-Score-Übermittlung (bewusst isoliert), der alte Weltrekord-Spruch als interaktives Schreibfeature und der 6.4-Endloscode wurde für 7.0 neu adaptiert, nicht bytegenau kopiert. Spätere Arbeit: Sound-/Sprite-Dateien lokal paketieren, Level-Balancing, Browser-/Mobiltest, sichere V7-Server-Rangliste und weitere Story-Gebiete.
+
+## Stabilitätspflege (04.11.2026)
+
+- Endlos-Strecke nutzt unabhängige Spawn-Zähler für neue Münzen und Hindernisse. Dadurch funktionieren Spawn und Bereinigung auch nach der Münz-Spawnperk-Auswahl oder leer gewordenen Objektlisten stabil.
+- Adaptive Musik initialisiert den aktiven Track über dieselbe Logik wie spätere Musikwechsel; die erste Wiedergabe bleibt nicht versehentlich lautlos.
+- Münz-Spawnperk klont keine bereits eingesammelten oder verpassten Münzen mehr.
+- Überschüssiger Upgrade-Fortschritt wird in die folgende Stufe übernommen (wichtig für Schneckenzorn).
+- Vier zusätzliche Regressionstests für diese Fälle; insgesamt 15 Tests, ausführbar mit `node --test tests/smoke.test.js`.
+- Alte Version 6.4 und die bisherigen Entwicklungsstände bleiben unverändert; Änderungen nur im dedizierten Bugfix-Branch.

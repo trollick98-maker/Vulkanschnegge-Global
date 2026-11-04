@@ -12,7 +12,13 @@
   function pauseAll(){for(const a of Object.values(audio))a.pause();current=null;}
   function play(a){if(!allowed||!enabled||document.hidden)return;a.play().catch(()=>{});}
   V.audio={
-    start(){allowed=true;play(audio[wanted]);},
+    start(){
+      allowed=true;
+      // Initialize the active track through zone(), otherwise tick() has no
+      // current track and the first song can stay inaudible at volume 0.
+      if(current!==wanted)V.audio.zone(wanted);
+      else play(audio[wanted]);
+    },
     setEnabled(on){enabled=!!on;if(!enabled)pauseAll();else {current=null;V.audio.zone(wanted);}},
     isEnabled(){return enabled;},
     volume(v){volume=Math.max(0,Math.min(1,v));},
