@@ -18,7 +18,7 @@
       // current track and the first song can stay inaudible at volume 0.
       if(current!==wanted)V.audio.zone(wanted);
       else play(audio[wanted]);
-    }
+    },
     setEnabled(on){enabled=!!on;if(!enabled)pauseAll();else {current=null;V.audio.zone(wanted);}},
     isEnabled(){return enabled;},
     volume(v){volume=Math.max(0,Math.min(1,v));},
