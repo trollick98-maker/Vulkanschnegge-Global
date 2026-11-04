@@ -177,3 +177,23 @@ test('coin-spawn perk never resurrects missed or already collected coins',()=>{
   // No added coin should be derived from an already missed starting coin.
   assert.ok(!additions.some(c=>c.worldX===s.coins[0].worldX+85));
 });
+
+test('online leaderboard retries loading after transient network failure',async()=>{
+  let requested=0;
+  const firebase={apps:[],initializeApp(){this.apps.push({});},firestore(){return {
+    collection(){return {orderBy(){return {limit(){return {get:async()=>({docs:[]})};}};}};}
+  };}};
+  const env={window:{VS7:{}},console,document:{head:{appendChild(tag){
+    requested++;
+    queueMicrotask(()=>{
+      if(requested===1){tag.onerror();return;}
+      if(tag.src.includes('firestore'))env.window.firebase=firebase;
+      tag.onload();
+    });
+  }},createElement(){return {};}}};
+  vm.runInContext(read('js/online-board.js'),vm.createContext(env),{filename:'js/online-board.js'});
+  await assert.rejects(env.window.VS7.loadLegacyLeaderboard());
+  const rows=await env.window.VS7.loadLegacyLeaderboard();
+  assert.equal(rows.length,0);
+  assert.equal(requested,3,'a failed request should be retried');
+});
