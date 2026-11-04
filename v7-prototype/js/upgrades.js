@@ -46,7 +46,9 @@
       case 'spinGod':p.spinBoost*=3;p.gravity*=.9;s.magnetRange+=.125;break;
       case 'magnet':s.magnetRange+=.25;break;
       case 'coinSpawnBoost':{
-        s.coins.push(...s.coins.filter(c=>!c.taken).filter((c,i)=>i%4===0).map(c=>({...c,worldX:c.worldX+85,taken:false})));
+        // Only duplicate coins ahead; old missed coins must not reset a streak.
+        s.coins.push(...s.coins.filter(c=>!c.taken&&!c.missed&&c.worldX>s.dist)
+          .filter((c,i)=>i%4===0).map(c=>({...c,worldX:c.worldX+85,taken:false,missed:false})));
         break;
       }
       case 'sisyphos':s.extraJumps+=3;p.gravity*=1.5;break;
