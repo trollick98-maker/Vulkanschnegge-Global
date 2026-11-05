@@ -37,3 +37,6 @@
 .arcade-node{left:37%;top:54%;width:26%;min-height:13%;border-color:#dbcf84a1}.arcade-node:hover{border-color:#fff0a0;box-shadow:0 8px 30px #ffe19f44}.map-profile{top:73%;}.map-hub{display:none}@media(max-width:720px){.arcade-node{left:35%;top:55%;width:30%;min-height:13%}.map-profile{top:72%}.map-node{min-height:19%;top:34%}}
 
 .classic-best{color:#fbd98b;font-size:12px;text-align:center;border:1px solid #f4bf6380;border-radius:7px;padding:9px}
+
+/* Compact interface: no explanatory footnotes or redundant in-game paragraphs. */
+.map-head h2{margin-top:0}.map-profile{top:72%}.game-hud .hud-perk{letter-spacing:.3px}.foot-note{display:none}.overlay-card p:empty{display:none}
