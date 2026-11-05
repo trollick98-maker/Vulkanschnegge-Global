@@ -9,3 +9,5 @@ Spiel starten: `index.html` öffnen. Alternativ im Spielordner `py -m http.serve
 Die drei Musikstufen wechseln im Runner bei deutlich höherer Geschwindigkeit und nach Mindestlaufzeiten. Im Bosskampf läuft eine feste Musikzone.
 
 **Tests:** `node --test tests/smoke.test.js`. Alle sechs zusätzlichen PNG-Sprites und die bisherigen Charakterbilder/Musikstücke liegen unter `assets/`.
+
+GitHub enthält die neun Charakter-/Boss-/Gegner-Sprites. Die Musikdateien liegen in der separaten Offline-ZIP; ohne lokale MP3-Dateien werden die vorhandenen GitHub-Musikquellen verwendet. Für eine strenge Offline-Paketprüfung: `REQUIRE_OFFLINE_MEDIA=1 node --test tests/smoke.test.js`.
