@@ -6,7 +6,7 @@
   V.clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
   V.lerp = (a,b,t) => a + (b-a)*t;
   V.overlap = (a,b) => a.x < b.x+b.w && a.x+a.w>b.x && a.y < b.y+b.h && a.y+a.h > b.y;
-  V.levels = {runner:{name:'Strömungskanal',kind:'RUNNER'},combat:{name:'Muränenring',kind:'COMBAT'}};
+  V.levels = {runner:{name:'Strömungskanal',kind:'RUNNER'},arcade:{name:'Endlos-Modus',kind:'ARCADE'},combat:{name:'Muränenring',kind:'COMBAT'}};
   const SAVE_KEY = 'vulkanschnegge-v7-demo-v1';
   V.progress = {runner:false,combat:false,bestCoins:0};
   try { const saved = JSON.parse(localStorage.getItem(SAVE_KEY)||'null'); if(saved && typeof saved==='object') {

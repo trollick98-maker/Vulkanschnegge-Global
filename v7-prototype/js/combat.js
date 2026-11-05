@@ -3,7 +3,8 @@
   const V=window.VS7;
   const GRAVITY=1820,MAX_RUN=365,ARENA_WIDTH=1740;
   V.newCombat=function(){
-    return {worldWidth:ARENA_WIDTH,elapsed:0,camera:0,hp:5,player:{x:76,y:V.GROUND-44,w:45,h:44,vx:0,vy:0,jumps:0,facing:1,invuln:0,dashTime:0,dashCooldown:0,airDash:true,dashDirection:1,dashPower:1,hitIds:new Set()},enemies:[
+    const ch=V.characters[V.profile.character];
+    return {worldWidth:ARENA_WIDTH,elapsed:0,camera:0,hp:5+ch.hp,score:0,player:{x:76,y:V.GROUND-44,w:45,h:44,vx:0,vy:0,gravity:GRAVITY*ch.gravity,jumps:0,facing:1,angle:0,invuln:0,dashTime:0,dashCooldown:0,airDash:true,dashDirection:1,dashPower:1,hitIds:new Set()},enemies:[
       {id:1,x:425,origin:425,y:V.GROUND-35,w:35,h:35,alive:true,phase:0},
       {id:2,x:675,origin:675,y:V.GROUND-39,w:39,h:39,alive:true,phase:1.4},
       {id:3,x:923,origin:923,y:V.GROUND-39,w:39,h:39,alive:true,phase:2.5}
@@ -63,7 +64,8 @@
     if(actions.jump&&p.jumps<2){p.vy=p.jumps===0?-725:-660;p.jumps++;}
     if(actions.dash&&p.airDash&&p.dashCooldown<=0)startDash(p);
     const previousBottom=p.y+p.h;
-    p.vy+=GRAVITY*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;
+    p.vy+=p.gravity*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;
+    p.angle=p.dashTime>0?(p.angle+dt*900)%360:0;
     p.x=V.clamp(p.x,0,s.worldWidth-p.w);
     // Solid platforms; land only while falling from above.
     const platforms=[{x:277,y:350,w:164,h:15},{x:868,y:335,w:178,h:15}];
@@ -81,7 +83,7 @@
       e.phase+=dt;e.x=e.origin+Math.sin(e.phase*1.7)*25;
       if(!V.overlap(p,e))continue;
       if(p.dashTime>0 && !p.hitIds.has(e.id)){
-        e.alive=false;s.kills++;p.hitIds.add(e.id);rebound(s,p.dashDirection);
+        e.alive=false;s.kills++;s.score+=100;p.hitIds.add(e.id);rebound(s,p.dashDirection);
         V.notify('GEGNER WEGGEFEGT!  '+s.kills+'/3');
         break;
       }else if(p.dashTime<=0)hurt(s,p.x<e.x?-1:1);
@@ -94,7 +96,7 @@
       if(p.dashTime>0&&!p.hitIds.has('boss')){
         p.hitIds.add('boss');
         if(b.phase==='open'&&!b.hitWindow){
-          b.hp-=p.dashPower;b.hitWindow=true;
+          b.hp-=p.dashPower;s.score+=150*p.dashPower;b.hitWindow=true;
           rebound(s,p.dashDirection);
           V.notify('VOLLtreffer!  -'+p.dashPower+' HP');
           if(b.hp<=0){b.hp=0;V.finish(true);return;}

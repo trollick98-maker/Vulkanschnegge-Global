@@ -47,7 +47,16 @@
     g.save();g.translate(x+w/2,y+h/2);g.scale(facing,1);
     if(flash&&Math.floor(t*14)%2===0)g.globalAlpha=.35;
     if(dashing){g.shadowColor='#99fff1';g.shadowBlur=24;g.fillStyle='#9dffe04a';g.beginPath();g.ellipse(-18,5,w*.95,h*.37,0,0,Math.PI*2);g.fill();}
+    if(V.readyImage(V.profile.character)){
+      const img=V.assets[V.profile.character];
+      if(dashing){g.shadowColor='#99fff1';g.shadowBlur=20;}
+      if(flash&&Math.floor(t*14)%2===0)g.globalAlpha=.38;
+      g.rotate(V.state?.level?.player?.angle*Math.PI/180||0);
+      g.drawImage(img,-w/2,-h/2,w,h);
+      g.restore();return;
+    }
     const s=Math.min(w/46,h/44);g.scale(s,s);
+    // Fallback drawing when the source is unavailable.
     // Foot and eye stalks.
     g.fillStyle='#8de9b1';g.beginPath();g.ellipse(0,13,27,12,0,0,Math.PI*2);g.fill();
     g.lineWidth=5;g.strokeStyle='#90e6ac';g.lineCap='round';
@@ -80,6 +89,9 @@
     g.fillText('✧',65,112);g.fillText('✦',845,165);g.fillText('✧',155,415);
   }
   function drawRock(x,y,w,h,fragile){
+    if(!fragile&&V.readyImage('obstacle')){
+      g.drawImage(V.assets.obstacle,x,y,w,h);return;
+    }
     g.save();g.translate(x,y);
     g.fillStyle=fragile?'#aa8cb8':'#ed806e';g.strokeStyle=fragile?'#dbc8ed':'#ffd6ac';g.lineWidth=3;
     g.beginPath();g.moveTo(0,h);g.lineTo(4,h*.45);g.lineTo(w*.32,5);g.lineTo(w*.64,h*.2);g.lineTo(w-3,0);g.lineTo(w,h);g.closePath();g.fill();g.stroke();
@@ -107,7 +119,7 @@
     const p=s.player;
     snail(p.x,p.y,p.w,p.h,1,p.invuln>0,p.dashTime>0,t);
     if(p.dashTime>0){g.strokeStyle='#a0fff5b0';g.lineWidth=5;g.beginPath();g.moveTo(p.x-10,p.y+20);g.lineTo(p.x-85,p.y+22);g.stroke();}
-    rounded(26,100,160,30,8,'#09263cae');g.fillStyle='#ffdf91';g.font='bold 16px system-ui';g.fillText('✦  '+s.coinsTaken+' COINS',42,121);
+    rounded(26,112,192,31,8,'#09263cae');g.fillStyle='#ffdf91';g.font='bold 15px system-ui';g.fillText('✦  '+s.coinsTaken+' COINS  ·  x'+s.multiplier,41,133);
   }
   function eelBoss(b,t){
     g.save();g.translate(b.x+b.w/2,b.y+70);
@@ -175,7 +187,7 @@
     const s=V.state;if(!s)return;
     g.clearRect(0,0,W,H);
     if(s.mode==='map')drawMap(s.time);
-    else if(s.mode==='runner')drawRunner(s.level,s.time);
+    else if(s.mode==='runner'||s.mode==='arcade')drawRunner(s.level,s.time);
     else if(s.mode==='combat')drawCombat(s.level,s.time);
   };
 })();
