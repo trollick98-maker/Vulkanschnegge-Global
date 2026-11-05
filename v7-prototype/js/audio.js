@@ -3,11 +3,25 @@
   'use strict';
   const V=window.VS7;
   const tracks={
+    slow:'assets/music/pixel-depths-slow.mp3',
+    mid:'assets/music/into-the-deep-mid.mp3',
+    fast:'assets/music/vulkanschnegge-theme-fast.mp3'
+  };
+  const remote={
     slow:'https://raw.githubusercontent.com/trollick98-maker/Vulkanschnegge/main/Pixel%20Depths.mp3?raw=1',
     mid:'https://raw.githubusercontent.com/trollick98-maker/Vulkanschnegge/main/Into%20the%20Deep.mp3?raw=1',
     fast:'https://raw.githubusercontent.com/trollick98-maker/Vulkanschnegge/main/Vulkanschnegge%20Theme.mp3?raw=1'
   };
-  const audio={};for(const [key,url] of Object.entries(tracks)){const a=new Audio(url);a.loop=true;a.preload='none';a.volume=0;audio[key]=a;}
+  const audio={};
+  for(const [key,url] of Object.entries(tracks)){
+    const a=new Audio(url);a.loop=true;a.preload='none';a.volume=0;
+    let fallback=false;
+    a.addEventListener('error',()=>{if(!fallback){
+      fallback=true;a.src=remote[key];
+      if(current===key&&allowed&&enabled&&!document.hidden)play(a);
+    }});
+    audio[key]=a;
+  }
   let wanted='slow',current=null,fade=0,allowed=false,enabled=true,volume=.30;
   function pauseAll(){for(const a of Object.values(audio))a.pause();current=null;}
   function play(a){if(!allowed||!enabled||document.hidden)return;a.play().catch(()=>{});}
