@@ -69,3 +69,18 @@ Diese Korrekturen wurden in den spielbaren V7-Entwicklungsstand integriert:
 **Tests:** 16/16 Node-Regressionstests; zusätzlich Browser-Prüfung für die Weltkarte, Story-Runner, Endlos-Runner, Perks, Charakterwechsel, Bosskampf und Reset auf Desktop und simuliertem Mobilgerät. Diese Browser-Prüfung wurde ohne externe Medien-Netzwerkverbindungen durchgeführt. Für originale Sprites und die drei Musikdateien ist weiterhin Internetzugang nötig.
 
 Die alten Spielversionen (insbesondere Version 6.4 und `main`) wurden nicht verändert. V7-Prototypen schreiben keine Test-Scores in das ursprüngliche Firebase-Schneggboard.
+
+## Originaldateien lokal einbinden (05.11.2026)
+
+Die 7.0-Loader suchen **zuerst lokale Dateien**. Die 6 hochgeladenen Binärdateien sind im separat bereitgestellten kompletten Offline-ZIP enthalten. Für eine reine GitHub-Kopie müssen die Dateien noch unter diesen Pfaden abgelegt werden:
+
+- `v7-prototype/assets/images/snail.png` (Schnegge.png)
+- `v7-prototype/assets/images/otter.png` (Otter.png)
+- `v7-prototype/assets/images/frog.png` (Frog.png)
+- `v7-prototype/assets/music/pixel-depths-slow.mp3` (Pixel Depths Slow Pace.mp3)
+- `v7-prototype/assets/music/into-the-deep-mid.mp3` (Into the Deep Medium Pace.mp3)
+- `v7-prototype/assets/music/vulkanschnegge-theme-fast.mp3` (Vulkanschnegge Theme Fast Pace.mp3)
+
+Die lokal bereitgestellten PNGs wurden nur um transparente Ränder beschnitten. Die ursprüngliche Musik wird unverändert verwendet. **Wichtig: Dieser GitHub-PR aktualisiert nur Quellcode und die Anleitung; er lädt die 6 Binärdateien nicht hoch.** Fehlt eine lokale Datei, wird der bisherige Web-Link als Fallback probiert. Das ursprüngliche Hindernisbild wurde nicht als Datei bereitgestellt und verwendet wie bisher seinen optionalen Remote-Link oder die Canvas-Ersatzgrafik.
+
+Zum Spielen ohne externe Medien-Hosts das **komplette ZIP mit `assets/`** verwenden. Original-6.4, `main` und Online-Scores bleiben unberührt.
