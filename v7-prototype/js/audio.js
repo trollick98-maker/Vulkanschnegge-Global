@@ -36,7 +36,7 @@
     setEnabled(on){enabled=!!on;if(!enabled)pauseAll();else {current=null;V.audio.zone(wanted);}},
     isEnabled(){return enabled;},
     volume(v){volume=Math.max(0,Math.min(1,v));},
-    stop(){pauseAll();},
+    stop(){allowed=false;pauseAll();},
     zone(z){if(!audio[z])z='slow';wanted=z;
       if(!allowed||!enabled||document.hidden)return;
       if(current===z)return;
