@@ -28,7 +28,7 @@
   function board(open){
     if(!open){show(dom.board,false);return;}
     dom.records.replaceChildren();
-    if(V.classicHighscore>0){const old=document.createElement('p');old.className='classic-best';old.textContent='6.4-Bestwert (dieser Browser): '+V.classicHighscore;dom.records.appendChild(old);}
+    if(V.classicHighscore>0){const old=document.createElement('p');old.className='classic-best';old.textContent='Bestwert: '+V.classicHighscore;dom.records.appendChild(old);}
     if(!V.records.length){const p=document.createElement('p');p.textContent='Noch keine Runs aufgezeichnet. Spiel zuerst einen Level!';dom.records.appendChild(p);}
     else for(const [i,entry] of V.records.slice(0,10).entries()){
       const line=document.createElement('div');line.className='record-row';
@@ -42,7 +42,7 @@
   find('board-close').addEventListener('click',()=>board(false));
   find('online-board-btn').addEventListener('click',async()=>{
     const section=find('online-board-rows');section.replaceChildren();
-    const status=document.createElement('p');status.textContent='Lade Online-Rangliste (nur lesend) ...';section.appendChild(status);
+    const status=document.createElement('p');status.textContent='Lade Rangliste ...';section.appendChild(status);
     try{
       const rows=await V.loadLegacyLeaderboard();section.replaceChildren();
       if(!rows.length){status.textContent='Noch keine Einträge.';section.appendChild(status);}
@@ -52,7 +52,7 @@
         const score=document.createElement('strong');score.textContent=`${entry.score} Punkte`;
         row.append(name,score);section.appendChild(row);
       });
-    }catch(err){status.textContent='Online-Schneggboard derzeit nicht erreichbar (Netzwerk oder Firestore-Regeln).';console.warn(err);}
+    }catch(err){status.textContent='Rangliste gerade nicht erreichbar.';console.warn(err);}
   });
   dom.board.addEventListener('click',e=>{if(e.target===dom.board)board(false);});
   find('fullscreen-btn').addEventListener('click',async()=>{
@@ -77,11 +77,11 @@
     V.input.reset();V.state.mode=mode;V.state.upgrading=false;
     V.state.level=mode==='combat'?V.newCombat():V.newRunner(mode==='arcade');
     show(dom.world,false);show(dom.hud,true);show(dom.bottom,true);show(dom.touch,true);show(dom.result,false);show(dom.upgrade,false);board(false);
-    dom.kind.textContent=mode==='runner'?'LEVEL 01 · RUNNER':mode==='arcade'?'ARCADE · ENDLOS':'LEVEL 02 · COMBAT';
+    dom.kind.textContent=mode==='runner'?'RUNNER':mode==='arcade'?'ENDLOS':'BOSS';
     dom.title.textContent=V.levels[mode].name;
-    dom.tip.textContent=mode==='combat'?'A / D: LAUFEN · SPACE: SPRINGEN · SHIFT: PANZER-DASH':'SPACE: SPRINGEN · SHIFT: PANZER-BOOST · PERKS WÄHLEN';
-    dom.message.textContent=mode==='combat'?'TEMPO AUFBAUEN, DANN DASHEN!':mode==='arcade'?'ENDLOS · SAMMLE MÜNZEN UND UPGRADES':'ROT = SPRINGEN · LILA = ZERSTÖRBAR';
-    messageTime=4;updateHUD();V.audio.zone('slow');V.audio.start();
+    dom.tip.textContent=mode==='combat'?'SPACE SPRINGEN · SHIFT ROT KONTERN':'SPACE SPRINGEN · SHIFT DASH';
+    dom.message.textContent=mode==='combat'?'ROT KONTERN · GRÜN AUSWEICHEN':mode==='arcade'?'ENDLOS':'SPRINGEN · DASHEN';
+    messageTime=3;updateHUD();V.audio.startLevel(mode);
   }
   V.offerUpgrades=s=>{
     if(!['runner','arcade'].includes(V.state.mode)||V.state.upgrading)return;
@@ -105,20 +105,20 @@
     show(dom.hud,false);show(dom.bottom,false);show(dom.touch,false);show(dom.upgrade,false);show(dom.result,true);
     find('result-symbol').textContent=won?'🏆':'💥';
     find('result-tag').textContent=won?'LEVEL ABGESCHLOSSEN':'RUN VORBEI';
-    find('result-title').textContent=won?(mode==='runner'?'Strömung bezwungen!':'Boss besiegt!'):'Die Schnecke gibt nicht auf.';
+    find('result-title').textContent=won?(mode==='runner'?'Strömung bezwungen!':'Boss besiegt!'):'Nochmal!';
     find('result-description').textContent=(mode==='arcade'?`Endlos-Run beendet. ${Math.floor(s.dist)} Meter · ${s.coinsTaken} Münzen.`:mode==='runner'
       ?(won?`Du hast den Strömungskanal geschafft und ${s.coinsTaken} Münzen eingesammelt.`:`Du bist ${Math.round(s.dist/s.course*100)} % der Strecke gekommen.`)
-      :(won?`Die Muräne ist geschlagen. ${s.kills} kleine Gegner wurden weggefegt.`:`Du hast ${s.kills} Gegner besiegt. Warte, bis der Boss golden leuchtet.`))
-      +`   SCORE: ${Math.floor(s.score||0)} · Persönliche Rekorde im Schneggboard.`;
+      :(won?'Muräne besiegt!':'Dash gegen rote Schüsse. Grüne meiden.'))
+      +`   ${Math.floor(s.score||0)} PUNKTE`;
     if(won){V.progress[mode]=true;if(mode==='runner')V.progress.bestCoins=Math.max(V.progress.bestCoins,s.coinsTaken);V.saveProgress();}
     V.input.reset();
   };
   function updateHUD(){
     const mode=V.state.mode,s=V.state.level;if(!s||!(['runner','arcade','combat'].includes(mode)))return;
-    dom.stats.textContent='♥ '.repeat(Math.max(0,s.hp))+'  '+(mode!=='combat'?'✦ '+s.coinsTaken+' Münzen':'⚡ '+s.kills+'/3 Gegner');
+    dom.stats.textContent='♥ '.repeat(Math.max(0,s.hp))+(mode!=='combat'?'  ✦ '+s.coinsTaken:'');
     dom.score.textContent='SCORE '+Math.floor(s.score||0)+(mode!=='combat'?' · x'+s.multiplier:'');
-    dom.perk.textContent=mode!=='combat'?'UPGRADES '+s.upgrades.cleared+'/'+s.upgrades.nextCost:'PANZER-DASH + REBOUND';
-    dom.speed.textContent='SPEED '+Math.round(mode!=='combat'?s.speed:Math.abs(s.player.vx))+' px/s';
+    dom.perk.textContent=mode!=='combat'?'UPGRADES '+s.upgrades.cleared+'/'+s.upgrades.nextCost:'ROT = SHIFT';
+    dom.speed.textContent=mode==='combat'?'':('SPEED '+Math.round(s.speed));
     if(mode==='arcade'){
       const per=Math.min(100,Math.floor(100*s.upgrades.cleared/s.upgrades.nextCost));
       dom.number.textContent=Math.floor(s.dist)+' M';dom.meter.style.width=per+'%';dom.label.textContent='NÄCHSTES UPGRADE';
@@ -127,7 +127,7 @@
       dom.number.textContent=percent+' %';dom.meter.style.width=percent+'%';dom.label.textContent='FORTSCHRITT';
     }else{
       const hp=s.boss.hp;
-      dom.number.textContent='BOSS '+hp+'/'+s.boss.maxHp;dom.meter.style.width=100*hp/s.boss.maxHp+'%';dom.label.textContent=s.boss.phase==='open'?'VERWUNDBAR – JETZT DASH!':s.boss.phase==='windup'?'STOSSWELLE KOMMT!':'BOSSLEBEN';
+      dom.number.textContent=hp+' / '+s.boss.maxHp;dom.meter.style.width=100*hp/s.boss.maxHp+'%';dom.label.textContent='BOSS';
     }
   }
   for(const node of document.querySelectorAll('[data-level]'))node.addEventListener('click',()=>start(node.dataset.level));
@@ -146,8 +146,7 @@
       else V.updateRunner(state.level,dt,actions);
       if(['runner','arcade','combat'].includes(state.mode)){
         updateHUD();
-        if(state.mode!=='combat')V.audio.zone(state.level.speed<340?'slow':state.level.speed<420?'mid':'fast');
-        else V.audio.zone(state.level.boss.phase==='open'?'fast':'mid');
+        if(state.mode!=='combat')V.audio.runner(state.level.speed);
       }
     }else V.input.consume();
     V.audio.tick(dt);V.render();requestAnimationFrame(frame);
