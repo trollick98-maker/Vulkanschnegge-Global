@@ -134,6 +134,7 @@ test('music begins audibly on first start and stops on map transition',()=>{
   const players=[];
   class FakeAudio{
     constructor(src){this.src=src;this.loop=false;this.preload='none';this.volume=0;this.paused=true;players.push(this);}
+    addEventListener(){}
     play(){this.paused=false;return Promise.resolve();}
     pause(){this.paused=true;}
   }
@@ -196,4 +197,13 @@ test('online leaderboard retries loading after transient network failure',async(
   const rows=await env.window.VS7.loadLegacyLeaderboard();
   assert.equal(rows.length,0);
   assert.equal(requested,3,'a failed request should be retried');
+});
+
+
+test('local sprite and music paths are preferred, with remote fallback',()=>{
+  const sprites=read('js/assets.js'),sound=read('js/audio.js');
+  for(const name of ['snail.png','otter.png','frog.png'])assert.ok(sprites.includes('assets/images/'+name));
+  for(const name of ['pixel-depths-slow.mp3','into-the-deep-mid.mp3','vulkanschnegge-theme-fast.mp3'])assert.ok(sound.includes('assets/music/'+name));
+  assert.ok(sprites.includes("img.addEventListener('error'"));
+  assert.ok(sound.includes("a.addEventListener('error'"));
 });
