@@ -4,7 +4,6 @@
   const voices = new Map();
   const playing = new Set();
   const failed = new Set();
-  const runner = ['travel', 'arcade'];
   let scene = null;
   let wanted = null;
   let active = null;
@@ -66,7 +65,7 @@
       select(Object.hasOwn(V.soundtracks, track) ? track : 'slow');
     },
     updateRunner(speed, dt) {
-      if (!runner.includes(scene)) return;
+      if (scene !== 'arcade') return;
       zoneTime += dt;
       if (wanted === 'slow' && speed >= 490 && zoneTime >= 28) {
         zoneTime = 0;

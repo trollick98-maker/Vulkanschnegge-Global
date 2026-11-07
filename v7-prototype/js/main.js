@@ -94,7 +94,8 @@
     } else {
       state.level = V.newCombat(section.node, campaign.character, campaign.build, campaign.seed);
     }
-    V.audio.startLevel(section.kind, state.level.boss?.definition.track);
+    const zone = section.route ? graph.byId[section.route.edge.b] : section.node;
+    V.audio.startLevel(section.kind, state.level.boss?.definition.track ?? zone?.music);
     ui.showGame(state.level);
     V.render(state.level);
     hudAt = 0;
@@ -150,7 +151,7 @@
         finish();
         return;
       }
-      if (level.kind === 'travel' || level.kind === 'arcade') V.audio.updateRunner(level.speed, step);
+      if (level.kind === 'arcade') V.audio.updateRunner(level.speed, step);
     }
     if (ms >= hudAt) {
       hudAt = ms + 76;

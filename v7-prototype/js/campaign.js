@@ -4,6 +4,7 @@
   const KEY = 'vulkanschnegge-v7-campaign-v1';
   const START = 'harbor';
   const LAST = 'god';
+  const musicByZone = ['slow', 'mid', 'mid', 'fast', 'fast'];
   const regions = [
     { id: 'reef', boss: 'Muränenring', arena: 'Korallenriff', side: 'Hafengasse', color: '#61e7c1' },
     { id: 'greed', boss: 'Gier-Trawler', arena: 'Goldgraben', side: 'Schatzstollen', color: '#ffc36e' },
@@ -35,7 +36,8 @@
       const x = 155 + index * 193;
       const arena = region.id + '-arena';
       const side = region.id + '-side';
-      const base = { biome: region.id, color: region.color, tier: index + 1, gate: entrance };
+      const base = { biome: region.id, color: region.color, tier: index + 1, gate: entrance,
+        music: musicByZone[index] };
       const flip = random() < .5;
       const y = 91 + Math.floor(random() * 31);
       const bossY = 156 + Math.floor(random() * 35);
@@ -52,7 +54,7 @@
       entrance = region.id;
     });
     nodes.push({ id: LAST, kind: 'boss', name: 'GOD.EXE', x: 950, y: 171, color: '#a6ff82',
-      biome: LAST, gate: entrance, tier: 5 });
+      biome: LAST, gate: entrance, tier: 5, music: musicByZone[4] });
     connect(entrance, LAST, LAST, entrance);
     return { nodes, edges, byId: Object.fromEntries(nodes.map(node => [node.id, node])), lastGod: entrance, final: LAST };
   };

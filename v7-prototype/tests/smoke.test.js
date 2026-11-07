@@ -348,10 +348,10 @@ function audioFixture() {
   return { audio: V.audio, document, listeners, players };
 }
 
-test('audio is lazy, crossfades after both thresholds and keeps the boss track locked', () => {
+test('endless audio loads lazily and crossfades after both speed thresholds', () => {
   const { audio, players } = audioFixture();
   assert.equal(players.length, 0);
-  audio.startLevel('travel');
+  audio.startLevel('arcade');
   audio.tick(.6);
   assert.equal(players.length, 1);
   assert.ok(players[0].volume > 0);
@@ -365,6 +365,24 @@ test('audio is lazy, crossfades after both thresholds and keeps the boss track l
   assert.equal(audio.current(), 'mid');
   audio.updateRunner(650, 2);
   assert.equal(audio.current(), 'fast');
+});
+
+test('campaign music follows progression zones and stays locked at any speed', () => {
+  const { V } = logic();
+  const { audio } = audioFixture();
+  for (const seed of ['Tiefsee', 'Asche']) {
+    const graph = V.generateMap(seed);
+    for (const node of graph.nodes.filter(node => node.kind === 'arena' || node.id === graph.final)) {
+      const track = ['slow', 'mid', 'mid', 'fast', 'fast'][node.tier - 1];
+      assert.equal(node.music, track);
+      for (const mode of ['travel', 'arena']) {
+        audio.startLevel(mode, node.music);
+        audio.updateRunner(1000, 200);
+        audio.updateRunner(150, 200);
+        assert.equal(audio.current(), track);
+      }
+    }
+  }
   audio.startLevel('boss', 'reef-tax');
   audio.updateRunner(1000, 200);
   assert.equal(audio.current(), 'reef-tax');

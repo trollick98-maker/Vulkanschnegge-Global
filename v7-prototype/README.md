@@ -8,13 +8,14 @@ Entpacke die ZIP und öffne `v7-prototype/index.html`. Der Offline-Build enthäl
 - **A/D oder Pfeiltasten** zum Steuern, **Leertaste** zum Springen und Doppelspringen, **Shift** für den Panzer-Dash und **Esc** für die Karte. Auf Touch-Geräten stehen eigene Tasten zur Verfügung.
 - Im Gegnerlevel erhöhen Anlauf und Rebounds die Wirkung des Dashs. Im Bossrunner verraten Ansagen und Markierungen die Angriffe. Die konterbaren Geschosse lassen sich mit einem Dash zurückwerfen.
 - Nach Kämpfen wählst du einen Perk. Der Build gilt für alle weiteren Abschnitte der Kampagne. Offene Belohnungen bleiben beim Neuladen erhalten. Der Endlos-Modus hat einen eigenen Startzustand.
+- Reisen und Gegnerlevel haben feste Musik pro Kampagnenzone. In Zone 1 läuft „Pixel Depths“, in Zone 2 und 3 „Into the Deep“ und ab Zone 4 „Vulkanschnegge Theme“. Bosse haben ihre eigenen Tracks. Im Endlos-Modus wechseln die Tracks weiterhin mit dem Tempo.
 - Der letzte der vier Götter vor dem Riss ergibt sich in dieser Fassung aus der Seed-Reihenfolge. GOD.EXE ist der letzte Kampf. Auf „I AM THE SOURCE“ beim Reveal folgt „RUN THE LOOP“ im Kampf. „Home, At Last“ startet im Abspann.
 
 ## Tests
 
 Im Spielordner `node --test tests/smoke.test.js` ausführen. Für die Prüfung des vollständigen Offline-Pakets unter Linux oder macOS `REQUIRE_OFFLINE_MEDIA=1 node --test tests/smoke.test.js` verwenden.
 
-Alle 21 Tests bestanden. Die Kampagne wurde zusätzlich mit den echten Spielmodulen und nachgebildeten Browser-Schnittstellen durchgespielt. Der Lauf deckte neun Reisen über insgesamt 1.315 Spielsekunden, vier Gegnerlevel, alle drei Phasen jedes Bosses, Neuladen vor der Perk-Wahl und das Finale mit Abspann ab. Im Kampftest wurden Treffer gezielt vorbereitet. Tastatur, Touch-Ereignisse und Tabwechsel liefen über die Input-Handler. Die Chromium-Vorschau scheiterte beim Start in der Testumgebung. Darstellung, Audioausgabe und Bildrate auf echten Geräten wurden dort nicht gemessen.
+Alle 22 Tests bestanden. Die Kampagne wurde zusätzlich mit den echten Spielmodulen und nachgebildeten Browser-Schnittstellen durchgespielt. Der Lauf deckte neun Reisen über insgesamt 1.315 Spielsekunden, vier Gegnerlevel, alle drei Phasen jedes Bosses, Neuladen vor der Perk-Wahl und das Finale mit Abspann ab. Im Kampftest wurden Treffer gezielt vorbereitet. Tastatur, Touch-Ereignisse und Tabwechsel liefen über die Input-Handler. Die Chromium-Vorschau scheiterte beim Start in der Testumgebung. Darstellung, Audioausgabe und Bildrate auf echten Geräten wurden dort nicht gemessen.
 
 ## Messung des Runners
 
