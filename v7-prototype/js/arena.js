@@ -13,8 +13,9 @@
     const random = V.randomFor(s.seed + ':' + s.wave);
     s.enemies = [];
     for (let i = 0; i < count; i++) {
+      const tunnelGuard = s.node.id === 'reef-side' && i === count - 1;
       const key = s.node.tier === 1 && i === 0 ? 'crawler' :
-        random() < (s.node.tier - 1) * .19 ? 'armored' : random() < .48 ? 'jumper' : 'crawler';
+        (tunnelGuard || random() < (s.node.tier - 1) * .19) ? 'armored' : random() < .48 ? 'jumper' : 'crawler';
       const type = kinds[key];
       const x = 325 + i * (520 / count) + Math.floor(random() * 37);
       s.enemies.push({ ...type, key, x, origin: x, y: V.GROUND - type.h, phase: random() * 6.28 });

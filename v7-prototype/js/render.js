@@ -5,6 +5,8 @@
   const g = canvas.getContext('2d', { alpha: false });
   const { W, H, GROUND: G } = V;
   const backdrops = new Map();
+  // Y coordinate of each walkable deck in its source PNG.
+  const deckY = { reef: 17, greed: 2, diva: 2, vortex: 2 };
   const atlas = {
     greed: [26, 0, 335, 239], diva: [418, 0, 311, 247],
     vortex: [47, 239, 279, 273], god: [394, 260, 328, 236]
@@ -65,6 +67,16 @@
     return true;
   }
 
+  function fittedSprite(name, x, y, w, h, bottom = false) {
+    const image = V.readyImage(name);
+    if (!image) return false;
+    const scale = Math.min(w / image.naturalWidth, h / image.naturalHeight);
+    const width = image.naturalWidth * scale;
+    const height = image.naturalHeight * scale;
+    g.drawImage(image, x + (w - width) / 2, y + (h - height) * (bottom ? 1 : .5), width, height);
+    return true;
+  }
+
   function drawPlayer(s) {
     const p = s.player;
     g.save();
@@ -87,10 +99,14 @@
   }
 
   function drawCourse(s) {
+    const platformArt = V.readyImage('platform-' + s.biome);
     for (const platform of s.platforms) {
       const x = V.stageX(s, platform.worldX);
       if (x + platform.w < 0 || x > W) continue;
-      if (!sprite('platform', x, platform.y - 13, platform.w, 48)) {
+      if (platformArt) {
+        const scale = platform.w / platformArt.naturalWidth;
+        g.drawImage(platformArt, x, platform.y - deckY[s.biome] * scale, platform.w, platformArt.naturalHeight * scale);
+      } else if (!sprite('platform', x, platform.y - 13, platform.w, 48)) {
         g.fillStyle = '#3c6871';
         g.fillRect(x, platform.y, platform.w, platform.h);
       }
@@ -125,19 +141,21 @@
     for (const enemy of s.enemies) {
       if (enemy.hp <= 0) continue;
       const { x, y, w, h } = enemy;
-      g.fillStyle = '#14233d';
-      g.fillRect(x + 1, y + 9, w - 2, h - 8);
-      g.fillStyle = enemy.color;
-      g.fillRect(x + 6, y + 7, w - 12, h - 13);
-      g.fillRect(x + 13, y + 2, w - 24, h - 5);
-      g.fillRect(x + 3, y + h - 5, 12, 5);
-      g.fillRect(x + w - 14, y + h - 5, 11, 5);
-      g.fillStyle = '#15253c';
-      g.fillRect(x + 12, y + 11, 5, 5);
-      g.fillRect(x + 22, y + 11, 5, 5);
+      if (!fittedSprite(s.biome + '-' + enemy.key, x, y, w, h, true)) {
+        g.fillStyle = '#14233d';
+        g.fillRect(x + 1, y + 9, w - 2, h - 8);
+        g.fillStyle = enemy.color;
+        g.fillRect(x + 6, y + 7, w - 12, h - 13);
+        g.fillRect(x + 13, y + 2, w - 24, h - 5);
+        g.fillRect(x + 3, y + h - 5, 12, 5);
+        g.fillRect(x + w - 14, y + h - 5, 11, 5);
+        g.fillStyle = '#15253c';
+        g.fillRect(x + 12, y + 11, 5, 5);
+        g.fillRect(x + 22, y + 11, 5, 5);
+      }
       if (enemy.key === 'armored' && enemy.hp > 1) {
         g.fillStyle = '#d1fff7';
-        g.fillRect(x + 11, y + 2, w - 18, 5);
+        g.fillRect(x + 11, y - 4, w - 22, 3);
       }
     }
   }
@@ -176,7 +194,7 @@
       return;
     }
     const { x, y, r } = q;
-    if (!attack.sprite || !sprite(attack.sprite, x - r * 1.35, y - r * 1.35, r * 2.7, r * 2.7)) {
+    if (!fittedSprite(attack.sprite ?? q.key, x - r * 1.35, y - r * 1.35, r * 2.7, r * 2.7)) {
       g.fillStyle = attack.color;
       if (q.key === 'net') {
         g.strokeStyle = attack.color;

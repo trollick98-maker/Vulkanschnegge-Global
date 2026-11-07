@@ -351,6 +351,28 @@ test('all supplied media are mapped to their scenes and packaged for offline pla
   }
 });
 
+test('the biome spritepack covers arena roles, projectiles, platforms and map landmarks', () => {
+  const { V } = logic(undefined, [...rules, 'assets']);
+  const pngHeader = '89504e470d0a1a0a';
+  const spriteIds = [];
+  for (const biome of ['reef', 'greed', 'diva', 'vortex']) {
+    for (const role of ['crawler', 'jumper', 'armored']) spriteIds.push(biome + '-' + role);
+    spriteIds.push('platform-' + biome, 'landmark-' + biome);
+  }
+  spriteIds.push('landmark-god');
+  for (const [id, attack] of Object.entries(V.bossAttacks)) {
+    if (!attack.zone && !attack.wind) spriteIds.push(attack.sprite ?? id);
+  }
+  assert.equal(new Set(spriteIds.map(id => V.imagePath(id))).size, 32);
+  for (const id of spriteIds) {
+    const png = fs.readFileSync(path.join(root, V.imagePath(id)));
+    assert.equal(png.subarray(0, 8).toString('hex'), pngHeader, id);
+  }
+  const graph = V.generateMap('Tiefsee');
+  const harbor = V.newArena(graph.byId['reef-side'], 'snail', {}, 'Tiefsee');
+  assert.equal(harbor.enemies.filter(enemy => enemy.key === 'armored').length, 1);
+});
+
 function audioFixture() {
   const players = [];
   const listeners = {};

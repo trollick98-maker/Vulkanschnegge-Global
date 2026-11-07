@@ -91,6 +91,18 @@
       const icon = document.createElement('span');
       icon.className = 'node-symbol';
       icon.textContent = symbol;
+      if (node.id === 'reef-side' || (node.kind === 'boss' && node.biome !== 'reef')) {
+        const art = document.createElement('img');
+        art.className = 'node-landmark';
+        art.alt = '';
+        art.addEventListener('error', () => { icon.textContent = symbol; });
+        art.src = V.imagePath('landmark-' + node.biome);
+        const badge = document.createElement('span');
+        badge.className = 'node-badge';
+        badge.textContent = symbol;
+        icon.textContent = '';
+        icon.append(art, badge);
+      }
       const label = document.createElement('span');
       label.className = 'node-name';
       label.textContent = node.name;

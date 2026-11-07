@@ -5,8 +5,24 @@
   const images = {
     snail: 'snail.png', otter: 'otter.png', frog: 'frog.png', bossEel: 'boss-eel.png',
     plasma: 'plasma.png', toxic: 'toxic.png', platform: 'platform.png', mine: 'mine.png',
-    crate: 'crate.png', atlas: 'boss-atlas.webp'
+    crate: 'crate.png', atlas: 'boss-atlas.webp',
+    'landmark-reef': 'umgebung/landmark-reef-tunnel.png',
+    'landmark-greed': 'umgebung/landmark-greed-vault.png',
+    'landmark-diva': 'umgebung/landmark-diva-theater.png',
+    'landmark-vortex': 'umgebung/landmark-vortex-wreck.png',
+    'landmark-god': 'umgebung/landmark-god-rift.png'
   };
+  for (const biome of ['reef', 'greed', 'diva', 'vortex']) {
+    const platform = 'platform-' + biome;
+    images[platform] = 'umgebung/' + platform + '.png';
+    for (const role of ['crawler', 'jumper', 'armored']) {
+      const key = biome + '-' + role;
+      images[key] = 'gegner/' + key + '.png';
+    }
+  }
+  for (const attack of ['net', 'ingot', 'gold', 'star', 'feathers', 'anchor', 'surge', 'fault', 'packet']) {
+    images[attack] = 'boss-angriffe/' + attack + '.png';
+  }
   V.assets = {};
   V.imagePath = name => 'assets/images/' + images[name];
   V.image = function (name) {
