@@ -3,50 +3,113 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#07182d">
-  <title>Vulkanschnegge 7.0 · Prototyp</title>
+  <meta name="theme-color" content="#091321">
+  <title>Vulkanschnegge 7.0</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <main class="app">
     <header class="masthead">
-      <div class="brand"><span class="brand-icon" aria-hidden="true">🐌</span><div><h1>VULKANSCHNEGGE <span>7.0</span></h1></div></div>
-      <div class="header-right"><button id="fullscreen-btn" class="top-control" title="Vollbild">⛶ VOLLBILD</button><button id="sound-btn" class="top-control" title="Musik ein/aus">♫ MUSIK AN</button><label class="volume-label">LAUTSTÄRKE <input id="volume" type="range" min="0" max="1" step=".05" value=".3" aria-label="Musiklautstärke"></label></div>
+      <div class="brand"><img src="assets/images/snail.png" alt=""><div><div class="eyebrow">ABYSS CAMPAIGN</div><h1>Vulkanschnegge <span>7.0</span></h1></div></div>
+      <div class="top-controls">
+        <button id="fullscreen-btn" class="quiet" aria-label="Vollbild">⛶ <span>Vollbild</span></button>
+        <button id="sound-btn" class="quiet" aria-pressed="true">♫ <span>Musik an</span></button>
+        <input id="volume" type="range" min="0" max="1" step=".05" value=".3" aria-label="Musiklautstärke">
+      </div>
     </header>
-    <div class="game-frame">
-      <canvas id="game" width="960" height="540" aria-label="Spielwelt der Vulkanschnegge"></canvas>
-      <div id="world-ui" class="world-ui" aria-label="Weltkarte und Levelauswahl">
-        <div class="map-head"><span class="eyebrow">KAPITEL 01</span><h2>Weltkarte</h2></div>
-        <button class="map-node runner-node" data-level="runner"><span class="map-icon">⚡</span><span class="map-name">STRÖMUNGSKANAL</span><span class="map-sub">RUNNER</span><span class="map-done" id="runner-done"></span></button>
-        <button class="map-node arcade-node" data-level="arcade"><span class="map-icon">♾</span><span class="map-name">ENDLOS-MODUS</span><span class="map-sub">ENDLOS</span></button>
-        <button class="map-node arena-node" data-level="combat"><span class="map-icon">⚔</span><span class="map-name">MURÄNENRING</span><span class="map-sub">BOSS-RUNNER</span><span class="map-done" id="combat-done"></span></button>
-        <div class="map-hub"><span>🐌</span><b>HEIMATBUCHT</b><small></small></div>
-        <div class="map-profile" aria-label="Spieler und Charakterauswahl"><label>SPIELERNAME <input id="player-name" type="text" maxlength="24" placeholder="Dein Name"></label><div class="map-character" id="character-options"><button data-character="snail" title="Schnegg"><img data-sprite="snail" alt="Schnegg">SCHNEGG</button><button data-character="otter" title="Otter im Eimer"><img data-sprite="otter" alt="Otter">OTTER</button><button data-character="frog" title="Frogo"><img data-sprite="frog" alt="Frogo">FROGO</button></div><div id="character-detail" class="character-detail"></div><button id="board-btn" class="board-btn">🏆 SCHNEGGBOARD · REKORDE</button></div>
-        <div class="map-legend"></div>
+
+    <section id="world-ui" class="world">
+      <div class="map-head"><div><p class="eyebrow">ATLAS DER TIEFSEE</p><h2>Weltkarte</h2></div><span id="seed-badge" class="tag"></span></div>
+      <div id="map-scroll" class="map-scroll" tabindex="0" aria-label="Weltkarte, horizontal scrollbar">
+        <div id="map-plot" class="map-plot"></div>
       </div>
-      <div class="game-hud hidden" id="hud">
-        <div class="hud-left"><div class="hud-kicker" id="level-kind">RUNNER</div><div class="hud-title" id="level-title">Strömungskanal</div><div class="hud-stats" id="hud-stats">♥ ♥ ♥</div><div class="hud-score" id="hud-score">SCORE 0 · x1</div><div class="hud-perk" id="hud-perk">PERK 0/3</div><div class="hud-speed" id="hud-speed">SPEED 0</div></div>
-        <div class="hud-right"><div class="hud-number" id="hud-number">0 / 100</div><div class="meter"><div class="meter-fill" id="hud-meter"></div></div><div class="hud-label" id="hud-label">FORTSCHRITT</div></div>
-        <button id="back-btn" class="back-btn" title="Zur Weltkarte (Escape)">↶ <span>KARTE</span></button><button id="restart-btn" class="restart-btn" title="Level neu starten">⟳ RESET</button>
+      <div class="map-actions">
+        <div><p class="eyebrow" id="location-label">STANDORT</p><h3 id="map-location">Heimatbucht</h3><p id="map-caption"></p></div>
+        <div id="route-choices" class="route-choices"></div>
       </div>
-      <div class="game-bottom hidden" id="game-bottom"><span id="level-tip">LEERTASTE · SPRINGEN</span><span id="level-message"></span></div>
-      <div class="touch-controls hidden" id="touch-controls"><div class="touch-move"><button data-key="left" aria-label="Links">◀</button><button data-key="right" aria-label="Rechts">▶</button></div><div class="touch-actions"><button data-key="jump" aria-label="Springen">↥</button><button data-key="dash" aria-label="Dash">⚡</button></div></div>
-      <div class="overlay hidden" id="upgrade-overlay" role="dialog" aria-modal="true" aria-label="Upgrade auswählen"><div class="overlay-card"><span class="eyebrow">UPGRADE FREIGESCHALTET</span><h2>Wähle einen Perk</h2><div id="upgrade-choices" class="upgrade-choices"></div><p></p></div></div>
-      <div class="overlay hidden" id="leaderboard-overlay" role="dialog" aria-modal="true" aria-label="Schneggboard"><div class="overlay-card"><span class="eyebrow">REKORDE</span><h2>🏆 Schneggboard</h2><div id="leaderboard-rows" class="record-list"></div><p></p><button id="online-board-btn" class="board-btn">🌐 ONLINE-RANGLISTE</button><div id="online-board-rows" class="record-list online-rows"></div><button id="board-close" class="board-btn">SCHLIESSEN</button></div></div>
-      <div class="result hidden" id="result" role="dialog" aria-modal="true"><div class="result-card"><span class="eyebrow" id="result-tag">RUN ABGESCHLOSSEN</span><div class="result-symbol" id="result-symbol">🏁</div><h2 id="result-title">Geschafft!</h2><p id="result-description"></p><div class="result-actions"><button id="replay" class="primary">NOCHMAL SPIELEN</button><button id="home" class="secondary">ZUR WELTKARTE</button></div></div></div>
-    </div>
-    <footer class="foot"><div><span class="key">A</span><span class="key">D</span> Bewegen <span class="separator">·</span> <span class="key wide">LEERTASTE</span> Springen <span class="separator">·</span> <span class="key wide">SHIFT</span> Panzer-Dash <span class="separator">·</span> <span class="key">ESC</span> Karte</div><span class="foot-note"></span></footer>
+      <div class="map-legend" aria-hidden="true"><span>◉ Standort</span><span>◆ Gegnerlevel</span><span>✦ Boss</span><span>┈ Tunnel</span></div>
+      <div class="workbench">
+        <section class="map-profile">
+          <div class="eyebrow">FIGUR FÜR NEUE KAMPAGNE / ENDLOS</div>
+          <div id="character-options" class="map-character">
+            <button type="button" data-character="snail"><img alt="">Schnegg</button>
+            <button type="button" data-character="otter"><img alt="">Otter</button>
+            <button type="button" data-character="frog"><img alt="">Frogo</button>
+          </div>
+          <p id="character-detail" class="caption"></p>
+          <label class="field">Spielername <input id="player-name" type="text" maxlength="24" placeholder="Dein Name"></label>
+        </section>
+        <section class="campaign-tools">
+          <div class="eyebrow">KAMPAGNE</div>
+          <div id="build-list" class="build-list"></div>
+          <form id="campaign-form" class="seed-form">
+            <label class="field">Seed <input id="seed-input" maxlength="40" placeholder="zufällig"></label>
+            <button class="quiet" type="submit">Neue Kampagne</button>
+          </form>
+          <div class="extra-actions"><button id="arcade-btn" class="quiet" type="button">∞ Endlos-Modus</button><button id="board-btn" class="quiet" type="button">Schneggboard</button></div>
+        </section>
+      </div>
+    </section>
+
+    <section id="game-panel" class="hidden">
+      <div class="game-frame">
+        <canvas id="game" tabindex="-1" width="960" height="540" aria-label="Spielfeld der Vulkanschnegge"></canvas>
+        <div class="game-hud">
+          <div class="hud-box"><div class="eyebrow" id="level-kind"></div><strong id="level-title"></strong><div id="hud-stats"></div><div id="hud-score"></div></div>
+          <div class="game-buttons"><button id="back-btn" class="quiet" title="Zur Weltkarte (Escape)">↶ Karte</button><button id="restart-btn" class="quiet" title="Abschnitt neu starten">⟳ Neustart</button></div>
+          <div class="hud-box gauge"><div id="hud-number"></div><div class="meter"><div id="hud-meter"></div></div><div id="hud-label" class="eyebrow"></div></div>
+        </div>
+        <div class="game-bottom"><span id="level-tip"></span><span id="level-message" aria-live="off"></span></div>
+      </div>
+      <div id="touch-controls" class="touch-controls">
+        <div><button data-key="left" aria-label="Links">◀</button><button data-key="right" aria-label="Rechts">▶</button></div>
+        <div><button data-key="jump" aria-label="Springen">↥</button><button data-key="dash" aria-label="Dash">⚡</button></div>
+      </div>
+    </section>
+
+    <section id="upgrade-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="reward-title">
+      <div class="overlay-card"><p id="reward-tag" class="eyebrow">LEVEL ABGESCHLOSSEN</p><h2 id="reward-title">Wähle einen Perk</h2><div id="upgrade-choices" class="upgrade-choices"></div></div>
+    </section>
+    <section id="leaderboard-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="leaderboard-title">
+      <div class="overlay-card"><p class="eyebrow">REKORDE</p><h2 id="leaderboard-title">Schneggboard</h2>
+        <div id="leaderboard-rows" class="record-list"></div>
+        <button id="online-board-btn" class="quiet" type="button">Online-Rangliste laden</button>
+        <div id="online-board-rows" class="record-list"></div>
+        <button id="board-close" class="primary" type="button">Schließen</button>
+      </div>
+    </section>
+    <section id="result" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="result-title">
+      <div class="overlay-card"><p id="result-tag" class="eyebrow"></p><h2 id="result-title"></h2><p id="result-description"></p>
+        <div class="result-actions"><button id="replay" class="primary">Erneut versuchen</button><button id="home" class="quiet">Zur Weltkarte</button></div>
+      </div>
+    </section>
+    <section id="story-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="story-line">
+      <div id="story-card" class="overlay-card story-card">
+        <div class="story-art" aria-hidden="true"><span class="portal"></span><img class="story-ghost" src="assets/images/snail.png" alt=""><img class="story-snail" src="assets/images/snail.png" alt=""></div>
+        <p id="story-label" class="eyebrow"></p><h2 id="story-line" lang="en"></h2><p id="story-note"></p>
+        <button id="story-next" class="primary" type="button"></button>
+      </div>
+    </section>
+
+    <footer class="foot"><kbd>A</kbd> <kbd>D</kbd> Bewegen <span>·</span> <kbd>Leertaste</kbd> Springen <span>·</span> <kbd>Shift</kbd> Panzer-Dash <span>·</span> <kbd>Esc</kbd> Weltkarte</footer>
   </main>
   <script src="js/config.js"></script>
   <script src="js/assets.js"></script>
   <script src="js/profile.js"></script>
   <script src="js/upgrades.js"></script>
+  <script src="js/campaign.js"></script>
+  <script src="js/course-data.js"></script>
+  <script src="js/boss-data.js"></script>
+  <script src="js/motion.js"></script>
+  <script src="js/runner.js"></script>
+  <script src="js/arena.js"></script>
+  <script src="js/combat.js"></script>
   <script src="js/audio.js"></script>
   <script src="js/online-board.js"></script>
   <script src="js/input.js"></script>
-  <script src="js/runner.js"></script>
-  <script src="js/combat.js"></script>
+  <script src="js/story.js"></script>
   <script src="js/render.js"></script>
+  <script src="js/ui.js"></script>
   <script src="js/main.js"></script>
 </body>
 </html>

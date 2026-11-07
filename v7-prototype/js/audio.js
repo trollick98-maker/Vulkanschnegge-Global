@@ -1,60 +1,121 @@
-/* Original three tracks, now bundled locally for offline play. */
-(function(){
+(function () {
   'use strict';
-  const V=window.VS7;
-  const tracks={
-    slow:{local:'assets/music/pixel-depths-slow.mp3',fallback:'https://raw.githubusercontent.com/trollick98-maker/Vulkanschnegge/main/Pixel%20Depths.mp3?raw=1'},
-    mid:{local:'assets/music/into-the-deep-mid.mp3',fallback:'https://raw.githubusercontent.com/trollick98-maker/Vulkanschnegge/main/Into%20the%20Deep.mp3?raw=1'},
-    fast:{local:'assets/music/vulkanschnegge-theme-fast.mp3',fallback:'https://raw.githubusercontent.com/trollick98-maker/Vulkanschnegge/main/Vulkanschnegge%20Theme.mp3?raw=1'}
-  };
-  const audio={};
-  for(const [key,source] of Object.entries(tracks)){
-    const a=new Audio(source.local);
-    a.loop=true;a.preload='none';a.volume=0;
-    let triedFallback=false;
-    a.addEventListener('error',()=>{
-      if(!triedFallback){
-        triedFallback=true;
-        a.src=source.fallback;
-        if(current===key&&allowed&&enabled&&!document.hidden)play(a);
+  const V = window.VS7;
+  const voices = new Map();
+  const playing = new Set();
+  const failed = new Set();
+  const runner = ['travel', 'arcade'];
+  let scene = null;
+  let wanted = null;
+  let active = null;
+  let enabled = true;
+  let volume = .30;
+  let zoneTime = 0;
+
+  function pause() {
+    for (const voice of playing) voice.audio.pause();
+  }
+
+  function play(voice) {
+    if (scene && enabled && !document.hidden) voice.audio.play().catch(() => {});
+  }
+
+  function voiceFor(key) {
+    if (voices.has(key)) return voices.get(key);
+    const track = V.soundtracks[key];
+    const audio = new Audio();
+    const voice = { audio, gain: 0 };
+    audio.preload = 'none';
+    audio.loop = !track.once;
+    audio.volume = 0;
+    audio.addEventListener('error', () => {
+      if (track.remote && !voice.remote) {
+        voice.remote = true;
+        audio.src = track.remote;
+        if (key === active) play(voice);
+      } else {
+        failed.add(key);
+        audio.pause();
+        playing.delete(voice);
+        if (key === active) select(wanted);
       }
     });
-    audio[key]=a;
+    audio.src = 'assets/music/' + track.file;
+    voices.set(key, voice);
+    return voice;
   }
-  let wanted='slow',current=null,fade=0,allowed=false,enabled=true,volume=.30,zoneTime=0;
-  function pauseAll(){for(const a of Object.values(audio))a.pause();current=null;}
-  function play(a){if(!allowed||!enabled||document.hidden)return;a.play().catch(()=>{});}
-  V.audio={
-    startLevel(mode){zoneTime=0;V.audio.zone(mode==='combat'?'mid':'slow');V.audio.start();},
-    runner(speed){
-      if(!allowed||!enabled)return;
-      if(wanted==='slow'&&speed>=490&&zoneTime>=28)V.audio.zone('mid');
-      else if(wanted==='mid'&&speed>=625&&zoneTime>=37)V.audio.zone('fast');
+
+  function select(key) {
+    wanted = key;
+    const fallback = scene === 'boss' ? 'mid' : 'slow';
+    active = failed.has(key) ? (failed.has(fallback) ? null : fallback) : key;
+    if (!active || !enabled || document.hidden) return;
+    const voice = voiceFor(active);
+    if (!playing.has(voice)) {
+      voice.gain = 0;
+      voice.audio.volume = 0;
+      playing.add(voice);
+    }
+    play(voice);
+  }
+
+  V.audio = {
+    startLevel(mode, track = 'slow') {
+      this.stop();
+      scene = mode;
+      select(Object.hasOwn(V.soundtracks, track) ? track : 'slow');
     },
-    start(){
-      allowed=true;
-      if(current!==wanted)V.audio.zone(wanted);
-      else play(audio[wanted]);
+    updateRunner(speed, dt) {
+      if (!runner.includes(scene)) return;
+      zoneTime += dt;
+      if (wanted === 'slow' && speed >= 490 && zoneTime >= 28) {
+        zoneTime = 0;
+        select('mid');
+      } else if (wanted === 'mid' && speed >= 625 && zoneTime >= 37) {
+        zoneTime = 0;
+        select('fast');
+      }
     },
-    setEnabled(on){enabled=!!on;if(!enabled)pauseAll();else{current=null;V.audio.zone(wanted);}},
-    isEnabled(){return enabled;},
-    volume(v){volume=Math.max(0,Math.min(1,v));},
-    stop(){pauseAll();zoneTime=0;},
-    zone(z){if(!audio[z])z='slow';wanted=z;
-      if(!allowed||!enabled||document.hidden)return;
-      if(current===z)return;
-      current=z;fade=0;zoneTime=0;audio[z].volume=0;play(audio[z]);
+    current: () => active,
+    isEnabled: () => enabled,
+    setEnabled(on) {
+      enabled = Boolean(on);
+      if (!enabled) pause();
+      else if (scene && wanted) select(wanted);
     },
-    tick(dt){if(!allowed||!enabled||!current||document.hidden)return;
-      zoneTime+=dt;
-      fade=Math.min(1,fade+dt/1.3);
-      for(const [key,a] of Object.entries(audio)){
-        a.volume=key===current?volume*fade:volume*(1-fade);
-        if(key!==current&&fade>=1)a.pause();
+    volume(value) { volume = V.clamp(value, 0, 1); },
+    stop() {
+      scene = null;
+      wanted = null;
+      active = null;
+      zoneTime = 0;
+      for (const voice of playing) {
+        voice.audio.pause();
+        if (voice.audio.readyState > 0) voice.audio.currentTime = 0;
+        voice.gain = 0;
+      }
+      playing.clear();
+    },
+    tick(dt) {
+      if (!scene || !enabled || document.hidden) return;
+      for (const voice of playing) {
+        const target = voices.get(active) === voice ? 1 : 0;
+        voice.gain = V.clamp(voice.gain + (target ? 1 : -1) * dt / 1.1, 0, 1);
+        voice.audio.volume = volume * voice.gain;
+        if (!target && voice.gain === 0) {
+          voice.audio.pause();
+          if (voice.audio.readyState > 0) voice.audio.currentTime = 0;
+          playing.delete(voice);
+        }
       }
     }
   };
-  document.addEventListener('visibilitychange',()=>{
-    if(document.hidden)pauseAll();else if(allowed&&enabled)V.audio.zone(wanted);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) pause();
+    else if (scene && enabled && active) {
+      const voice = voices.get(active);
+      if (voice && (voice.audio.loop || !voice.audio.ended)) play(voice);
+    }
   });
 })();
