@@ -46,6 +46,7 @@
             <label class="field">Seed <input id="seed-input" maxlength="40" placeholder="zufällig"></label>
             <button class="quiet" type="submit">Neue Kampagne</button>
           </form>
+          <p id="test-mode-status" class="caption hidden" role="status">Testmodus aktiv · Gib „admin“ erneut ein, um zurückzukehren.</p>
           <div class="extra-actions"><button id="arcade-btn" class="quiet" type="button">∞ Endlos-Modus</button><button id="board-btn" class="quiet" type="button">Schneggboard</button></div>
         </section>
       </div>
@@ -56,7 +57,11 @@
         <canvas id="game" tabindex="-1" width="960" height="540" aria-label="Spielfeld der Vulkanschnegge"></canvas>
         <div class="game-hud">
           <div class="hud-box"><div class="eyebrow" id="level-kind"></div><strong id="level-title"></strong><div id="hud-stats"></div><div id="hud-score"></div></div>
-          <div class="game-buttons"><button id="back-btn" class="quiet" title="Zur Weltkarte (Escape)">↶ Karte</button><button id="restart-btn" class="quiet" title="Abschnitt neu starten">⟳ Neustart</button></div>
+          <div class="game-buttons">
+            <button id="back-btn" class="quiet" title="Zur Weltkarte (Escape)">↶ Karte</button>
+            <button id="restart-btn" class="quiet" title="Abschnitt neu starten">⟳ Neustart</button>
+            <button id="test-skip-btn" class="quiet hidden" type="button">Abschnitt überspringen</button>
+          </div>
           <div class="hud-box gauge"><div id="hud-number"></div><div class="meter"><div id="hud-meter"></div></div><div id="hud-label" class="eyebrow"></div></div>
         </div>
         <div class="game-bottom"><span id="level-tip"></span><span id="level-message" aria-live="off"></span></div>

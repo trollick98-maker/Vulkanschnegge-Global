@@ -2,11 +2,12 @@
   'use strict';
   const V = window.VS7;
   const ui = V.ui;
-  const state = V.state = { mode: 'map', level: null, section: null, story: null };
+  const state = V.state = { mode: 'map', level: null, section: null, story: null, testMode: false };
   const step = V.rules.step;
   const updates = { travel: V.updateRunner, arcade: V.updateRunner, arena: V.updateArena, boss: V.updateCombat };
   const get = id => document.getElementById(id);
   let campaign = V.loadCampaign() || V.createCampaign('', V.profile.character);
+  let regularCampaign;
   let graph = V.generateMap(campaign.seed);
   let frameAt = 0;
   let carry = 0;
@@ -16,10 +17,15 @@
   function transition(mode) {
     state.mode = mode;
     get('restart-btn').disabled = mode === 'outro';
+    get('test-skip-btn').classList.toggle('hidden', !canSkip());
     frameAt = 0;
     carry = 0;
     V.input.reset();
     V.audio.stop();
+  }
+
+  function canSkip() {
+    return state.testMode && state.mode === 'play' && state.section.kind !== 'arcade';
   }
 
   function showStory(id, done) {
@@ -82,8 +88,8 @@
   }
 
   function start(section) {
-    transition('play');
     state.section = section;
+    transition('play');
     state.story = null;
     if (section.kind === 'arcade') {
       state.level = V.newRunner(null, section.character);
@@ -105,7 +111,7 @@
     const level = state.level;
     const section = state.section;
     transition('result');
-    V.recordRun(section.kind, level);
+    if (!state.testMode) V.recordRun(section.kind, level);
     if (!level.outcome) {
       ui.hud(level);
       V.render(level);
@@ -169,11 +175,34 @@
   get('restart-btn').addEventListener('click', () => start(state.section));
   get('replay').addEventListener('click', () => start(state.section));
   get('arcade-btn').addEventListener('click', () => start({ kind: 'arcade', character: V.profile.character }));
+  get('test-skip-btn').addEventListener('click', () => {
+    if (!canSkip()) return;
+    const level = state.level;
+    level.outcome = true;
+    if (level.boss) level.boss.hp = 0;
+    finish();
+  });
   get('campaign-form').addEventListener('submit', event => {
     event.preventDefault();
+    const seedInput = get('seed-input');
+    if (seedInput.value.trim().toLowerCase() === 'admin') {
+      if (state.testMode) {
+        campaign = regularCampaign;
+        regularCampaign = undefined;
+      } else {
+        regularCampaign = campaign;
+        campaign = structuredClone(campaign);
+      }
+      state.testMode = !state.testMode;
+      get('test-mode-status').classList.toggle('hidden', !state.testMode);
+      seedInput.value = '';
+      graph = V.generateMap(campaign.seed);
+      showMap();
+      return;
+    }
     if ((campaign.travelled.length || campaign.arrival) &&
       !window.confirm('Eine neue Kampagne ersetzt diesen Kampagnenspielstand. Neu starten?')) return;
-    campaign = V.createCampaign(get('seed-input').value, V.profile.character);
+    campaign = V.createCampaign(seedInput.value, V.profile.character);
     graph = V.generateMap(campaign.seed);
     V.saveCampaign(campaign);
     showMap();

@@ -119,6 +119,7 @@
   };
 
   V.saveCampaign = function (campaign) {
+    if (V.state?.testMode) return;
     try { localStorage.setItem(KEY, JSON.stringify(campaign)); } catch (_) { /* play continues with memory state */ }
   };
 

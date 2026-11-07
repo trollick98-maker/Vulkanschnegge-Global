@@ -134,6 +134,23 @@ test('three original characters and sixteen perks obey rarity, use limits and ch
   assert.ok(strong(true) > strong(false) * 1.4);
 });
 
+test('test campaign progression leaves the regular save untouched', () => {
+  const { V, storage } = logic();
+  const regular = V.createCampaign('Tiefsee', 'snail');
+  V.saveCampaign(regular);
+  const before = [...storage];
+  const campaign = V.loadCampaign();
+  const graph = V.generateMap(campaign.seed);
+  const route = V.routesFrom(campaign, graph)[0];
+  V.state = { testMode: true };
+  visit(V, campaign, graph, route);
+  assert.ok(campaign.cleared.includes(route.to));
+  assert.deepEqual([...storage], before);
+  V.state.testMode = false;
+  V.saveCampaign(campaign);
+  assert.equal(V.loadCampaign().position, route.to);
+});
+
 test('the campaign build modifies runner, arena and boss consistently on every restart', () => {
   const { V } = logic();
   const campaign = V.createCampaign('build', 'snail');
