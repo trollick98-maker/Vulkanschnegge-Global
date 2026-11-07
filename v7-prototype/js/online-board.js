@@ -33,7 +33,7 @@
     const snap=await firebase.firestore().collection('scores').orderBy('score','desc').limit(10).get();
     return snap.docs.map(doc=>{
       const data=doc.data();
-      return {name:String(data.name||'?').slice(0,24),score:Number(data.score)||0,character:String(data.character||'unknown')};
+      return {name:String(data.name||'?').slice(0,24),score:Number(data.score)||0,character:String(data.character||'unknown'),date:typeof data.createdAt?.toDate==='function'?data.createdAt.toDate().toLocaleDateString('de-DE'):''};
     });
   };
 })();

@@ -10,13 +10,13 @@
   const KEY='vulkanschnegge-v7-profile-v1';
   let saved={};try{saved=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(_ignored){}
   const oldName=(()=>{try{return localStorage.getItem('vulkanschneggePlayerName')||'';}catch(_ignored){return '';}})();
-  V.profile={name:typeof saved.name==='string'?saved.name.slice(0,24):oldName.slice(0,24),character:V.characters[saved.character]?saved.character:'snail'};
+  V.profile={name:typeof saved.name==='string'?saved.name.slice(0,24):oldName.slice(0,24),character:Object.hasOwn(V.characters,saved.character)?saved.character:'snail'};
   V.classicHighscore=(()=>{try{return Number(localStorage.getItem('vulkanschneckeHighscore'))||0;}catch(_ignored){return 0;}})();
   V.records=Array.isArray(saved.records)?saved.records.filter(r=>r&&typeof r.score==='number'&&Number.isFinite(r.score)).slice(0,30):[];
   V.saveProfile=()=>{try{localStorage.setItem(KEY,JSON.stringify({name:V.profile.name,character:V.profile.character,records:V.records}));}catch(_ignored){}};
   V.recordRun=(mode,level)=>{
     const score=Math.max(0,Math.floor(level.score||0));
-    const record={name:V.profile.name.trim()||'Unbenannt',character:V.profile.character,mode,score,coins:level.coinsTaken||0,time:new Date().toISOString().slice(0,10)};
+    const record={name:V.profile.name.trim()||'Unbenannt',character:level.character||V.profile.character,mode,score,coins:level.coinsTaken||0,time:new Date().toISOString().slice(0,10)};
     V.records.push(record);V.records.sort((a,b)=>b.score-a.score);
     V.records=V.records.slice(0,20);V.saveProfile();
     return record;
