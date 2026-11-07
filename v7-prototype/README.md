@@ -12,6 +12,13 @@ Entpacke die ZIP und öffne `v7-prototype/index.html`. Der Offline-Build enthäl
 - Reisen und Gegnerlevel haben feste Musik pro Kampagnenzone. In Zone 1 läuft „Pixel Depths“, in Zone 2 und 3 „Into the Deep“ und ab Zone 4 „Vulkanschnegge Theme“. Bosse haben ihre eigenen Tracks. Im Endlos-Modus wechseln die Tracks weiterhin mit dem Tempo.
 - Der letzte der vier Götter vor dem Riss ergibt sich in dieser Fassung aus der Seed-Reihenfolge. GOD.EXE ist der letzte Kampf. Auf „I AM THE SOURCE“ beim Reveal folgt „RUN THE LOOP“ im Kampf. „Home, At Last“ startet im Abspann.
 
+## Kampf und Perks
+
+- Ein etwas zu früh gedrückter Dash löst aus, sobald die Abklingzeit endet. Im Bosskampf stößt der Dash nach vorn, mit **A/D** auch in die gewählte Richtung. Der Konter hat etwas Reichweite um die Figur und gibt den Dash schneller wieder frei.
+- Krabbler stürmen in die angekündigte Richtung, Springer markieren ihre Landestelle und gepanzerte Gegner feuern eine Bodenwelle. Ein Dash-Treffer unterbricht ihren Angriff.
+- Landungen, Dash und Wind-ups verformen die Sprites kurz. Konter und Treffer zeigen Partikel, einen kurzen Trefferstopp und beim Boss einen sichtbaren Rückstoß. Die Systemeinstellung für reduzierte Bewegung schaltet die zusätzlichen Verformungen, Nachbilder und Partikel ab.
+- Zeitpolster verlängert den Eingabepuffer, Kettenreaktion lädt den Dash beim Treffer auf und Durchschlag erhöht den Schaden. Münzschwarm kann pro Abschnitt ein Herz heilen. Bestehende Perks und offene Perk-Auswahlen nutzen dieselben IDs und laden mit ihren überarbeiteten Effekten.
+
 ## Testmodus
 
 Gib auf der Weltkarte im Feld **Seed** `admin` ein und drücke **Enter**. Mit **Abschnitt überspringen** kannst du Reisen, Gegnerlevel und Bosskämpfe sofort abschließen. Nach einem übersprungenen Kampf folgt die reguläre Perk-Auswahl. Der Testmodus startet mit einer Kopie deiner Kampagne und speichert keine Kampagnenfortschritte oder Rekorde. Erneut `admin` eingeben oder die Seite neu laden, um zum regulären Spielstand zurückzukehren.
@@ -20,9 +27,9 @@ Gib auf der Weltkarte im Feld **Seed** `admin` ein und drücke **Enter**. Mit **
 
 Im Spielordner `node --test tests/smoke.test.js` ausführen. Für die Prüfung des vollständigen Offline-Pakets unter Linux oder macOS `REQUIRE_OFFLINE_MEDIA=1 node --test tests/smoke.test.js` verwenden.
 
-Alle 24 Tests bestanden. Die Kampagne wurde zusätzlich mit den echten Spielmodulen und nachgebildeten Browser-Schnittstellen durchgespielt. Der Lauf deckte neun Reisen über insgesamt 1.315 Spielsekunden, vier Gegnerlevel, alle drei Phasen jedes Bosses, Neuladen vor der Perk-Wahl und das Finale mit Abspann ab. Im Kampftest wurden Treffer gezielt vorbereitet. Tastatur, Touch-Ereignisse und Tabwechsel liefen über die Input-Handler. Die Chromium-Vorschau scheiterte beim Start in der Testumgebung. Darstellung, Audioausgabe und Bildrate auf echten Geräten wurden dort nicht gemessen.
+Alle 26 Tests bestanden. Die Kampagne wurde zusätzlich mit den echten Spielmodulen und nachgebildeten Browser-Schnittstellen durchgespielt. Der Lauf deckte neun Reisen über insgesamt 1.315 Spielsekunden, vier Gegnerlevel, alle drei Phasen jedes Bosses, Neuladen vor der Perk-Wahl und das Finale mit Abspann ab. Im Kampftest wurden Treffer gezielt vorbereitet. Tastatur, Touch-Ereignisse und Tabwechsel liefen über die Input-Handler. Die Kampfszenen wurden separat auf Canvas gerendert. Darstellung, Audioausgabe und Bildrate auf echten Geräten wurden dabei nicht gemessen.
 
-## Messung des Runners
+## Messung des Runners vor dem Kampf-Update
 
 Node-Simulation mit der Offline-Fassung von PR #9 als Ausgangspunkt. Pro Stand fünf Endlosläufe von je zehn simulierten Minuten mit 60 Updates pro Sekunde und deaktiviertem Trefferschaden. Zeiten messen Start und Logik im Testprozess. Browser-Paint und Medien-Decoding sind darin nicht enthalten.
 

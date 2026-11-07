@@ -92,27 +92,31 @@
       if (q.reflected) {
         if (q.x + q.r >= b.x + 8) {
           q.dead = true;
-          b.hp = Math.max(0, b.hp - 1);
+          b.hp = Math.max(0, b.hp - (q.damage ?? 1));
           b.flash = .22;
+          V.impact(s, b.x + 21, q.y, '#ffd896', .047);
           s.score += 240;
           V.say(s, 'Volltreffer!');
           if (b.hp === 0) s.outcome = true;
         }
         continue;
       }
-      const r = q.r * .77;
-      if (p.x >= q.x + r || p.x + p.w <= q.x - r || p.y >= q.y + r || p.y + p.h <= q.y - r) continue;
-      if (attacks[q.key].reflect && p.dashTime > 0) {
+      if (attacks[q.key].reflect && p.dashTime > 0 && V.projectileHits(p, q, s.parryReach)) {
         q.reflected = true;
-        q.vx = 780;
-        p.vy = -260;
+        q.vx = 950;
+        q.damage = 1 + s.strikeBonus;
+        p.vx *= .45;
+        p.vy = -145;
+        p.dashTime = Math.min(p.dashTime, .08);
+        p.invuln = Math.max(p.invuln, .16);
         p.jumps = Math.min(p.jumps, 1);
-        p.dashCooldown = Math.min(p.dashCooldown, .36 * s.dashFactor);
+        p.dashCooldown = s.chainDash ? 0 : Math.min(p.dashCooldown, .29 * s.dashFactor);
+        V.impact(s, q.x, q.y, '#a9fff0', .042);
         s.score += 80;
         V.say(s, 'Konter!');
-      } else {
+      } else if (V.projectileHits(p, q)) {
         q.dead = true;
-        V.hurt(s);
+        V.hurt(s, Math.sign(q.vx));
       }
     }
     s.projectiles = s.projectiles.filter(q => !q.dead && (q.zone || (q.x > -65 && q.x < V.W + 70)));
@@ -124,14 +128,12 @@
     s.windTime = Math.max(0, s.windTime - dt);
     if (s.windTime <= 0) s.wind = 0;
     s.boss.flash = Math.max(0, s.boss.flash - dt);
-    s.speed = V.clamp((355 + V.characters[s.character].speed * .25 + s.bonusSpeed * .55) * s.speedFactor, 250, 535);
+    s.speed = 355 + V.characters[s.character].speed * .25;
     V.movePlayer(s, dt, actions);
     s.dist += s.speed * dt;
-    s.score += s.speed * s.scoreRate * dt;
-    V.updateCourse(s);
-    if (s.outcome === null) {
-      updateAttacks(s, dt);
-      updateProjectiles(s, dt);
-    }
+    s.score += s.speed * .1 * dt;
+    updateAttacks(s, dt);
+    updateProjectiles(s, dt);
+    if (s.outcome === null) V.updateCourse(s);
   };
 })();

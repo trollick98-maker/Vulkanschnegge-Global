@@ -5,6 +5,7 @@
   const g = canvas.getContext('2d', { alpha: false });
   const { W, H, GROUND: G } = V;
   const backdrops = new Map();
+  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   // Y coordinate of each walkable deck in its source PNG.
   const deckY = { reef: 17, greed: 2, diva: 2, vortex: 2 };
   const atlas = {
@@ -80,15 +81,26 @@
   function drawPlayer(s) {
     const p = s.player;
     g.save();
-    g.translate(p.x + p.w / 2, p.y + p.h / 2);
-    if (p.dashTime > 0) {
-      g.fillStyle = '#a4f9e06e';
-      g.fillRect(-p.facing * p.w * 1.13 - p.w / 2, -3, p.w, 5);
-      g.fillRect(-p.facing * p.w * .80 - p.w / 2, 8, p.w, 3);
+    const dashing = p.dashTime > 0;
+    if (dashing && !reducedMotion) {
+      g.globalAlpha = .16;
+      sprite(s.character, p.x - p.facing * 29, p.y + 4, p.w, p.h);
+      g.globalAlpha = .32;
+      sprite(s.character, p.x - p.facing * 15, p.y + 2, p.w, p.h);
+      g.globalAlpha = .55;
+      g.fillStyle = '#a6fff0';
+      const trailX = p.facing > 0 ? p.x - 19 : p.x + p.w - 4;
+      g.fillRect(trailX, p.y + p.h * .48, 23, 2);
+      g.globalAlpha = .30;
+      g.fillRect(trailX - p.facing * 9, p.y + p.h * .62, 19, 2);
+      g.globalAlpha = 1;
     }
+    const squash = reducedMotion ? 0 : p.landTime * .85 + (dashing ? .16 : 0);
+    const stretch = reducedMotion || dashing ? 0 : Math.min(.13, Math.abs(p.vy) / 5200);
+    g.translate(p.x + p.w / 2, p.y + p.h * (1 + squash - stretch) / 2);
     if (p.invuln > 0 && Math.floor(s.elapsed * 13) % 2 === 0) g.globalAlpha = .42;
     g.rotate(p.angle * p.facing * Math.PI / 180);
-    g.scale(p.facing, 1);
+    g.scale(p.facing * (1 + squash - stretch * .5), 1 - squash + stretch);
     if (!sprite(s.character, -p.w / 2, -p.h / 2, p.w, p.h)) {
       g.fillStyle = '#ffb966';
       g.fillRect(-p.w * .37, -p.h * .33, p.w * .67, p.h * .68);
@@ -141,7 +153,14 @@
     for (const enemy of s.enemies) {
       if (enemy.hp <= 0) continue;
       const { x, y, w, h } = enemy;
-      if (!fittedSprite(s.biome + '-' + enemy.key, x, y, w, h, true)) {
+      const windingUp = enemy.attackState === 'tell';
+      const crouch = windingUp && !reducedMotion ? .18 * (1 - enemy.attackLeft / enemy.windup) : 0;
+      g.save();
+      g.translate(x + w / 2, y + h);
+      g.scale((enemy.facing > 0 ? -1 : 1) * (1 + crouch * .4), 1 - crouch);
+      const drawn = fittedSprite(s.biome + '-' + enemy.key, -w / 2, -h, w, h, true);
+      g.restore();
+      if (!drawn) {
         g.fillStyle = '#14233d';
         g.fillRect(x + 1, y + 9, w - 2, h - 8);
         g.fillStyle = enemy.color;
@@ -157,6 +176,20 @@
         g.fillStyle = '#d1fff7';
         g.fillRect(x + 11, y - 4, w - 22, 3);
       }
+      if (windingUp) {
+        const progress = 1 - enemy.attackLeft / enemy.windup;
+        g.fillStyle = '#ffd080';
+        g.fillRect(x + w / 2 - 12, y - 10, 24 * progress, 3);
+        g.globalAlpha = .28 + progress * .46;
+        if (enemy.key === 'jumper') {
+          g.strokeStyle = '#ffb6d9';
+          g.strokeRect(enemy.targetX - 6, G - 9, w + 12, 8);
+        } else {
+          const destination = enemy.key === 'armored' ? x + enemy.facing * 126 : enemy.targetX;
+          g.fillRect(Math.min(x, destination) + w / 2, G - 4, Math.abs(destination - x), 3);
+        }
+        g.globalAlpha = 1;
+      }
     }
   }
 
@@ -164,13 +197,14 @@
     const tell = s.boss.tell;
     if (!tell) return;
     const attack = V.bossAttacks[tell.key];
+    const progress = 1 - tell.left / tell.total;
     g.save();
     g.fillStyle = attack.color;
-    g.globalAlpha = .22;
+    g.globalAlpha = .16 + progress * .23;
     if (attack.zone) {
       g.fillRect(tell.targetX - attack.width / 2, 122, attack.width, G - 122);
       g.globalAlpha = .78;
-      g.fillRect(tell.targetX - attack.width / 2, G - 5, attack.width * (1 - tell.left / tell.total), 5);
+      g.fillRect(tell.targetX - attack.width / 2, G - 5, attack.width * progress, 5);
     } else if (attack.wind) {
       g.globalAlpha = .7;
       g.font = '800 22px monospace';
@@ -179,6 +213,11 @@
       g.fillRect(110, tell.lane - 1, s.boss.x - 110, 2);
       g.globalAlpha = .85;
       g.fillRect(s.boss.x - 36, tell.lane - 6, 12, 12);
+      if (attack.reflect) {
+        g.strokeStyle = '#ecfff2';
+        const size = 17 + progress * 9;
+        g.strokeRect(s.boss.x - 30 - size / 2, tell.lane - size / 2, size, size);
+      }
     }
     g.restore();
   }
@@ -227,6 +266,9 @@
     const b = s.boss;
     const art = atlas[b.definition.sprite];
     const aura = V.biomes[s.biome].accent;
+    const lean = b.tell ? (1 - b.tell.left / b.tell.total) * 8 : 0;
+    const bodyX = b.x + (reducedMotion ? 0 : b.flash * 67 - lean);
+    const bob = reducedMotion ? 0 : Math.sin(s.elapsed * 3.3) * 3;
     g.globalAlpha = .12;
     g.fillStyle = aura;
     g.beginPath();
@@ -237,26 +279,20 @@
       const image = V.readyImage('atlas');
       const width = b.w;
       const height = Math.min(231, width * art[3] / art[2]);
-      if (image) g.drawImage(image, ...art, b.x, 286 - height / 2, width, height);
+      if (image) g.drawImage(image, ...art, bodyX, 286 - height / 2 + bob, width, height);
       else {
         g.fillStyle = aura;
         g.fillRect(b.x + 37, 232, b.w - 74, 118);
       }
     } else {
       g.save();
-      g.translate(b.x + b.w, 0);
+      g.translate(bodyX + b.w, bob);
       g.scale(-1, 1);
       if (!sprite('bossEel', 0, b.y, b.w, b.h)) {
         g.fillStyle = aura;
         g.fillRect(40, b.y + 25, b.w - 80, 130);
       }
       g.restore();
-    }
-    if (b.flash > 0) {
-      g.globalAlpha = b.flash;
-      g.fillStyle = '#fff6c3';
-      g.fillRect(b.x, b.y, b.w, b.h);
-      g.globalAlpha = 1;
     }
     if (s.windTime > 0 || (s.biome === 'god' && b.phase > 0)) {
       g.globalAlpha = .32;
@@ -270,11 +306,33 @@
     for (const q of s.projectiles) drawProjectile(q);
   }
 
+  function drawImpacts(s) {
+    if (reducedMotion) return;
+    for (const effect of s.effects) {
+      const progress = 1 - effect.left / .3;
+      const radius = 8 + progress * 32;
+      g.globalAlpha = Math.max(0, 1 - progress);
+      g.strokeStyle = effect.color;
+      g.lineWidth = 2;
+      g.strokeRect(effect.x - radius, effect.y - radius, radius * 2, radius * 2);
+      g.fillStyle = effect.color;
+      for (let i = 0; i < 6; i++) {
+        const angle = i * Math.PI / 3;
+        g.fillRect(effect.x + Math.cos(angle) * radius * 1.25 - 2, effect.y + Math.sin(angle) * radius - 2, 4, 4);
+      }
+    }
+    g.globalAlpha = 1;
+  }
+
   V.render = function (section) {
     background(section.biome, section.elapsed, section.dist);
     drawCourse(section);
-    if (section.kind === 'arena') drawEnemies(section);
+    if (section.kind === 'arena') {
+      drawEnemies(section);
+      for (const shot of section.projectiles) drawProjectile(shot);
+    }
     if (section.kind === 'boss') drawBoss(section);
     drawPlayer(section);
+    drawImpacts(section);
   };
 })();

@@ -156,7 +156,9 @@ test('the campaign build modifies runner, arena and boss consistently on every r
   const campaign = V.createCampaign('build', 'snail');
   const graph = V.generateMap(campaign.seed);
   const route = V.routesFrom(campaign, graph)[0];
-  const build = { jump: 2, freehit: 1, snailRage: 1, tinyMode: 1, magnet: 1, hyperMode: 1, turboHunter: 1, coinSpawnBoost: 1 };
+  campaign.build = { jump: 2, freehit: 1, snailRage: 1, tinyMode: 1, magnet: 1, hyperMode: 1, turboHunter: 1, coinSpawnBoost: 1, slowMo: 1, gold: 1 };
+  V.saveCampaign(campaign);
+  const build = V.loadCampaign().build;
   const sections = [
     V.newRunner(route, 'snail', build),
     V.newArena(route.node, 'snail', build, campaign.seed),
@@ -166,14 +168,20 @@ test('the campaign build modifies runner, arena and boss consistently on every r
   assert.deepEqual(sections.map(section => section.hp), [5, 6, 7, 5]);
   for (const section of sections) {
     assert.equal(section.extraJumps, 2);
-    assert.equal(section.player.w, 22);
+    assert.equal(section.player.w, 33);
     assert.equal(section.dashFactor, .7);
-    assert.equal(section.multiplier, 3);
-    assert.equal(section.magnetRange, 1.25);
-    assert.equal(section.scoreRate, .2);
-    assert.equal(section.coinValue, .5);
+    assert.equal(section.multiplier, 1);
+    assert.equal(section.magnetRange, 1.75);
+    assert.equal(section.inputGrace, .18);
+    assert.equal(section.chainDash, true);
+    assert.equal(section.strikeBonus, 1);
+    assert.equal(section.coinValue, 2);
   }
   assert.deepEqual(plain(sections[0].coins), plain(sections[3].coins));
+  const normal = V.newRunner(route, 'snail');
+  V.updateRunner(normal, V.rules.step, idle);
+  V.updateRunner(sections[0], V.rules.step, idle);
+  assert.equal(sections[0].speed, normal.speed);
   assert.equal(V.newRunner(null, 'snail').extraJumps, 0);
   assert.equal(V.newRunner(null, 'otter').magnetRange, 1.2);
 });
@@ -262,7 +270,8 @@ test('normal arena dashes reward momentum and use the original rebound loop', ()
   const node = V.routesFrom(c, V.generateMap(c.seed))[0].node;
   const s = V.newArena(node, 'snail', {}, c.seed);
   const p = s.player;
-  s.enemies = [{ key: 'armored', x: 300, origin: 300, w: 51, h: 40, hp: 2, phase: 0 }];
+  s.enemies = [{ key: 'armored', x: 300, y: V.GROUND - 40, w: 51, h: 40, hp: 2,
+    attackState: 'ready', attackLeft: 10, range: 245 }];
   p.x = 281;
   p.vx = 245;
   V.updateArena(s, V.rules.step, { dash: true, right: true });
@@ -270,6 +279,73 @@ test('normal arena dashes reward momentum and use the original rebound loop', ()
   assert.equal(p.dashPower, 2);
   assert.ok(p.vy < 0 && p.airDash);
   assert.equal(s.outcome, true);
+});
+
+test('arena enemies warn, lock direction and execute distinct attacks', () => {
+  const { V } = logic();
+  const graph = V.generateMap('arena-attacks');
+  const step = V.rules.step;
+  for (const role of ['crawler', 'jumper', 'armored']) {
+    const node = graph.byId[role === 'armored' ? 'reef-side' : 'reef-arena'];
+    let arena;
+    let enemy;
+    for (let attempt = 0; attempt < 12 && !enemy; attempt++) {
+      arena = V.newArena(node, 'snail', {}, 'arena-' + attempt);
+      enemy = arena.enemies.find(item => item.key === role);
+    }
+    assert.ok(enemy, role);
+    arena.enemies = [enemy];
+    arena.player.x = enemy.x - 110;
+    enemy.attackLeft = 0;
+    V.updateArena(arena, step, idle);
+    assert.equal(enemy.attackState, 'tell', role);
+    assert.equal(enemy.facing, -1);
+    assert.equal(arena.hp, arena.maxHp);
+    const x = enemy.x;
+    const target = enemy.targetX;
+    arena.player.x = enemy.x + 110;
+    let minY = enemy.y;
+    for (let frame = 0; frame < 80 && enemy.attackState !== 'recover'; frame++) {
+      V.updateArena(arena, step, idle);
+      minY = Math.min(minY, enemy.y);
+    }
+    assert.equal(enemy.attackState, 'recover', role);
+    assert.equal(enemy.targetX, target);
+    assert.equal(arena.hp, arena.maxHp);
+    if (role === 'jumper') assert.ok(minY < V.GROUND - enemy.h - 80);
+    else assert.equal(minY, V.GROUND - enemy.h);
+    if (role === 'armored') {
+      assert.equal(enemy.x, x);
+      assert.ok(arena.projectiles.some(shot => shot.key === 'surge' && shot.vx < 0));
+    } else {
+      assert.ok(enemy.x < x - 60);
+      assert.equal(arena.projectiles.length, 0);
+    }
+  }
+});
+
+test('boss dash remembers a slightly early input, lunges and delivers the counter perk', () => {
+  const { V } = logic();
+  const graph = V.generateMap('lunge');
+  const s = V.newCombat(graph.byId.reef, 'snail', { turboHunter: 1, hyperMode: 1 }, 'lunge');
+  const p = s.player;
+  const b = s.boss;
+  const step = V.rules.step;
+  const x = p.x;
+  p.dashCooldown = .06;
+  V.updateCombat(s, step, { dash: true });
+  assert.equal(p.dashTime, 0);
+  for (let i = 0; i < 6; i++) V.updateCombat(s, step, idle);
+  assert.ok(p.dashTime > 0 && p.x > x + 20);
+  const q = { key: 'plasma', x: p.x + p.w + 18, y: p.y + 22, r: 16, vx: -5 };
+  s.projectiles.push(q);
+  V.updateCombat(s, step, idle);
+  assert.equal(q.reflected, true);
+  assert.equal(p.dashCooldown, 0);
+  assert.ok(s.hitStop > 0 && s.effects.length > 0);
+  q.x = b.x;
+  V.updateCombat(s, step, idle);
+  assert.equal(b.hp, b.maxHp - 2);
 });
 
 test('every boss scrolls, telegraphs and provides a counter in every phase', () => {

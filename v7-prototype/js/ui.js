@@ -150,13 +150,16 @@
     content('level-kind', kinds[s.kind]);
     content('level-title', s.title);
     content('level-tip', s.kind === 'boss' ? s.boss.definition.counter :
-      s.kind === 'arena' ? 'Anlauf nehmen · Panzer-Dash auf Gegner' : 'Springen · Kisten per Dash zerlegen');
+      s.kind === 'arena' ? 'Anlauf + Dash · Angriffe leuchten vorher auf' : 'Springen · Kisten per Dash zerlegen');
     hud(s);
     get('game').focus({ preventScroll: true });
   }
 
   function hud(s) {
-    content('hud-stats', '♥ ' + s.hp + ' / ' + s.maxHp + '    ◈ ' + s.coinsTaken);
+    const p = s.player;
+    const dashReady = p.dashCooldown <= 0 && p.dashTime <= 0 && (s.kind !== 'arena' || p.airDash);
+    content('hud-stats', '♥ ' + s.hp + ' / ' + s.maxHp + '    ◈ ' + s.coinsTaken + '    ⚡ ' +
+      (dashReady ? 'bereit' : 'lädt'));
     content('hud-score', Math.floor(s.score) + ' P · ×' + s.multiplier + ' · ' + Math.round(s.speed) + ' Tempo');
     const alive = s.kind === 'arena' ? s.enemies.filter(enemy => enemy.hp > 0).length : 0;
     const label = s.kind === 'boss' ? 'BOSS · PHASE ' + (s.boss.phase + 1) :

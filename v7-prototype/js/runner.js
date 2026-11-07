@@ -49,6 +49,7 @@
       if (item.fragile && p.dashTime > 0) {
         item.dead = true;
         s.score += 55;
+        V.impact(s, x + item.w / 2, V.GROUND - item.h / 2, '#f8bf82');
         V.say(s, 'Trümmer zerlegt!');
       } else {
         item.dead = true;
@@ -76,10 +77,10 @@
     if (s.outcome !== null) return;
     s.elapsed += dt;
     const speed = 345 + V.characters[s.character].speed + Math.min(520, s.elapsed * 6.4);
-    s.speed = V.clamp((speed + s.bonusSpeed) * s.speedFactor, 155, 900);
+    s.speed = V.clamp(speed, 155, 900);
     V.movePlayer(s, dt, actions);
     s.dist += (s.speed + (s.player.dashTime > 0 ? 170 : 0)) * dt;
-    s.score += s.speed * s.scoreRate * dt;
+    s.score += s.speed * .1 * dt;
     V.updateCourse(s);
     if (s.outcome === null && s.elapsed + 1e-7 >= s.duration) {
       s.elapsed = s.duration;

@@ -8,10 +8,10 @@
     const section = {
       kind, character, title, biome, seed, elapsed: 0, dist: 0, speed: 0, score: 0,
       maxHp: hp + traits.hp, magnetRange: traits.magnet, coinsTaken: 0, coinSerial: 0,
-      coins: [], obstacles: [], platforms: [], projectiles: [], outcome: null, feedback: '', feedbackTime: 0,
+      coins: [], obstacles: [], platforms: [], projectiles: [], effects: [], hitStop: 0, outcome: null, feedback: '', feedbackTime: 0,
       player: { x: V.START_X, y: G - 43, w: 44, h: 43, vx: 0, vy: 0, facing: 1, jumps: 0,
         gravity: 1790 * traits.gravity, invuln: 0, dashTime: 0, dashCooldown: 0, angle: 0,
-        grounded: true, airDash: true, dashPower: 1 }
+        grounded: true, airDash: true, dashPower: 1, dashBuffer: 0, jumpBuffer: 0, coyote: 0, landTime: 0 }
     };
     V.applyBuild(section, build);
     return section;
@@ -20,6 +20,19 @@
   V.say = function (section, message) {
     section.feedback = message;
     section.feedbackTime = 1.8;
+  };
+
+  V.impact = function (s, x, y, color, stop = 0) {
+    if (s.effects.length === 12) s.effects.shift();
+    s.effects.push({ x, y, color, left: .3 });
+    s.hitStop = Math.max(s.hitStop, stop);
+  };
+
+  V.projectileHits = function (player, shot, reach = 0) {
+    const rx = shot.r * .77 + reach;
+    const ry = shot.r * .77 + reach * .55;
+    return player.x < shot.x + rx && player.x + player.w > shot.x - rx &&
+      player.y < shot.y + ry && player.y + player.h > shot.y - ry;
   };
 
   V.scrollX = (section, worldX) => V.START_X + worldX - section.dist;
@@ -42,11 +55,17 @@
       if (p.x < x + reach && p.x + p.w > x - reach && p.y < coin.y + reach && p.y + p.h > coin.y - reach) {
         coin.taken = true;
         s.coinsTaken++;
-        s.score += 10 * s.multiplier * s.goldMultiplier * s.coinValue;
+        s.score += 10 * s.multiplier * s.coinValue;
         s.multiplier++;
+        if (s.healAtCoins && s.coinsTaken >= s.healAtCoins && s.hp < s.maxHp) {
+          s.hp++;
+          s.healAtCoins = 0;
+          V.impact(s, x, coin.y, '#83ffc4');
+          V.say(s, 'Münzschwarm · +1 HP');
+        }
       } else if (s.kind !== 'arena' && !coin.missed && x + reach < p.x - 30) {
         coin.missed = true;
-        s.multiplier = s.baseMultiplier;
+        s.multiplier = 1;
       }
     }
   };
@@ -59,6 +78,7 @@
     p.vy = -245;
     p.vx = direction * 220;
     p.dashTime = 0;
+    V.impact(s, p.x + p.w / 2, p.y + p.h / 2, '#ff728d', s.kind === 'arena' || s.kind === 'boss' ? .035 : 0);
     V.say(s, 'Treffer!');
     if (s.hp <= 0) s.outcome = false;
   };
@@ -66,7 +86,7 @@
   V.rebound = function (s, direction) {
     const p = s.player;
     p.dashTime = 0;
-    p.dashCooldown = .12 * s.dashFactor;
+    p.dashCooldown = s.chainDash ? 0 : .12 * s.dashFactor;
     p.airDash = true;
     p.vy = -410;
     p.vx = -direction * 245;
@@ -76,6 +96,7 @@
 
   function moveVertical(s, dt) {
     const p = s.player;
+    const wasGrounded = p.grounded;
     const previousBottom = p.y + p.h;
     p.grounded = false;
     p.vy += p.gravity * dt;
@@ -89,6 +110,7 @@
       }
     }
     if (p.y + p.h >= floor) {
+      if (!wasGrounded && p.vy > 220) p.landTime = .16;
       p.y = floor - p.h;
       p.vy = 0;
       p.jumps = 0;
@@ -109,13 +131,23 @@
     p.invuln = Math.max(0, p.invuln - dt);
     p.dashTime = Math.max(0, p.dashTime - dt);
     p.dashCooldown = Math.max(0, p.dashCooldown - dt);
+    p.landTime = Math.max(0, p.landTime - dt);
+    p.coyote = p.grounded ? .10 : Math.max(0, p.coyote - dt);
+    p.jumpBuffer = actions.jump ? s.inputGrace : Math.max(0, p.jumpBuffer - dt);
+    p.dashBuffer = actions.dash ? s.inputGrace : Math.max(0, p.dashBuffer - dt);
     s.feedbackTime = Math.max(0, s.feedbackTime - dt);
-    if (actions.jump && p.jumps < 2 + s.extraJumps) {
+    for (const effect of s.effects) effect.left -= dt;
+    while (s.effects[0]?.left <= 0) s.effects.shift();
+    if (p.jumpBuffer > 0 && p.jumps < 2 + s.extraJumps) {
+      if (!p.grounded && p.coyote <= 0 && p.jumps === 0) p.jumps = 1;
+      if (s.airSpring && p.jumps === 1) p.airDash = true;
       p.vy = p.jumps === 0 ? -730 : -660 * p.doubleJumpBoost;
+      p.grounded = false;
+      p.coyote = p.jumpBuffer = p.landTime = 0;
       p.jumps++;
     }
     if (arena && p.dashTime <= 0) {
-      const cap = V.clamp((330 + V.characters[s.character].speed + s.bonusSpeed) * s.speedFactor, 190, 540);
+      const cap = 330 + V.characters[s.character].speed;
       if (direction) {
         p.facing = direction;
         p.vx = V.clamp(p.vx + direction * 1900 * dt, -cap, cap);
@@ -123,13 +155,19 @@
         p.vx = Math.sign(p.vx) * Math.max(0, Math.abs(p.vx) - 1750 * dt);
       }
     }
-    if (actions.dash && p.dashCooldown <= 0 && (!arena || p.airDash)) {
-      p.dashTime = boss ? .31 : .24;
-      p.dashCooldown = (arena ? .52 : boss ? .85 : 1.35) * s.dashFactor;
+    if (p.dashBuffer > 0 && p.dashCooldown <= 0 && p.dashTime <= 0 && (!arena || p.airDash)) {
+      p.dashBuffer = 0;
+      p.dashTime = (boss ? .31 : .24) + s.dashExtension;
+      p.dashCooldown = (arena ? .50 : boss ? .73 : 1.35) * s.dashFactor;
+      if (boss) {
+        p.facing = direction || 1;
+        p.vx = p.facing * 580;
+        p.vy *= .55;
+      }
       if (arena) {
         const momentum = Math.abs(p.vx);
-        p.dashPower = momentum >= 185 ? 2 : 1;
-        p.facing = momentum > 55 ? Math.sign(p.vx) : p.facing;
+        p.facing = direction || (momentum > 55 ? Math.sign(p.vx) : p.facing);
+        p.dashPower = (p.vx * p.facing >= 185 ? 2 : 1) + s.strikeBonus;
         p.vx = p.facing * (510 + Math.min(500, momentum) * .72);
         p.vy *= .34;
         p.airDash = false;
@@ -137,13 +175,23 @@
     }
     if (arena) {
       p.x = V.clamp(p.x + p.vx * dt, 22, V.W - p.w - 22);
+    } else if (boss) {
+      if (direction && p.dashTime <= 0) p.facing = direction;
+      const swim = direction * 245 + (s.wind || 0);
+      p.vx = V.lerp(p.vx, swim, Math.min(1, dt * (p.dashTime > 0 ? 6 : 15)));
+      p.x = V.clamp(p.x + p.vx * dt, 104, 466);
     } else {
-      const steer = direction * (boss ? 225 : 165);
+      const steer = direction * 165;
       const pull = direction ? 0 : (V.START_X - p.x) * .65;
-      p.x = V.clamp(p.x + (steer + pull + (s.wind || 0)) * dt, 104, boss ? 466 : 425);
+      p.x = V.clamp(p.x + (steer + pull) * dt, 104, 425);
     }
     moveVertical(s, dt);
     const spin = p.dashTime > 0 ? 1050 : p.jumps > 1 ? 680 : 0;
-    p.angle = spin ? (p.angle + spin * p.spinBoost * dt) % 360 : 0;
+    if (spin) {
+      p.angle = (p.angle + spin * p.spinBoost * dt) % 360;
+    } else {
+      const upright = p.angle > 180 ? 360 : 0;
+      p.angle = Math.abs(p.angle - upright) < 1 ? 0 : V.lerp(p.angle, upright, Math.min(1, dt * 20)) % 360;
+    }
   };
 })();

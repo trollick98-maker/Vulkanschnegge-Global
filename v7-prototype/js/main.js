@@ -121,7 +121,10 @@
       else showMap();
     } else {
       V.completeNode(campaign, graph, section.node.id);
-      if (section.node.id === graph.final) transition('outro');
+      if (section.node.id === graph.final) {
+        level.player.dashBuffer = level.player.jumpBuffer = 0;
+        transition('outro');
+      }
       else showMap();
     }
   }
@@ -148,11 +151,24 @@
     }
     if (state.mode !== 'play') return;
 
-    carry += dt;
     const level = state.level;
+    if (level.hitStop > 0) {
+      level.hitStop = Math.max(0, level.hitStop - dt);
+      V.render(level);
+      return;
+    }
+    if (level.outcome !== null) {
+      finish();
+      return;
+    }
+    carry += dt;
     while (carry + 1e-9 >= step) {
       carry -= step;
       updates[level.kind](level, step, V.input.consume());
+      if (level.hitStop > 0) {
+        carry = 0;
+        break;
+      }
       if (level.outcome !== null) {
         finish();
         return;
@@ -222,6 +238,8 @@
     frameAt = 0;
     carry = 0;
     V.input.reset();
+    const player = state.level?.player;
+    if (player) player.jumpBuffer = player.dashBuffer = 0;
   });
   showMap();
   requestAnimationFrame(frame);
