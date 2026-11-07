@@ -9,9 +9,9 @@ const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
 const modules = [
   'config', 'assets', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data',
-  'motion', 'runner', 'arena', 'combat', 'audio', 'online-board', 'input', 'story', 'render', 'ui', 'main'
+  'motion', 'runner', 'arena-layout', 'arena', 'combat', 'audio', 'online-board', 'input', 'story', 'render', 'ui', 'main'
 ];
-const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'motion', 'runner', 'arena', 'combat', 'story'];
+const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'motion', 'runner', 'arena-layout', 'arena', 'combat', 'story'];
 const idle = {};
 
 function logic(storage = new Map(), files = rules, extra = {}) {
@@ -271,13 +271,94 @@ test('normal arena dashes reward momentum and use the original rebound loop', ()
   const s = V.newArena(node, 'snail', {}, c.seed);
   const p = s.player;
   s.enemies = [{ key: 'armored', x: 300, y: V.GROUND - 40, w: 51, h: 40, hp: 2,
-    attackState: 'ready', attackLeft: 10, range: 245 }];
+    attackState: 'ready', attackLeft: 10, range: 245, left: 22, right: 400 }];
   p.x = 281;
   p.vx = 245;
   V.updateArena(s, V.rules.step, { dash: true, right: true });
   assert.equal(s.enemies[0].hp, 0);
   assert.equal(p.dashPower, 2);
   assert.ok(p.vy < 0 && p.airDash);
+  assert.equal(s.exitOpen, true);
+  assert.equal(s.outcome, null);
+});
+
+test('arena routes vary by seed and keep every gap within bidirectional base jump range', () => {
+  const { V } = logic();
+  for (let index = 0; index < 40; index++) {
+    const seed = 'platformer-' + index;
+    const graph = V.generateMap(seed);
+    for (const node of graph.nodes.filter(item => item.kind === 'arena')) {
+      const route = V.generateArena(node, seed);
+      assert.deepEqual(plain(route), plain(V.generateArena(node, seed)));
+      assert.notDeepEqual(plain(route), plain(V.generateArena(node, seed + '-other')));
+      assert.ok(route.worldWidth > V.W * 2);
+      assert.equal(route.platforms.filter(platform => platform.ground).length, node.tier >= 3 ? 4 : 3);
+      for (let i = 1; i < route.platforms.length; i++) {
+        const from = route.platforms[i - 1];
+        const to = route.platforms[i];
+        const gap = to.worldX - from.worldX - from.w;
+        assert.ok(gap > 0 && gap <= V.arenaJumpGap(from.y, to.y));
+      }
+    }
+  }
+});
+
+test('all base characters can single-jump generated platforms in both directions', () => {
+  const { V } = logic();
+  function cross(s, from, to) {
+    const p = s.player;
+    const direction = Math.sign(to.worldX - from.worldX);
+    const center = to.worldX + (to.w - p.w) / 2;
+    Object.assign(p, {
+      x: direction > 0 ? from.worldX + from.w - p.w - 9 : from.worldX + 9,
+      y: from.y - p.h, vx: 0, vy: 0, grounded: true, jumps: 0
+    });
+    for (let frame = 0; frame < 110; frame++) {
+      const braking = p.vx ** 2 / (2 * 1750);
+      const steer = direction * (center - p.x) > braking + 5;
+      V.movePlayer(s, V.rules.step, { right: steer && direction > 0, left: steer && direction < 0, jump: frame === 0 });
+      if (p.grounded) break;
+    }
+    assert.ok(p.grounded && Math.abs(p.y + p.h - to.y) < .01 &&
+      p.x + p.w / 2 > to.worldX && p.x + p.w / 2 < to.worldX + to.w,
+    s.seed + ' ' + s.character + ' from ' + from.worldX + ' to ' + to.worldX);
+  }
+  for (const seed of ['blue-reef', 'gold-vault', 'pink-stage', 'wreck-storm']) {
+    const graph = V.generateMap(seed);
+    for (const node of graph.nodes.filter(item => item.kind === 'arena' && !item.optional)) {
+      for (const character of Object.keys(V.characters)) {
+        const s = V.newArena(node, character, {}, seed);
+        for (let i = 1; i < s.platforms.length; i++) {
+          cross(s, s.platforms[i - 1], s.platforms[i]);
+          cross(s, s.platforms[i], s.platforms[i - 1]);
+        }
+      }
+    }
+  }
+});
+
+test('the arena exit checks enemies and pits return the player to the last island', () => {
+  const { V } = logic();
+  const seed = 'exit-test';
+  const s = V.newArena(V.generateMap(seed).byId['reef-arena'], 'snail', {}, seed);
+  const p = s.player;
+  const island = s.platforms.find(platform => platform.ground && platform.worldX > 0);
+  p.x = island.worldX + 60;
+  V.updateArena(s, V.rules.step, idle);
+  const checkpoint = s.checkpointX;
+  assert.equal(checkpoint, p.x);
+  assert.ok(s.cameraX > 0);
+  p.x = island.worldX + island.w + 15;
+  p.y = V.H + 24;
+  V.updateArena(s, V.rules.step, idle);
+  assert.equal(s.hp, s.maxHp - 1);
+  assert.equal(p.x, checkpoint);
+  assert.ok(p.grounded);
+  p.x = s.exitX + 5;
+  V.updateArena(s, V.rules.step, idle);
+  assert.equal(s.outcome, null);
+  for (const enemy of s.enemies) enemy.hp = 0;
+  V.updateArena(s, V.rules.step, idle);
   assert.equal(s.outcome, true);
 });
 

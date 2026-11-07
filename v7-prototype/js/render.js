@@ -14,9 +14,10 @@
   };
   g.imageSmoothingEnabled = false;
 
-  function background(key, time, dist) {
+  function background(key, time, dist, arena) {
     const colors = V.biomes[key];
-    if (!backdrops.has(key)) {
+    const cacheKey = arena ? key + ':arena' : key;
+    if (!backdrops.has(cacheKey)) {
       const plate = document.createElement('canvas');
       plate.width = W;
       plate.height = H;
@@ -26,11 +27,18 @@
       sky.addColorStop(1, colors.bottom);
       paint.fillStyle = sky;
       paint.fillRect(0, 0, W, G);
-      paint.fillStyle = colors.ground;
+      if (arena) {
+        const depth = paint.createLinearGradient(0, G, 0, H);
+        depth.addColorStop(0, colors.bottom);
+        depth.addColorStop(1, '#050c16');
+        paint.fillStyle = depth;
+      } else {
+        paint.fillStyle = colors.ground;
+      }
       paint.fillRect(0, G, W, H - G);
-      backdrops.set(key, plate);
+      backdrops.set(cacheKey, plate);
     }
-    g.drawImage(backdrops.get(key), 0, 0);
+    g.drawImage(backdrops.get(cacheKey), 0, 0);
     g.fillStyle = colors.far;
     g.beginPath();
     g.moveTo(0, G);
@@ -50,6 +58,10 @@
       const x = (i * 127 + 67) % W + Math.sin(time * .8 + i) * 14;
       const y = (i * 83 + H - time * (8 + i % 5) % H + H) % H;
       if (y < G) g.fillRect(x, y, 2 + i % 4, 2 + i % 4);
+    }
+    if (arena) {
+      g.globalAlpha = 1;
+      return;
     }
     for (let i = -1; i < 12; i++) {
       const x = i * 94 - (dist % 94);
@@ -111,18 +123,28 @@
   }
 
   function drawCourse(s) {
+    const left = s.cameraX ?? 0;
+    const colors = V.biomes[s.biome];
     const platformArt = V.readyImage('platform-' + s.biome);
     for (const platform of s.platforms) {
       const x = V.stageX(s, platform.worldX);
-      if (x + platform.w < 0 || x > W) continue;
-      if (platformArt) {
+      if (x + platform.w < left || x > left + W) continue;
+      if (platform.ground) {
+        g.fillStyle = colors.ground;
+        g.fillRect(x, platform.y, platform.w, H - platform.y);
+        g.fillStyle = colors.far;
+        g.fillRect(x, platform.y + 9, platform.w, 5);
+        for (let tile = 10; tile + 22 < platform.w; tile += 51) {
+          g.fillRect(x + tile, platform.y + 24 + tile % 17, 22, 4);
+        }
+      } else if (platformArt) {
         const scale = platform.w / platformArt.naturalWidth;
         g.drawImage(platformArt, x, platform.y - deckY[s.biome] * scale, platform.w, platformArt.naturalHeight * scale);
       } else if (!sprite('platform', x, platform.y - 13, platform.w, 48)) {
         g.fillStyle = '#3c6871';
         g.fillRect(x, platform.y, platform.w, platform.h);
       }
-      g.fillStyle = V.biomes[s.biome].accent;
+      g.fillStyle = colors.accent;
       g.globalAlpha = .55;
       g.fillRect(x + 6, platform.y, platform.w - 12, 2);
       g.globalAlpha = 1;
@@ -138,7 +160,7 @@
     for (const coin of s.coins) {
       if (coin.taken) continue;
       const x = V.stageX(s, coin.worldX);
-      if (x < -20 || x > W + 20) continue;
+      if (x < left - 20 || x > left + W + 20) continue;
       const width = 6 + Math.abs(Math.cos(s.elapsed * 5.5)) * 8;
       g.fillStyle = '#9e663f';
       g.fillRect(x - width / 2 - 1, coin.y - 9, width + 2, 18);
@@ -153,6 +175,7 @@
     for (const enemy of s.enemies) {
       if (enemy.hp <= 0) continue;
       const { x, y, w, h } = enemy;
+      if (x + w < s.cameraX || x > s.cameraX + W) continue;
       const windingUp = enemy.attackState === 'tell';
       const crouch = windingUp && !reducedMotion ? .18 * (1 - enemy.attackLeft / enemy.windup) : 0;
       g.save();
@@ -190,6 +213,24 @@
         }
         g.globalAlpha = 1;
       }
+    }
+  }
+
+  function drawExit(s) {
+    const x = s.exitX;
+    if (x + 56 < s.cameraX || x - 12 > s.cameraX + W) return;
+    const color = s.exitOpen ? '#8bffcf' : '#f8b381';
+    g.fillStyle = '#102036';
+    g.fillRect(x - 4, G - 64, 56, 64);
+    g.strokeStyle = color;
+    g.lineWidth = 3;
+    g.strokeRect(x - 4, G - 64, 56, 64);
+    g.fillStyle = color;
+    g.font = 'bold 12px monospace';
+    g.fillText(s.exitOpen ? 'ZIEL →' : 'ZU', x + 3, G - 72);
+    if (!s.exitOpen) {
+      g.fillRect(x - 4, G - 28, 56, 4);
+      g.fillRect(x - 4, G - 18, 56, 4);
     }
   }
 
@@ -325,14 +366,23 @@
   }
 
   V.render = function (section) {
-    background(section.biome, section.elapsed, section.dist);
+    const arena = section.kind === 'arena';
+    background(section.biome, section.elapsed, arena ? section.cameraX : section.dist, arena);
+    if (arena) {
+      g.save();
+      g.translate(-Math.round(section.cameraX), 0);
+    }
     drawCourse(section);
-    if (section.kind === 'arena') {
+    if (arena) {
+      drawExit(section);
       drawEnemies(section);
-      for (const shot of section.projectiles) drawProjectile(shot);
+      for (const shot of section.projectiles) {
+        if (shot.x + shot.r >= section.cameraX && shot.x - shot.r <= section.cameraX + W) drawProjectile(shot);
+      }
     }
     if (section.kind === 'boss') drawBoss(section);
     drawPlayer(section);
     drawImpacts(section);
+    if (arena) g.restore();
   };
 })();

@@ -150,7 +150,7 @@
     content('level-kind', kinds[s.kind]);
     content('level-title', s.title);
     content('level-tip', s.kind === 'boss' ? s.boss.definition.counter :
-      s.kind === 'arena' ? 'Anlauf + Dash · Angriffe leuchten vorher auf' : 'Springen · Kisten per Dash zerlegen');
+      s.kind === 'arena' ? 'Besiege die Gegner · Spring über die Lücken · Ziel rechts' : 'Springen · Kisten per Dash zerlegen');
     hud(s);
     get('game').focus({ preventScroll: true });
   }
@@ -163,10 +163,10 @@
     content('hud-score', Math.floor(s.score) + ' P · ×' + s.multiplier + ' · ' + Math.round(s.speed) + ' Tempo');
     const alive = s.kind === 'arena' ? s.enemies.filter(enemy => enemy.hp > 0).length : 0;
     const label = s.kind === 'boss' ? 'BOSS · PHASE ' + (s.boss.phase + 1) :
-      s.kind === 'travel' ? 'REISEZEIT' : s.kind === 'arena' ? 'WELLE ' + s.wave + ' / ' + s.waves : 'DISTANZ';
+      s.kind === 'travel' ? 'REISEZEIT' : s.kind === 'arena' ? 'KAMPFSTRECKE' : 'DISTANZ';
     const value = s.kind === 'boss' ? s.boss.hp + ' / ' + s.boss.maxHp : s.kind === 'travel' ?
       duration(Math.max(0, Math.ceil(s.duration - s.elapsed))) : s.kind === 'arena' ?
-        alive + ' Gegner' : Math.floor(s.dist) + ' m';
+        (alive ? alive + ' Gegner' : 'Zum Ziel →') : Math.floor(s.dist) + ' m';
     const ratio = s.kind === 'boss' ? s.boss.hp / s.boss.maxHp : s.kind === 'travel' ?
       s.elapsed / s.duration : s.kind === 'arena' ? 1 - alive / s.enemies.length : 0;
     content('hud-number', value);

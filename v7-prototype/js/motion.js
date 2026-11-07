@@ -2,6 +2,7 @@
   'use strict';
   const V = window.VS7;
   const G = V.GROUND;
+  const motion = V.arenaMotion;
 
   V.newSection = function ({ kind, character, build = {}, biome = 'reef', seed, hp = 3, title }) {
     const traits = V.characters[character];
@@ -10,7 +11,7 @@
       maxHp: hp + traits.hp, magnetRange: traits.magnet, coinsTaken: 0, coinSerial: 0,
       coins: [], obstacles: [], platforms: [], projectiles: [], effects: [], hitStop: 0, outcome: null, feedback: '', feedbackTime: 0,
       player: { x: V.START_X, y: G - 43, w: 44, h: 43, vx: 0, vy: 0, facing: 1, jumps: 0,
-        gravity: 1790 * traits.gravity, invuln: 0, dashTime: 0, dashCooldown: 0, angle: 0,
+        gravity: motion.gravity * traits.gravity, invuln: 0, dashTime: 0, dashCooldown: 0, angle: 0,
         grounded: true, airDash: true, dashPower: 1, dashBuffer: 0, jumpBuffer: 0, coyote: 0, landTime: 0 }
     };
     V.applyBuild(section, build);
@@ -96,17 +97,22 @@
 
   function moveVertical(s, dt) {
     const p = s.player;
+    const arena = s.kind === 'arena';
     const wasGrounded = p.grounded;
     const previousBottom = p.y + p.h;
     p.grounded = false;
     p.vy += p.gravity * dt;
     p.y += p.vy * dt;
-    let floor = G;
+    let floor = arena ? Infinity : G;
+    let landed;
     if (p.vy >= 0) {
       for (const platform of s.platforms) {
         const x = V.stageX(s, platform.worldX);
-        if (p.x + p.w > x + 4 && p.x < x + platform.w - 4 &&
-          previousBottom <= platform.y + 2 && p.y + p.h >= platform.y) floor = Math.min(floor, platform.y);
+        if (platform.y <= floor && p.x + p.w > x + 4 && p.x < x + platform.w - 4 &&
+          previousBottom <= platform.y + 2 && p.y + p.h >= platform.y) {
+          floor = platform.y;
+          landed = platform;
+        }
       }
     }
     if (p.y + p.h >= floor) {
@@ -116,6 +122,9 @@
       p.jumps = 0;
       p.grounded = true;
       p.airDash = true;
+      if (arena && landed?.ground) {
+        s.checkpointX = V.clamp(p.x, landed.worldX + 24, landed.worldX + landed.w - p.w - 24);
+      }
     }
     if (p.y < -70) {
       p.y = -70;
@@ -141,16 +150,16 @@
     if (p.jumpBuffer > 0 && p.jumps < 2 + s.extraJumps) {
       if (!p.grounded && p.coyote <= 0 && p.jumps === 0) p.jumps = 1;
       if (s.airSpring && p.jumps === 1) p.airDash = true;
-      p.vy = p.jumps === 0 ? -730 : -660 * p.doubleJumpBoost;
+      p.vy = p.jumps === 0 ? -motion.jump : -660 * p.doubleJumpBoost;
       p.grounded = false;
       p.coyote = p.jumpBuffer = p.landTime = 0;
       p.jumps++;
     }
     if (arena && p.dashTime <= 0) {
-      const cap = 330 + V.characters[s.character].speed;
+      const cap = motion.run + V.characters[s.character].speed;
       if (direction) {
         p.facing = direction;
-        p.vx = V.clamp(p.vx + direction * 1900 * dt, -cap, cap);
+        p.vx = V.clamp(p.vx + direction * motion.acceleration * dt, -cap, cap);
       } else {
         p.vx = Math.sign(p.vx) * Math.max(0, Math.abs(p.vx) - 1750 * dt);
       }
@@ -174,7 +183,7 @@
       }
     }
     if (arena) {
-      p.x = V.clamp(p.x + p.vx * dt, 22, V.W - p.w - 22);
+      p.x = V.clamp(p.x + p.vx * dt, 22, s.worldWidth - p.w - 22);
     } else if (boss) {
       if (direction && p.dashTime <= 0) p.facing = direction;
       const swim = direction * 245 + (s.wind || 0);

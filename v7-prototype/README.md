@@ -14,10 +14,17 @@ Entpacke die ZIP und öffne `v7-prototype/index.html`. Der Offline-Build enthäl
 
 ## Kampf und Perks
 
+- Gegnerlevel sind scrollende Kampfstrecken mit drei oder vier Inseln. Besiege alle Gegner und erreiche rechts das Tor. Ein Sturz kostet ein Herz und setzt dich auf die letzte erreichte Insel zurück.
 - Ein etwas zu früh gedrückter Dash löst aus, sobald die Abklingzeit endet. Im Bosskampf stößt der Dash nach vorn, mit **A/D** auch in die gewählte Richtung. Der Konter hat etwas Reichweite um die Figur und gibt den Dash schneller wieder frei.
 - Krabbler stürmen in die angekündigte Richtung, Springer markieren ihre Landestelle und gepanzerte Gegner feuern eine Bodenwelle. Ein Dash-Treffer unterbricht ihren Angriff.
 - Landungen, Dash und Wind-ups verformen die Sprites kurz. Konter und Treffer zeigen Partikel, einen kurzen Trefferstopp und beim Boss einen sichtbaren Rückstoß. Die Systemeinstellung für reduzierte Bewegung schaltet die zusätzlichen Verformungen, Nachbilder und Partikel ab.
 - Zeitpolster verlängert den Eingabepuffer, Kettenreaktion lädt den Dash beim Treffer auf und Durchschlag erhöht den Schaden. Münzschwarm kann pro Abschnitt ein Herz heilen. Bestehende Perks und offene Perk-Auswahlen nutzen dieselben IDs und laden mit ihren überarbeiteten Effekten.
+
+## Prozedurale Plattformwege
+
+Seed und Level-ID bestimmen Inselbreiten, Plattformhöhen und Abstände. Jedes Biom hat eigene Folgen aus steigenden und fallenden Plattformen. Die Strecke bleibt beim Neustart reproduzierbar, auch mit einem anderen Perk-Build.
+
+Die maximale Höhe eines Grundsprungs ist `v₀² / (2g)`. Für ein Ziel, das um `Δh` höher liegt, ist die Flugzeit bis zur Landung auf dem absteigenden Teil der Sprungkurve `(v₀ + √(v₀² − 2gΔh)) / g`. Daraus ergibt sich die horizontale Reichweite vom Stand bis zum Lauftempo. Der Generator rechnet mit dem niedrigsten Lauftempo und der höchsten Schwerkraft der Grundfiguren, nimmt die kleinere Reichweite beider Richtungen und verwendet höchstens 72 Prozent davon.
 
 ## Testmodus
 
@@ -27,7 +34,7 @@ Gib auf der Weltkarte im Feld **Seed** `admin` ein und drücke **Enter**. Mit **
 
 Im Spielordner `node --test tests/smoke.test.js` ausführen. Für die Prüfung des vollständigen Offline-Pakets unter Linux oder macOS `REQUIRE_OFFLINE_MEDIA=1 node --test tests/smoke.test.js` verwenden.
 
-Alle 26 Tests bestanden. Die Kampagne wurde zusätzlich mit den echten Spielmodulen und nachgebildeten Browser-Schnittstellen durchgespielt. Der Lauf deckte neun Reisen über insgesamt 1.315 Spielsekunden, vier Gegnerlevel, alle drei Phasen jedes Bosses, Neuladen vor der Perk-Wahl und das Finale mit Abspann ab. Im Kampftest wurden Treffer gezielt vorbereitet. Tastatur, Touch-Ereignisse und Tabwechsel liefen über die Input-Handler. Die Kampfszenen wurden separat auf Canvas gerendert. Darstellung, Audioausgabe und Bildrate auf echten Geräten wurden dabei nicht gemessen.
+Alle 29 Tests bestanden. Die Plattformtests prüfen 40 Seeds rechnerisch und springen ausgewählte Strecken mit allen drei Grundfiguren in beide Richtungen ab. Ein zusätzlicher Kampagnendurchlauf mit nachgebildeten Browser-Schnittstellen deckte neun Reisen, vier Gegnerlevel mit echten Sprungeingaben, alle fünf Bosse und den Abspann ab. Kampftreffer wurden dabei gezielt vorbereitet. Darstellung, Audioausgabe und Bildrate auf echten Geräten wurden nicht gemessen.
 
 ## Messung des Runners vor dem Kampf-Update
 
