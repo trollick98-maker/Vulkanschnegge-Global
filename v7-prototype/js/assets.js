@@ -15,6 +15,9 @@
   for (const biome of ['reef', 'greed', 'diva', 'vortex']) {
     const platform = 'platform-' + biome;
     images[platform] = 'umgebung/' + platform + '.png';
+    for (const pose of ['idle', 'active']) {
+      images['trap-' + biome + '-' + pose] = 'fallen/' + biome + '-' + pose + '.png';
+    }
     for (const role of ['crawler', 'jumper', 'armored']) {
       const key = biome + '-' + role;
       images[key] = 'gegner/' + key + '.png';

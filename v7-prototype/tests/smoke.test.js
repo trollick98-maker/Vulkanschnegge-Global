@@ -9,9 +9,9 @@ const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
 const modules = [
   'config', 'assets', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data',
-  'motion', 'runner', 'arena-layout', 'arena', 'combat', 'audio', 'online-board', 'input', 'story', 'render', 'ui', 'main'
+  'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'combat', 'audio', 'online-board', 'input', 'story', 'render', 'ui', 'main'
 ];
-const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'motion', 'runner', 'arena-layout', 'arena', 'combat', 'story'];
+const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'combat', 'story'];
 const idle = {};
 
 function logic(storage = new Map(), files = rules, extra = {}) {
@@ -270,7 +270,7 @@ test('normal arena dashes reward momentum and use the original rebound loop', ()
   const node = V.routesFrom(c, V.generateMap(c.seed))[0].node;
   const s = V.newArena(node, 'snail', {}, c.seed);
   const p = s.player;
-  s.enemies = [{ key: 'armored', x: 300, y: V.GROUND - 40, w: 51, h: 40, hp: 2,
+  s.enemies = [{ key: 'armored', x: 300, y: V.GROUND - 40, floorY: V.GROUND, w: 51, h: 40, hp: 2,
     attackState: 'ready', attackLeft: 10, range: 245, left: 22, right: 400 }];
   p.x = 281;
   p.vx = 245;
@@ -291,8 +291,17 @@ test('arena routes vary by seed and keep every gap within bidirectional base jum
       const route = V.generateArena(node, seed);
       assert.deepEqual(plain(route), plain(V.generateArena(node, seed)));
       assert.notDeepEqual(plain(route), plain(V.generateArena(node, seed + '-other')));
-      assert.ok(route.worldWidth > V.W * 2);
-      assert.equal(route.platforms.filter(platform => platform.ground).length, node.tier >= 3 ? 4 : 3);
+      assert.ok(route.worldWidth > V.W * 5);
+      const islands = route.platforms.filter(platform => platform.ground);
+      assert.equal(islands.length, node.tier >= 3 ? 8 : 7);
+      assert.ok(islands.some(island => island.y < V.GROUND - 100));
+      assert.ok(islands.some(island => island.y > V.GROUND + 60));
+      assert.equal(route.exitY, islands.at(-1).y);
+      assert.ok(route.traps.length >= 2 && route.traps.every(trap => trap.kind === node.biome));
+      for (const trap of route.traps) {
+        assert.ok(islands.slice(1, -1).some(island => island.y === trap.y && trap.x > island.worldX + 140 &&
+          trap.x < island.worldX + island.w - 100));
+      }
       for (let i = 1; i < route.platforms.length; i++) {
         const from = route.platforms[i - 1];
         const to = route.platforms[i];
@@ -344,17 +353,22 @@ test('the arena exit checks enemies and pits return the player to the last islan
   const p = s.player;
   const island = s.platforms.find(platform => platform.ground && platform.worldX > 0);
   p.x = island.worldX + 60;
+  p.y = island.y - p.h;
   V.updateArena(s, V.rules.step, idle);
   const checkpoint = s.checkpointX;
-  assert.equal(checkpoint, p.x);
+  assert.equal(checkpoint, island.worldX + 54);
+  assert.equal(s.checkpointY, island.y);
   assert.ok(s.cameraX > 0);
+  assert.ok(s.cameraY < V.GROUND - 405);
   p.x = island.worldX + island.w + 15;
-  p.y = V.H + 24;
+  p.y = s.supportY + 302;
   V.updateArena(s, V.rules.step, idle);
   assert.equal(s.hp, s.maxHp - 1);
   assert.equal(p.x, checkpoint);
+  assert.equal(p.y + p.h, island.y);
   assert.ok(p.grounded);
   p.x = s.exitX + 5;
+  p.y = s.exitY - p.h;
   V.updateArena(s, V.rules.step, idle);
   assert.equal(s.outcome, null);
   for (const enemy of s.enemies) enemy.hp = 0;
@@ -376,7 +390,9 @@ test('arena enemies warn, lock direction and execute distinct attacks', () => {
     }
     assert.ok(enemy, role);
     arena.enemies = [enemy];
+    arena.traps = [];
     arena.player.x = enemy.x - 110;
+    arena.player.y = enemy.floorY - arena.player.h;
     enemy.attackLeft = 0;
     V.updateArena(arena, step, idle);
     assert.equal(enemy.attackState, 'tell', role);
@@ -393,8 +409,8 @@ test('arena enemies warn, lock direction and execute distinct attacks', () => {
     assert.equal(enemy.attackState, 'recover', role);
     assert.equal(enemy.targetX, target);
     assert.equal(arena.hp, arena.maxHp);
-    if (role === 'jumper') assert.ok(minY < V.GROUND - enemy.h - 80);
-    else assert.equal(minY, V.GROUND - enemy.h);
+    if (role === 'jumper') assert.ok(minY < enemy.floorY - enemy.h - 80);
+    else assert.equal(minY, enemy.floorY - enemy.h);
     if (role === 'armored') {
       assert.equal(enemy.x, x);
       assert.ok(arena.projectiles.some(shot => shot.key === 'surge' && shot.vx < 0));
@@ -402,6 +418,42 @@ test('arena enemies warn, lock direction and execute distinct attacks', () => {
       assert.ok(enemy.x < x - 60);
       assert.equal(arena.projectiles.length, 0);
     }
+  }
+});
+
+test('biome traps telegraph, use local elevation, and hurt only during activation', () => {
+  const { V } = logic(undefined, [...rules, 'assets']);
+  const seed = 'hazards';
+  const graph = V.generateMap(seed);
+  for (const [kind, type] of Object.entries(V.arenaTrapTypes)) {
+    const s = V.newArena(graph.byId[kind + '-arena'], 'snail', {}, seed);
+    const trap = s.traps[0];
+    const p = s.player;
+    for (const pose of ['idle', 'active']) {
+      const png = fs.readFileSync(path.join(root, V.imagePath('trap-' + kind + '-' + pose)));
+      assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+    }
+    p.x = trap.x - p.w / 2;
+    p.y = trap.y - type.height - p.h - 100;
+    V.updateArenaTraps(s, .1);
+    assert.equal(trap.state, 'idle');
+    p.y = trap.y - p.h;
+    V.updateArenaTraps(s, .1);
+    assert.equal(trap.state, 'tell');
+    assert.equal(s.hp, s.maxHp);
+    p.x = trap.x - 95;
+    V.updateArenaTraps(s, type.windup);
+    assert.equal(trap.state, 'active');
+    assert.equal(s.hp, s.maxHp);
+    p.x = trap.x - p.w / 2;
+    V.updateArenaTraps(s, .05);
+    assert.equal(s.hp, s.maxHp - 1);
+    p.invuln = 0;
+    V.updateArenaTraps(s, .1);
+    assert.equal(s.hp, s.maxHp - 1);
+    if (kind === 'vortex') assert.equal(p.vy, -type.launch);
+    V.updateArenaTraps(s, type.active);
+    assert.equal(trap.state, 'idle');
   }
 });
 

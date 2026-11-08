@@ -122,11 +122,15 @@
       p.jumps = 0;
       p.grounded = true;
       p.airDash = true;
-      if (arena && landed?.ground) {
-        s.checkpointX = V.clamp(p.x, landed.worldX + 24, landed.worldX + landed.w - p.w - 24);
+      if (arena) {
+        s.supportY = floor;
+        if (landed?.ground) {
+          s.checkpointX = landed.worldX + 54;
+          s.checkpointY = floor;
+        }
       }
     }
-    if (p.y < -70) {
+    if (!arena && p.y < -70) {
       p.y = -70;
       p.vy = Math.max(0, p.vy);
     }

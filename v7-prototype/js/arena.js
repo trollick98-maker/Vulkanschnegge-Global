@@ -12,14 +12,17 @@
     const random = V.randomFor(s.seed + ':enemies');
     const islands = s.platforms.filter(platform => platform.ground).slice(1);
     islands.forEach((island, index) => {
-      const count = s.node.tier >= 3 && index % 2 === 1 ? 3 : 2;
+      if (index % 3 === 2 && index !== islands.length - 1) return;
+      const hasTrap = s.traps.some(trap => trap.x > island.worldX && trap.x < island.worldX + island.w);
+      const count = !hasTrap && s.node.tier >= 3 && index % 2 === 1 ? 3 : 2;
       for (let i = 0; i < count; i++) {
         const tunnelGuard = s.node.id === 'reef-side' && index === islands.length - 1 && i === count - 1;
         const key = s.node.tier === 1 && i === 0 ? 'crawler' :
           (tunnelGuard || random() < (s.node.tier - 1) * .19) ? 'armored' : random() < .48 ? 'jumper' : 'crawler';
         const type = kinds[key];
-        const x = island.worldX + island.w * (i + 1) / (count + 1) - type.w / 2;
-        s.enemies.push({ ...type, key, x, y: V.GROUND - type.h, facing: -1, attackState: 'ready',
+        const fraction = hasTrap ? (i === 0 ? .25 : .78) : (i + 1) / (count + 1);
+        const x = island.worldX + island.w * fraction - type.w / 2;
+        s.enemies.push({ ...type, key, x, y: island.y - type.h, floorY: island.y, facing: -1, attackState: 'ready',
           left: island.worldX + 15, right: island.worldX + island.w - type.w - 15,
           attackLeft: .30 + i * .19 + random() * .20 });
       }
@@ -33,7 +36,9 @@
     s.player.x = 76;
     Object.assign(s, V.generateArena(node, seed));
     s.cameraX = 0;
+    s.cameraY = V.GROUND - 405;
     s.checkpointX = s.player.x;
+    s.checkpointY = s.supportY = V.GROUND;
     s.exitOpen = false;
     s.enemies = [];
     s.kills = 0;
@@ -47,7 +52,7 @@
   };
 
   function updateEnemy(s, enemy, dt) {
-    const ground = V.GROUND - enemy.h;
+    const ground = enemy.floorY - enemy.h;
     enemy.attackLeft -= dt;
     if (enemy.attackState === 'tell') {
       if (enemy.attackLeft > 0) return;
@@ -55,9 +60,9 @@
       enemy.attackLeft = enemy.active;
       if (enemy.key === 'armored') {
         const x = enemy.x + enemy.w / 2 + enemy.facing * (enemy.w / 2 + 14);
-        s.projectiles.push({ key: 'surge', x, y: V.GROUND - 15, vx: enemy.facing * 350, r: 19,
+        s.projectiles.push({ key: 'surge', x, y: enemy.floorY - 15, vx: enemy.facing * 350, r: 19,
           left: enemy.left - 15, right: enemy.right + enemy.w + 15 });
-        V.impact(s, x, V.GROUND - 3, '#85dcff');
+        V.impact(s, x, enemy.floorY - 3, '#85dcff');
       }
     }
     if (enemy.attackState === 'active') {
@@ -68,7 +73,7 @@
       enemy.attackState = 'recover';
       enemy.attackLeft = enemy.recovery;
       enemy.y = ground;
-      if (enemy.key === 'jumper') V.impact(s, enemy.x + enemy.w / 2, V.GROUND - 3, enemy.color);
+      if (enemy.key === 'jumper') V.impact(s, enemy.x + enemy.w / 2, enemy.floorY - 3, enemy.color);
       return;
     }
     if (enemy.attackState === 'recover') {
@@ -77,7 +82,8 @@
       return;
     }
 
-    if (s.player.x + s.player.w < enemy.left - 68 || s.player.x > enemy.right + enemy.w + 68) return;
+    if (s.player.x + s.player.w < enemy.left - 68 || s.player.x > enemy.right + enemy.w + 68 ||
+        Math.abs(s.player.y + s.player.h - enemy.floorY) > 155) return;
     const target = s.player.x + (s.player.w - enemy.w) / 2;
     const distance = target - enemy.x;
     enemy.facing = Math.sign(distance) || enemy.facing;
@@ -99,16 +105,20 @@
     s.elapsed += dt;
     V.movePlayer(s, dt, actions);
     const p = s.player;
-    if (p.y > V.H + 22) {
+    if (p.y > s.supportY + 300) {
       p.invuln = 0;
       V.hurt(s);
-      Object.assign(p, { x: s.checkpointX, y: V.GROUND - p.h, vx: 0, vy: 0, grounded: true,
+      Object.assign(p, { x: s.checkpointX, y: s.checkpointY - p.h, vx: 0, vy: 0, grounded: true,
         jumps: 0, airDash: true, dashBuffer: 0, jumpBuffer: 0, dashCooldown: 0, angle: 0, landTime: 0 });
       s.cameraX = cameraTarget(s);
+      s.cameraY = s.checkpointY - 405;
+      s.supportY = s.checkpointY;
       if (s.outcome === null) V.say(s, 'Abgrund · zurück auf die letzte Insel');
       return;
     }
     s.cameraX = V.lerp(s.cameraX, cameraTarget(s), Math.min(1, dt * 7.5));
+    const targetY = p.grounded ? p.y + p.h - 405 : V.clamp(s.cameraY, p.y + p.h - 475, p.y - 115);
+    s.cameraY = V.lerp(s.cameraY, targetY, Math.min(1, dt * 6));
     s.speed = Math.abs(p.vx);
     s.score += s.speed * .1 * dt;
     for (const enemy of s.enemies) {
@@ -141,10 +151,11 @@
       }
     }
     s.projectiles = s.projectiles.filter(shot => !shot.dead);
+    if (s.outcome === null) V.updateArenaTraps(s, dt);
     V.collectCoins(s);
     if (s.outcome !== null) return;
     s.exitOpen = s.enemies.every(enemy => enemy.hp <= 0);
-    if (!p.grounded || p.y + p.h < V.GROUND - 1 || p.x + p.w / 2 < s.exitX) return;
+    if (!p.grounded || Math.abs(p.y + p.h - s.exitY) > 1 || p.x + p.w / 2 < s.exitX) return;
     if (s.exitOpen) s.outcome = true;
     else if (s.feedbackTime <= 0) V.say(s, 'Tor gesperrt · Gegner auf den Inseln besiegen');
   };

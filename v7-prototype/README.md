@@ -14,7 +14,8 @@ Entpacke die ZIP und öffne `v7-prototype/index.html`. Der Offline-Build enthäl
 
 ## Kampf und Perks
 
-- Gegnerlevel sind scrollende Kampfstrecken mit drei oder vier Inseln. Besiege alle Gegner und erreiche rechts das Tor. Ein Sturz kostet ein Herz und setzt dich auf die letzte erreichte Insel zurück.
+- Gegnerlevel führen über sieben oder acht Inseln mit Aufstiegen und Abstiegen. Die Kamera folgt dir auch in der Höhe. Besiege alle Gegner und erreiche das Tor am Ende der Strecke. Ein Sturz kostet ein Herz und setzt dich auf die letzte erreichte Insel zurück.
+- Im Riff schnappen Muscheln zu, im Tresor fahren Goldstacheln aus, bei der Diva markieren Scheinwerfer ihre Trefferzone und im Wrack schleudern Wasserfontänen dich hoch. Jede Falle warnt vor dem Angriff und hat eigene Sprites für Ruhe und Aktivierung.
 - Ein etwas zu früh gedrückter Dash löst aus, sobald die Abklingzeit endet. Im Bosskampf stößt der Dash nach vorn, mit **A/D** auch in die gewählte Richtung. Der Konter hat etwas Reichweite um die Figur und gibt den Dash schneller wieder frei.
 - Krabbler stürmen in die angekündigte Richtung, Springer markieren ihre Landestelle und gepanzerte Gegner feuern eine Bodenwelle. Ein Dash-Treffer unterbricht ihren Angriff.
 - Landungen, Dash und Wind-ups verformen die Sprites kurz. Konter und Treffer zeigen Partikel, einen kurzen Trefferstopp und beim Boss einen sichtbaren Rückstoß. Die Systemeinstellung für reduzierte Bewegung schaltet die zusätzlichen Verformungen, Nachbilder und Partikel ab.
@@ -34,7 +35,7 @@ Gib auf der Weltkarte im Feld **Seed** `admin` ein und drücke **Enter**. Mit **
 
 Im Spielordner `node --test tests/smoke.test.js` ausführen. Für die Prüfung des vollständigen Offline-Pakets unter Linux oder macOS `REQUIRE_OFFLINE_MEDIA=1 node --test tests/smoke.test.js` verwenden.
 
-Alle 29 Tests bestanden. Die Plattformtests prüfen 40 Seeds rechnerisch und springen ausgewählte Strecken mit allen drei Grundfiguren in beide Richtungen ab. Ein zusätzlicher Kampagnendurchlauf mit nachgebildeten Browser-Schnittstellen deckte neun Reisen, vier Gegnerlevel mit echten Sprungeingaben, alle fünf Bosse und den Abspann ab. Kampftreffer wurden dabei gezielt vorbereitet. Darstellung, Audioausgabe und Bildrate auf echten Geräten wurden nicht gemessen.
+Alle 30 Tests bestanden. Eine separate Simulation prüfte für 40 Seeds die Plattformwege mit allen drei Grundfiguren in beide Richtungen. Ein zusätzlicher Kampagnendurchlauf mit nachgebildeten Browser-Schnittstellen deckte neun Reisen, vier Gegnerlevel mit Sprungeingaben, alle fünf Bosse und den Abspann ab. Kampftreffer wurden dabei gezielt vorbereitet. Die Fallenansichten wurden separat gerendert.
 
 ## Messung des Runners vor dem Kampf-Update
 

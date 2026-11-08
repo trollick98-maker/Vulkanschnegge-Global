@@ -14,7 +14,7 @@
   };
   g.imageSmoothingEnabled = false;
 
-  function background(key, time, dist, arena) {
+  function background(key, time, dist, arena, cameraY) {
     const colors = V.biomes[key];
     const cacheKey = arena ? key + ':arena' : key;
     if (!backdrops.has(cacheKey)) {
@@ -39,17 +39,18 @@
       backdrops.set(cacheKey, plate);
     }
     g.drawImage(backdrops.get(cacheKey), 0, 0);
+    const ridge = arena ? G - V.clamp(cameraY * .16, -75, 75) : G;
     g.fillStyle = colors.far;
     g.beginPath();
-    g.moveTo(0, G);
+    g.moveTo(0, ridge);
     for (let i = -1; i < 10; i++) {
       const x = i * 132 - (dist * .19) % 132;
-      g.lineTo(x, 389);
-      g.lineTo(x + 38, 309 + i % 3 * 22);
-      g.lineTo(x + 78, 326);
-      g.lineTo(x + 119, 389);
+      g.lineTo(x, ridge - 61);
+      g.lineTo(x + 38, ridge - 141 + i % 3 * 22);
+      g.lineTo(x + 78, ridge - 124);
+      g.lineTo(x + 119, ridge - 61);
     }
-    g.lineTo(W, G);
+    g.lineTo(W, ridge);
     g.closePath();
     g.fill();
     g.globalAlpha = .18;
@@ -124,14 +125,15 @@
 
   function drawCourse(s) {
     const left = s.cameraX ?? 0;
+    const top = s.cameraY ?? 0;
     const colors = V.biomes[s.biome];
     const platformArt = V.readyImage('platform-' + s.biome);
     for (const platform of s.platforms) {
       const x = V.stageX(s, platform.worldX);
-      if (x + platform.w < left || x > left + W) continue;
+      if (x + platform.w < left || x > left + W || platform.y < top - 130 || platform.y > top + H + 24) continue;
       if (platform.ground) {
         g.fillStyle = colors.ground;
-        g.fillRect(x, platform.y, platform.w, H - platform.y);
+        g.fillRect(x, platform.y, platform.w, 116);
         g.fillStyle = colors.far;
         g.fillRect(x, platform.y + 9, platform.w, 5);
         for (let tile = 10; tile + 22 < platform.w; tile += 51) {
@@ -160,7 +162,7 @@
     for (const coin of s.coins) {
       if (coin.taken) continue;
       const x = V.stageX(s, coin.worldX);
-      if (x < left - 20 || x > left + W + 20) continue;
+      if (x < left - 20 || x > left + W + 20 || coin.y < top - 14 || coin.y > top + H + 14) continue;
       const width = 6 + Math.abs(Math.cos(s.elapsed * 5.5)) * 8;
       g.fillStyle = '#9e663f';
       g.fillRect(x - width / 2 - 1, coin.y - 9, width + 2, 18);
@@ -175,7 +177,7 @@
     for (const enemy of s.enemies) {
       if (enemy.hp <= 0) continue;
       const { x, y, w, h } = enemy;
-      if (x + w < s.cameraX || x > s.cameraX + W) continue;
+      if (x + w < s.cameraX || x > s.cameraX + W || y + h < s.cameraY || y > s.cameraY + H) continue;
       const windingUp = enemy.attackState === 'tell';
       const crouch = windingUp && !reducedMotion ? .18 * (1 - enemy.attackLeft / enemy.windup) : 0;
       g.save();
@@ -206,10 +208,10 @@
         g.globalAlpha = .28 + progress * .46;
         if (enemy.key === 'jumper') {
           g.strokeStyle = '#ffb6d9';
-          g.strokeRect(enemy.targetX - 6, G - 9, w + 12, 8);
+          g.strokeRect(enemy.targetX - 6, enemy.floorY - 9, w + 12, 8);
         } else {
           const destination = enemy.key === 'armored' ? x + enemy.facing * 126 : enemy.targetX;
-          g.fillRect(Math.min(x, destination) + w / 2, G - 4, Math.abs(destination - x), 3);
+          g.fillRect(Math.min(x, destination) + w / 2, enemy.floorY - 4, Math.abs(destination - x), 3);
         }
         g.globalAlpha = 1;
       }
@@ -218,19 +220,49 @@
 
   function drawExit(s) {
     const x = s.exitX;
+    const y = s.exitY;
     if (x + 56 < s.cameraX || x - 12 > s.cameraX + W) return;
     const color = s.exitOpen ? '#8bffcf' : '#f8b381';
     g.fillStyle = '#102036';
-    g.fillRect(x - 4, G - 64, 56, 64);
+    g.fillRect(x - 4, y - 64, 56, 64);
     g.strokeStyle = color;
     g.lineWidth = 3;
-    g.strokeRect(x - 4, G - 64, 56, 64);
+    g.strokeRect(x - 4, y - 64, 56, 64);
     g.fillStyle = color;
     g.font = 'bold 12px monospace';
-    g.fillText(s.exitOpen ? 'ZIEL →' : 'ZU', x + 3, G - 72);
+    g.fillText(s.exitOpen ? 'ZIEL →' : 'ZU', x + 3, y - 72);
     if (!s.exitOpen) {
-      g.fillRect(x - 4, G - 28, 56, 4);
-      g.fillRect(x - 4, G - 18, 56, 4);
+      g.fillRect(x - 4, y - 28, 56, 4);
+      g.fillRect(x - 4, y - 18, 56, 4);
+    }
+  }
+
+  function drawTraps(s) {
+    for (const trap of s.traps) {
+      const type = V.arenaTrapTypes[trap.kind];
+      const { x, y } = trap;
+      if (x + 52 < s.cameraX || x - 52 > s.cameraX + W || y < s.cameraY || y - type.height - 65 > s.cameraY + H) continue;
+      const spotlight = trap.kind === 'diva';
+      const active = trap.state === 'active';
+      const left = x - type.width / 2;
+      if (trap.state !== 'idle') {
+        g.fillStyle = type.color;
+        if (spotlight) {
+          g.globalAlpha = active ? .40 : .16;
+          g.fillRect(left, y - type.height, type.width, type.height);
+          g.globalAlpha = 1;
+        }
+        const progress = active ? 1 : 1 - trap.left / type.windup;
+        g.strokeStyle = type.color;
+        g.strokeRect(left, y - 8, type.width, 6);
+        g.fillRect(left, y - 7, type.width * progress, 4);
+      }
+      const artY = spotlight ? y - type.height : y;
+      const pose = active ? 'active' : 'idle';
+      if (!fittedSprite('trap-' + trap.kind + '-' + pose, x - 45, artY - 89, 90, 89, true)) {
+        g.fillStyle = type.color;
+        g.fillRect(left, artY - (active ? 29 : 12), type.width, active ? 29 : 12);
+      }
     }
   }
 
@@ -367,14 +399,15 @@
 
   V.render = function (section) {
     const arena = section.kind === 'arena';
-    background(section.biome, section.elapsed, arena ? section.cameraX : section.dist, arena);
+    background(section.biome, section.elapsed, arena ? section.cameraX : section.dist, arena, section.cameraY);
     if (arena) {
       g.save();
-      g.translate(-Math.round(section.cameraX), 0);
+      g.translate(-Math.round(section.cameraX), -Math.round(section.cameraY));
     }
     drawCourse(section);
     if (arena) {
       drawExit(section);
+      drawTraps(section);
       drawEnemies(section);
       for (const shot of section.projectiles) {
         if (shot.x + shot.r >= section.cameraX && shot.x - shot.r <= section.cameraX + W) drawProjectile(shot);
