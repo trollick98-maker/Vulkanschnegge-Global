@@ -678,13 +678,13 @@ test('the biome spritepack covers arena roles, projectiles, platforms and map la
   const spriteIds = [];
   for (const biome of ['reef', 'greed', 'diva', 'vortex']) {
     for (const role of ['crawler', 'jumper', 'armored']) spriteIds.push(biome + '-' + role);
-    spriteIds.push('platform-' + biome, 'landmark-' + biome);
+    spriteIds.push('platform-' + biome, 'landmark-' + biome, 'ground-' + biome);
   }
-  spriteIds.push('landmark-god');
+  spriteIds.push('landmark-god', 'platform-god', 'coin', 'exit-closed', 'exit-open');
   for (const [id, attack] of Object.entries(V.bossAttacks)) {
     if (!attack.zone && !attack.wind) spriteIds.push(attack.sprite ?? id);
   }
-  assert.equal(new Set(spriteIds.map(id => V.imagePath(id))).size, 32);
+  assert.equal(new Set(spriteIds.map(id => V.imagePath(id))).size, 40);
   for (const id of spriteIds) {
     const png = fs.readFileSync(path.join(root, V.imagePath(id)));
     assert.equal(png.subarray(0, 8).toString('hex'), pngHeader, id);

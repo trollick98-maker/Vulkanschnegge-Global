@@ -6,6 +6,8 @@
     snail: 'snail.png', otter: 'otter.png', frog: 'frog.png', bossEel: 'boss-eel.png',
     plasma: 'plasma.png', toxic: 'toxic.png', platform: 'platform.png', mine: 'mine.png',
     crate: 'crate.png', atlas: 'boss-atlas.webp',
+    coin: 'umgebung/coin.png', 'exit-closed': 'umgebung/exit-closed.png', 'exit-open': 'umgebung/exit-open.png',
+    'platform-god': 'umgebung/platform-god.png',
     'landmark-reef': 'umgebung/landmark-reef-tunnel.png',
     'landmark-greed': 'umgebung/landmark-greed-vault.png',
     'landmark-diva': 'umgebung/landmark-diva-theater.png',
@@ -15,6 +17,7 @@
   for (const biome of ['reef', 'greed', 'diva', 'vortex']) {
     const platform = 'platform-' + biome;
     images[platform] = 'umgebung/' + platform + '.png';
+    images['ground-' + biome] = 'umgebung/ground-' + biome + '.png';
     for (const pose of ['idle', 'active']) {
       images['trap-' + biome + '-' + pose] = 'fallen/' + biome + '-' + pose + '.png';
     }

@@ -7,7 +7,7 @@
   const backdrops = new Map();
   const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   // Y coordinate of each walkable deck in its source PNG.
-  const deckY = { reef: 17, greed: 2, diva: 2, vortex: 2 };
+  const deckY = { reef: 17, greed: 2, diva: 2, vortex: 2, god: 1 };
   const atlas = {
     greed: [26, 0, 335, 239], diva: [418, 0, 311, 247],
     vortex: [47, 239, 279, 273], god: [394, 260, 328, 236]
@@ -129,16 +129,31 @@
     const top = s.cameraY ?? 0;
     const colors = V.biomes[s.biome];
     const platformArt = V.readyImage('platform-' + s.biome);
+    const groundArt = s.biome === 'god' ? platformArt : V.readyImage('ground-' + s.biome);
+    const tileSize = 150;
+    if (groundArt && !V.usesMomentum(s)) {
+      const height = tileSize * groundArt.naturalHeight / groundArt.naturalWidth;
+      for (let x = -Math.floor(s.dist % tileSize); x < W; x += tileSize) {
+        g.drawImage(groundArt, x, G, tileSize, height);
+      }
+    }
     for (const platform of s.platforms) {
       const x = V.stageX(s, platform.worldX);
       if (x + platform.w < left || x > left + W || platform.y < top - 130 || platform.y > top + H + 24) continue;
       if (platform.ground) {
         g.fillStyle = colors.ground;
         g.fillRect(x, platform.y, platform.w, 116);
-        g.fillStyle = colors.far;
-        g.fillRect(x, platform.y + 9, platform.w, 5);
-        for (let tile = 10; tile + 22 < platform.w; tile += 51) {
-          g.fillRect(x + tile, platform.y + 24 + tile % 17, 22, 4);
+        if (groundArt) {
+          const count = Math.ceil(platform.w / tileSize);
+          for (let i = 0; i < count; i++) {
+            const start = Math.round(platform.w * i / count);
+            const width = Math.round(platform.w * (i + 1) / count) - start;
+            if (x + start + width < left || x + start > left + W) continue;
+            g.drawImage(groundArt, x + start, platform.y, width, tileSize * groundArt.naturalHeight / groundArt.naturalWidth);
+          }
+        } else {
+          g.fillStyle = colors.far;
+          g.fillRect(x, platform.y + 9, platform.w, 5);
         }
       } else if (platformArt) {
         const scale = platform.w / platformArt.naturalWidth;
@@ -165,6 +180,7 @@
       const x = V.stageX(s, coin.worldX);
       if (x < left - 20 || x > left + W + 20 || coin.y < top - 14 || coin.y > top + H + 14) continue;
       const width = 6 + Math.abs(Math.cos(s.elapsed * 5.5)) * 8;
+      if (sprite('coin', x - width / 2 - 1, coin.y - 9, width + 2, 18)) continue;
       g.fillStyle = '#9e663f';
       g.fillRect(x - width / 2 - 1, coin.y - 9, width + 2, 18);
       g.fillStyle = '#ffda78';
@@ -224,18 +240,16 @@
     const y = s.exitY;
     if (x + 56 < s.cameraX || x - 12 > s.cameraX + W) return;
     const color = s.exitOpen ? '#8bffcf' : '#f8b381';
-    g.fillStyle = '#102036';
-    g.fillRect(x - 4, y - 64, 56, 64);
-    g.strokeStyle = color;
-    g.lineWidth = 3;
-    g.strokeRect(x - 4, y - 64, 56, 64);
+    if (!fittedSprite(s.exitOpen ? 'exit-open' : 'exit-closed', x - 8, y - 74, 64, 74, true)) {
+      g.fillStyle = '#102036';
+      g.fillRect(x - 4, y - 64, 56, 64);
+      g.strokeStyle = color;
+      g.lineWidth = 3;
+      g.strokeRect(x - 4, y - 64, 56, 64);
+    }
     g.fillStyle = color;
     g.font = 'bold 12px monospace';
-    g.fillText(s.exitOpen ? 'ZIEL →' : 'ZU', x + 3, y - 72);
-    if (!s.exitOpen) {
-      g.fillRect(x - 4, y - 28, 56, 4);
-      g.fillRect(x - 4, y - 18, 56, 4);
-    }
+    g.fillText(s.exitOpen ? 'ZIEL →' : 'ZU', x + 3, y - 79);
   }
 
   function drawTraps(s) {
