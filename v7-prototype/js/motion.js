@@ -3,6 +3,12 @@
   const V = window.VS7;
   const G = V.GROUND;
   const motion = V.arenaMotion;
+  const hitLooks = {
+    hit: { color: '#ffd47a', size: 70, stop: .045 },
+    hurt: { color: '#ff7298', size: 86, stop: .038 },
+    guard: { color: '#a9b8ff', size: 62, stop: .028 },
+    parry: { color: '#96fff0', size: 76, stop: .045 }
+  };
 
   V.newSection = function ({ kind, character, build = {}, biome = 'reef', seed, hp = 3, title }) {
     const traits = V.characters[character];
@@ -24,10 +30,23 @@
     section.feedbackTime = 1.8;
   };
 
-  V.impact = function (s, x, y, color, stop = 0) {
+  function addEffect(s, effect, stop) {
     if (s.effects.length === 12) s.effects.shift();
-    s.effects.push({ x, y, color, left: .3 });
+    s.effects.push(effect);
     s.hitStop = Math.max(s.hitStop, stop);
+  }
+
+  V.impact = function (s, x, y, color) {
+    addEffect(s, { x, y, color, left: .3, life: .3 }, 0);
+  };
+
+  V.hitFeedback = function (s, kind, x, y, { amount, heavy = false, direction = 1 } = {}) {
+    const look = hitLooks[kind];
+    const life = kind === 'hurt' ? .46 : .39;
+    const size = look.size * (heavy ? 1.36 : 1);
+    const stop = s.kind === 'arena' || s.kind === 'boss' ? look.stop + (heavy ? .013 : 0) : 0;
+    addEffect(s, { kind, x, y, color: look.color, size, amount, direction, left: life, life }, stop);
+    V.audio?.effect?.(kind, heavy);
   };
 
   V.projectileHits = function (player, shot, reach = 0) {
@@ -84,7 +103,7 @@
     if (V.usesMomentum(s)) V.slowOnImpact(s);
     else p.vx = direction * 220;
     p.dashTime = 0;
-    V.impact(s, p.x + p.w / 2, p.y + p.h / 2, '#ff728d', s.kind === 'arena' || s.kind === 'boss' ? .035 : 0);
+    V.hitFeedback(s, 'hurt', p.x + p.w / 2, p.y + p.h / 2, { amount: 1, direction });
     V.say(s, 'Treffer!');
     if (s.hp <= 0) s.outcome = false;
   };
@@ -191,8 +210,10 @@
     p.jumpBuffer = actions.jump ? s.inputGrace : Math.max(0, p.jumpBuffer - dt);
     p.dashBuffer = actions.dash ? s.inputGrace : Math.max(0, p.dashBuffer - dt);
     s.feedbackTime = Math.max(0, s.feedbackTime - dt);
-    for (const effect of s.effects) effect.left -= dt;
-    while (s.effects[0]?.left <= 0) s.effects.shift();
+    for (let i = s.effects.length - 1; i >= 0; i--) {
+      s.effects[i].left -= dt;
+      if (s.effects[i].left <= 0) s.effects.splice(i, 1);
+    }
     if (p.jumpBuffer > 0 && p.jumps < 2 + s.extraJumps) {
       if (!p.grounded && p.coyote <= 0 && p.jumps === 0) p.jumps = 1;
       if (s.airSpring && p.jumps === 1) p.airDash = true;

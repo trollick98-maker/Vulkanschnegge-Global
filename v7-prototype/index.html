@@ -14,7 +14,8 @@
       <div class="top-controls">
         <button id="fullscreen-btn" class="quiet" aria-label="Vollbild">⛶ <span>Vollbild</span></button>
         <button id="sound-btn" class="quiet" aria-pressed="true">♫ <span>Musik an</span></button>
-        <input id="volume" type="range" min="0" max="1" step=".05" value=".3" aria-label="Musiklautstärke">
+        <button id="effects-btn" class="quiet" aria-pressed="true">◈ <span>Effekte an</span></button>
+        <input id="volume" type="range" min="0" max="1" step=".05" value=".3" aria-label="Spiellautstärke">
       </div>
     </header>
 
@@ -105,6 +106,14 @@
         <div class="story-art"><img id="story-illustration" alt=""></div>
         <p id="story-label" class="eyebrow"></p><h2 id="story-line" lang="en"></h2><p id="story-note"></p>
         <button id="story-next" class="primary" type="button"></button>
+      </div>
+    </section>
+    <section id="boss-intro" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="boss-intro-name">
+      <div class="overlay-card story-card boss-intro-card">
+        <div class="story-art"><img id="boss-intro-image" alt=""></div>
+        <p class="eyebrow" id="boss-intro-place"></p>
+        <h2 id="boss-intro-name"></h2>
+        <button id="boss-intro-next" class="primary" type="button">Kampf starten</button>
       </div>
     </section>
 

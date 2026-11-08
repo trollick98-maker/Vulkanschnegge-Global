@@ -5,7 +5,7 @@
   const world = get('world-ui');
   const game = get('game-panel');
   const plot = get('map-plot');
-  const dialogs = ['upgrade-overlay', 'leaderboard-overlay', 'result', 'story-overlay'].map(get);
+  const dialogs = ['upgrade-overlay', 'leaderboard-overlay', 'result', 'story-overlay', 'boss-intro'].map(get);
   const NS = 'http://www.w3.org/2000/svg';
   const difficultyLabels = { common: 'Häufig', rare: 'Selten', epic: 'Episch' };
   const kinds = { travel: 'REISE', arena: 'GEGNERLEVEL', boss: 'BOSS-RUNNER', arcade: 'ENDLOS' };
@@ -244,6 +244,15 @@
     dialog('story-overlay');
   }
 
+  function bossIntro(s) {
+    const art = get('boss-intro-image');
+    art.alt = 'Der winzige Schnegg steht vor ' + s.title + '.';
+    art.src = V.imagePath('boss-intro-' + s.biome);
+    content('boss-intro-name', s.title);
+    content('boss-intro-place', 'BOSS · ' + s.node.name.toUpperCase());
+    dialog('boss-intro');
+  }
+
   function recordRow(target, name, score) {
     const row = document.createElement('div');
     row.className = 'record-row';
@@ -301,6 +310,12 @@
     event.currentTarget.setAttribute('aria-pressed', String(enabled));
     event.currentTarget.querySelector('span').textContent = enabled ? 'Musik an' : 'Musik aus';
   });
+  get('effects-btn').addEventListener('click', event => {
+    const enabled = !V.audio.effectsEnabled();
+    V.audio.setEffectsEnabled(enabled);
+    event.currentTarget.setAttribute('aria-pressed', String(enabled));
+    event.currentTarget.querySelector('span').textContent = enabled ? 'Effekte an' : 'Effekte aus';
+  });
   get('volume').addEventListener('input', event => V.audio.volume(Number(event.target.value)));
   get('player-name').value = V.profile.name;
   get('player-name').addEventListener('input', event => {
@@ -318,5 +333,5 @@
   }
   refreshCharacters();
 
-  V.ui = { map, showGame, hud, reward, result, showSlide, dialog };
+  V.ui = { map, showGame, hud, reward, result, showSlide, bossIntro, dialog };
 })();

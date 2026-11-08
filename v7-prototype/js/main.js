@@ -90,9 +90,10 @@
     }
   }
 
-  function start(section, resumeBossArena = false) {
+  function start(section, { resumeBossArena = false, skipIntro = false } = {}) {
+    const intro = section.kind === 'boss' && !skipIntro;
     state.section = section;
-    transition('play');
+    transition(intro ? 'boss-intro' : 'play');
     state.story = null;
     if (section.kind === 'arcade') {
       state.level = V.newRunner(null, section.character);
@@ -105,10 +106,24 @@
       if (resumeBossArena) V.enterBossArena(state.level);
     }
     const zone = section.route ? graph.byId[section.route.edge.b] : section.node;
+    if (section.route?.node.kind === 'boss') V.image('boss-intro-' + section.route.node.biome);
     V.audio.startLevel(section.kind, state.level.boss?.definition.track ?? zone?.music);
     ui.showGame(state.level);
     V.render(state.level);
     hudAt = 0;
+    if (intro) {
+      state.bossIntroLeft = 3;
+      ui.bossIntro(state.level);
+    }
+  }
+
+  function startBossChase() {
+    if (state.mode !== 'boss-intro') return;
+    state.mode = 'play';
+    frameAt = carry = 0;
+    V.input.reset();
+    get('test-skip-btn').classList.toggle('hidden', !canSkip());
+    ui.showGame(state.level);
   }
 
   function finish() {
@@ -150,6 +165,11 @@
     const dt = frameAt ? V.clamp((ms - frameAt) / 1000, 0, .085) : 0;
     frameAt = ms;
     V.audio.tick(dt);
+    if (state.mode === 'boss-intro') {
+      state.bossIntroLeft -= dt;
+      if (state.bossIntroLeft <= 0) startBossChase();
+      return;
+    }
     if (state.mode === 'outro') {
       outro(state.level, dt);
       return;
@@ -189,12 +209,13 @@
 
   V.backToMap = function () {
     if (!get('leaderboard-overlay').classList.contains('hidden')) ui.dialog(null);
-    else if (state.mode === 'play' || state.mode === 'result' || state.mode === 'outro') showMap();
+    else if (state.mode === 'play' || state.mode === 'boss-intro' || state.mode === 'result' || state.mode === 'outro') showMap();
   };
+  get('boss-intro-next').addEventListener('click', startBossChase);
   get('back-btn').addEventListener('click', V.backToMap);
   get('home').addEventListener('click', showMap);
   function retry() {
-    start(state.section, state.level.boss?.stage === 'arena');
+    start(state.section, { resumeBossArena: state.level.boss?.stage === 'arena', skipIntro: true });
   }
   get('restart-btn').addEventListener('click', retry);
   get('replay').addEventListener('click', retry);

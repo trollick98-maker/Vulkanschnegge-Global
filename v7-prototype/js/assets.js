@@ -35,6 +35,12 @@
   for (const scene of ['pair', 'taken', 'fade', 'rift', 'source', 'shore', 'credits']) {
     images['story-' + scene] = 'story/' + scene + '.webp';
   }
+  for (const biome of ['reef', 'greed', 'diva', 'vortex', 'god']) {
+    images['boss-intro-' + biome] = 'boss-intros/' + biome + '.webp';
+  }
+  for (const effect of ['hit', 'hurt', 'guard', 'parry']) {
+    images['impact-' + effect] = 'treffer/' + effect + '.png';
+  }
   V.assets = {};
   V.imagePath = name => 'assets/images/' + images[name];
   V.image = function (name) {

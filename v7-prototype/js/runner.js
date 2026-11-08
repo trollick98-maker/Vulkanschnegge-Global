@@ -49,7 +49,7 @@
       if (item.fragile && p.dashTime > 0) {
         item.dead = true;
         s.score += 55;
-        V.impact(s, x + item.w / 2, V.GROUND - item.h / 2, '#f8bf82');
+        V.hitFeedback(s, 'hit', x + item.w / 2, V.GROUND - item.h / 2);
         V.say(s, 'Trümmer zerlegt!');
       } else {
         item.dead = true;

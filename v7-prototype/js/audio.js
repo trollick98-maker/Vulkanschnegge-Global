@@ -4,15 +4,24 @@
   const voices = new Map();
   const playing = new Set();
   const failed = new Set();
+  const effects = new Map();
+  const effectNames = ['hit', 'hurt', 'guard', 'parry'];
   let scene = null;
   let wanted = null;
   let active = null;
   let enabled = true;
+  let effectsEnabled = true;
   let volume = .30;
   let zoneTime = 0;
 
   function pause() {
     for (const voice of playing) voice.audio.pause();
+  }
+
+  function pauseEffects() {
+    for (const pool of effects.values()) {
+      for (const audio of pool) audio.pause();
+    }
   }
 
   function play(voice) {
@@ -77,12 +86,41 @@
     },
     current: () => active,
     isEnabled: () => enabled,
+    effectsEnabled: () => effectsEnabled,
+    setEffectsEnabled(on) {
+      effectsEnabled = Boolean(on);
+      if (!effectsEnabled) pauseEffects();
+    },
+    effect(key, heavy = false) {
+      if (!scene || scene === 'story' || !effectsEnabled || volume === 0 || document.hidden || !effectNames.includes(key)) return;
+      if (!effects.has(key)) effects.set(key, []);
+      const pool = effects.get(key);
+      const idle = pool.findIndex(voice => voice.paused);
+      let audio;
+      if (idle >= 0) audio = pool.splice(idle, 1)[0];
+      else if (pool.length === 2) audio = pool.shift();
+      else {
+        audio = new Audio();
+        audio.preload = 'auto';
+        audio.src = 'assets/sfx/' + key + '.wav';
+      }
+      pool.push(audio);
+      if (audio.readyState > 0) audio.currentTime = 0;
+      audio.volume = volume * .92;
+      audio.playbackRate = heavy ? .82 : 1;
+      audio.play().catch(() => {});
+    },
     setEnabled(on) {
       enabled = Boolean(on);
       if (!enabled) pause();
       else if (scene && wanted) select(wanted);
     },
-    volume(value) { volume = V.clamp(value, 0, 1); },
+    volume(value) {
+      volume = V.clamp(value, 0, 1);
+      for (const pool of effects.values()) {
+        for (const audio of pool) audio.volume = volume * .92;
+      }
+    },
     stop() {
       scene = null;
       wanted = null;
@@ -111,8 +149,10 @@
   };
 
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) pause();
-    else if (scene && enabled && active) {
+    if (document.hidden) {
+      pause();
+      pauseEffects();
+    } else if (scene && enabled && active) {
       const voice = voices.get(active);
       if (voice && (voice.audio.loop || !voice.audio.ended)) play(voice);
     }

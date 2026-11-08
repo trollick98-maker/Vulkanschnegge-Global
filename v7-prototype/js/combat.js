@@ -10,6 +10,13 @@
     vortex: [[239, 377, 165], [513, 324, 181], [820, 355, 190], [1350, 368, 178]],
     god: [[271, 354, 146], [537, 305, 173], [849, 339, 176], [1378, 347, 160]]
   };
+  const patrols = {
+    reef: { stops: [1136, 800, 1000, 545], speed: 430, lift: 18 },
+    greed: { stops: [1136, 908, 1238, 694], speed: 335, lift: 0 },
+    diva: { stops: [1136, 822, 1080, 532], speed: 445, lift: 105 },
+    vortex: { stops: [1136, 724, 990, 492], speed: 565, lift: 26 },
+    god: { stops: [1136, 620, 970, 763, 1220], speed: 480, lift: 110 }
+  };
 
   V.newCombat = function (node, character, build, seed) {
     const definition = V.bosses[node.biome];
@@ -32,8 +39,9 @@
     const b = s.boss;
     if (b.stage === 'arena') return;
     const hp = 650 + (s.node.tier - 1) * 155;
-    Object.assign(b, { stage: 'arena', x: 1136, y: V.GROUND - 128, w: 164, h: 128,
-      hp, maxHp: hp, phase: 0, cursor: 0, attacks: 0, wait: 1.25, tell: null, flash: 0, open: false, touching: false });
+    Object.assign(b, { stage: 'arena', x: patrols[s.biome].stops[0], y: V.GROUND - 128, w: 164, h: 128,
+      hp, maxHp: hp, phase: 0, cursor: 0, attacks: 0, wait: 1.25, tell: null, flash: 0,
+      open: false, touching: false, facing: -1, stopIndex: 0, move: null });
     Object.assign(s, { worldWidth: 1620, cameraX: 0, cameraY: 0, speed: 0, wind: 0, windTime: 0,
       platforms: [{ worldX: 0, y: V.GROUND, w: 1620, h: 17, ground: true }],
       projectiles: [], obstacles: [], coins: [], effects: [] });
@@ -41,7 +49,7 @@
     const p = s.player;
     Object.assign(p, { x: 76, y: V.GROUND - p.h, vx: 0, vy: 0, angle: 0, grounded: true, jumps: 0, airDash: true,
       coyote: 0, dashTime: 0, dashLeft: 0, dashCooldown: 0, dashBuffer: 0, jumpBuffer: 0, invuln: 0, landTime: 0 });
-    V.say(s, 'Arena erreicht · Nach der Salve mit Anlauf dashen');
+    V.say(s, 'Arena erreicht · Folge dem Boss und nutze die offene Deckung');
   };
 
   function prepare(s) {
@@ -54,7 +62,8 @@
     if (b.stage === 'arena') {
       const targetX = p.x + p.w * .5;
       const targetY = p.y + p.h * .5;
-      const sourceX = targetX < b.x + b.w * .5 ? b.x : b.x + b.w;
+      b.facing = targetX < b.x + b.w * .5 ? -1 : 1;
+      const sourceX = b.facing < 0 ? b.x : b.x + b.w;
       const sourceY = attack.low ? V.GROUND - 19 : b.y + b.h * .48;
       b.tell = { key, left: total, total, targetX, targetY: attack.low ? sourceY : targetY, sourceX, sourceY };
       b.open = false;
@@ -87,7 +96,7 @@
       }
     }
     b.open = true;
-    b.wait = 1.5 - b.phase * .15;
+    b.wait = 1.60 - b.phase * .12;
     V.say(s, 'Deckung offen · Dash!');
   }
 
@@ -113,6 +122,30 @@
     b.wait = Math.max(.42, attack.rest - b.phase * .16);
   }
 
+  function startPatrol(s) {
+    const b = s.boss;
+    const patrol = patrols[s.biome];
+    b.stopIndex = (b.stopIndex + 1) % patrol.stops.length;
+    const toX = patrol.stops[b.stopIndex];
+    const duration = Math.max(.58, Math.abs(toX - b.x) / (patrol.speed * (1 + b.phase * .12)));
+    b.facing = Math.sign(toX - b.x);
+    b.move = { fromX: b.x, toX, duration, elapsed: 0, lift: patrol.lift };
+    b.open = false;
+  }
+
+  function advancePatrol(s, dt) {
+    const b = s.boss;
+    const move = b.move;
+    move.elapsed = Math.min(move.duration, move.elapsed + dt);
+    const t = move.elapsed / move.duration;
+    b.x = V.lerp(move.fromX, move.toX, t * t * (3 - 2 * t));
+    b.y = V.GROUND - b.h - Math.sin(Math.PI * t) * move.lift;
+    if (t === 1) {
+      b.move = null;
+      prepare(s);
+    }
+  }
+
   function updateAttacks(s, dt) {
     const b = s.boss;
     const phase = b.hp * 3 <= b.maxHp ? 2 : b.hp * 3 <= 2 * b.maxHp ? 1 : 0;
@@ -122,7 +155,9 @@
       V.say(s, s.biome === 'god' ? ['RUN THE LOOP', 'YOU ARE NOT STRONG ENOUGH', 'I AM NOT STRONG ENOUGH'][phase] :
         'Phase ' + (phase + 1));
     }
-    if (b.tell) {
+    if (b.move) {
+      advancePatrol(s, dt);
+    } else if (b.tell) {
       b.tell.left -= dt;
       if (b.tell.left <= 0) {
         fire(s, b.tell);
@@ -130,7 +165,10 @@
       }
     } else {
       b.wait -= dt;
-      if (b.wait <= 0) prepare(s);
+      if (b.wait <= 0) {
+        if (b.stage === 'arena' && b.attacks > 0) startPatrol(s);
+        else prepare(s);
+      }
     }
   }
 
@@ -150,11 +188,15 @@
       if (q.reflected) {
         if (q.x + q.r >= b.x + 8) {
           q.dead = true;
-          b.hp = Math.max(0, b.hp - (q.damage ?? 1));
-          b.flash = .22;
-          V.impact(s, b.x + 21, q.y, '#ffd896', .047);
+          const amount = Math.min(b.hp, q.damage ?? 1);
           s.score += 240;
-          V.say(s, 'Volltreffer!');
+          if (amount > 0) {
+            b.hp -= amount;
+            b.flash = .22;
+            b.hitSide = 1;
+            V.hitFeedback(s, 'hit', b.x + 21, q.y, { amount, heavy: true });
+            V.say(s, 'Volltreffer!');
+          }
         }
         continue;
       }
@@ -168,7 +210,7 @@
         p.invuln = Math.max(p.invuln, .16);
         p.jumps = Math.min(p.jumps, 1);
         p.dashCooldown = s.chainDash ? 0 : Math.min(p.dashCooldown, .29 * s.dashFactor);
-        V.impact(s, q.x, q.y, '#a9fff0', .042);
+        V.hitFeedback(s, 'parry', q.x, q.y);
         s.score += 80;
         V.say(s, 'Konter!');
       } else if (V.projectileHits(p, q)) {
@@ -207,22 +249,31 @@
     const p = s.player;
     V.movePlayer(s, dt, actions);
     s.cameraX = V.lerp(s.cameraX, V.arenaCameraTarget(s), Math.min(1, dt * 8));
+    const bossX = b.x;
+    const bossY = b.y;
     updateAttacks(s, dt);
     updateArenaProjectiles(s, dt);
     if (s.outcome !== null) return;
-    if (V.movementContact(p, b) < Infinity) {
+    const relative = { ...p, previousX: p.previousX + b.x - bossX, previousY: p.previousY + b.y - bossY };
+    if (V.movementContact(relative, b) < Infinity) {
       if (p.dashTime > 0) {
         const damage = b.open ? p.dashPower : 0;
+        const amount = Math.min(b.hp, damage);
+        const hitX = p.x + p.w / 2 < b.x + b.w / 2 ? b.x + 13 : b.x + b.w - 13;
+        const hitY = V.clamp(p.y + p.h / 2, b.y + 12, b.y + b.h - 12);
         V.rebound(s);
         b.hp = Math.max(0, b.hp - damage);
         if (damage > 0) {
           b.open = false;
           b.flash = .22;
+          b.hitSide = p.facing;
+          b.wait = Math.min(b.wait, .42);
           s.score += damage;
-          V.impact(s, b.x + b.w / 2, b.y + b.h / 2, '#ffd896', .055);
+          V.hitFeedback(s, 'hit', hitX, hitY, { amount, heavy: true, direction: p.facing });
           V.say(s, 'Volltreffer · −' + damage + ' HP');
           if (b.hp === 0) s.outcome = true;
         } else {
+          V.hitFeedback(s, 'guard', hitX, hitY, { direction: p.facing });
           V.say(s, b.open ? 'Mehr Anlauf!' : 'Deckung geschlossen · Auf die Salve warten');
         }
       } else if (!b.touching) V.slowOnImpact(s);

@@ -26,9 +26,13 @@ Entpacke die ZIP und öffne `v7-prototype/index.html`. Der Offline-Build enthäl
 
 ## Bosskämpfe
 
+Vor jedem Boss steht Schnegg in einem eigenen Pixelart-Intro seinem riesigen Gegner gegenüber. Das Bild bleibt drei Sekunden stehen. Mit **Kampf starten** kannst du es direkt überspringen.
+
 In der Verfolgung springst du über Hindernisse und wirfst markierte Geschosse per Dash zurück. Sobald du die Arena erreichst und der Schild gebrochen ist, beginnt das Finale. Herzen und Bossmusik gehen in die nächste Phase mit.
 
-In der Arena kannst du frei laufen und über Plattformen ausweichen. Die Schussrichtung wird vor dem Schuss angezeigt. Nach einer Salve öffnet sich die Deckung für einen Dash-Treffer. Der Knopf zum Wiederholen startet nach einem Verlust direkt in der Bossarena.
+In der Arena wechseln die Bosse nach ihren Angriffsfenstern die Position. Die Diva fliegt, GOD.EXE schwebt, und die übrigen Bosse bleiben in Bodennähe. Die Schussrichtung wird vor dem Schuss angezeigt. Nach einer Salve öffnet sich die Deckung für einen Dash-Treffer. Der Knopf zum Wiederholen startet nach einem Verlust direkt in der Bossarena.
+
+Treffer, eigener Schaden, Blocks und Konter haben eigene Pixel-Effekte und Töne. Schadenszahlen zeigen die verlorenen HP. Bei eigenem Schaden leuchtet der Rand des Spielfelds rot. Mit **Effekte an/aus** schaltest du die Treffertöne unabhängig von der Musik.
 
 ## Prozedurale Plattformwege
 
@@ -44,7 +48,7 @@ Gib auf der Weltkarte im Feld **Seed** `admin` ein und drücke **Enter**. Mit **
 
 Im Spielordner `node --test tests/smoke.test.js` ausführen. Für die Prüfung des vollständigen Offline-Pakets unter Linux oder macOS `REQUIRE_OFFLINE_MEDIA=1 node --test tests/smoke.test.js` verwenden.
 
-Die 33 Tests prüfen unter anderem die Dash-Distanz, den Tempoverlust, Gegner-HP, Reisestarts und beide Bossabschnitte. Eine separate Simulation prüfte für 40 Seeds die Plattformwege mit allen drei Grundfiguren in beide Richtungen. Lebensbalken, Schusswarnungen und die offene Bossdeckung wurden separat gerendert.
+Die 35 Tests prüfen unter anderem die Dash-Distanz, Gegner-HP, Bossbewegungen und die Treffer-Audioeinstellungen. Eine separate Simulation prüfte für 40 Seeds die Plattformwege mit allen drei Grundfiguren in beide Richtungen.
 
 ## Messung des Runners vor dem Kampf-Update
 

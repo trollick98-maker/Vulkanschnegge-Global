@@ -623,14 +623,53 @@ test('boss arena salvos aim in world space and only a timed momentum dash deals 
     };
     dash();
     assert.equal(b.hp, b.maxHp - 150);
+    assert.equal(s.effects.at(-1).kind, 'hit');
+    assert.equal(s.effects.at(-1).amount, 150);
     assert.equal(p.vx, 292.5);
     assert.equal(b.open, false);
     dash();
     assert.equal(b.hp, b.maxHp - 150);
+    assert.equal(s.effects.at(-1).kind, 'guard');
     b.hp = 150;
     b.open = true;
     dash();
     assert.equal(s.outcome, true);
+  }
+});
+
+test('boss finales patrol and settle for telegraphed shots and dash openings', () => {
+  const { V } = logic();
+  const graph = V.generateMap('patrol');
+  for (const id of Object.keys(V.bosses)) {
+    const s = V.newCombat(graph.byId[id], 'snail', {}, 'patrol');
+    V.enterBossArena(s);
+    const b = s.boss;
+    s.player.invuln = 100;
+    const stops = new Set();
+    let lift = 0;
+    let openings = 0;
+    for (let i = 0; i < 1500; i++) {
+      const lastTell = b.tell;
+      const lastX = b.x;
+      const lastY = b.y;
+      const wasOpen = b.open;
+      V.updateCombat(s, V.rules.step, idle);
+      assert.ok(b.x >= 0 && b.x + b.w <= s.worldWidth);
+      lift = Math.max(lift, V.GROUND - (b.y + b.h));
+      if (lastTell && b.tell === lastTell) {
+        assert.equal(b.x, lastX, id);
+        assert.equal(b.y, lastY, id);
+      }
+      if (b.open) {
+        assert.ok(Math.abs(b.y + b.h - V.GROUND) < 1e-6, id);
+        assert.equal(b.move, null, id);
+        if (!wasOpen) openings++;
+        stops.add(b.x);
+      }
+    }
+    assert.ok(stops.size >= 3 && openings >= 5, id);
+    if (id === 'diva' || id === 'god') assert.ok(lift > 90, id);
+    if (id === 'greed') assert.equal(lift, 0, id);
   }
 });
 
@@ -642,6 +681,9 @@ test('toxic shots hurt instead of reflecting and a spotlight has a dodgeable lan
   eel.projectiles.push({ key: 'toxic', x: p.x + 27, y: p.y + 22, r: 17, vx: -310 });
   V.updateCombat(eel, V.rules.step, { dash: true });
   assert.equal(eel.hp, eel.maxHp - 1);
+  assert.equal(eel.effects.at(-1).kind, 'hurt');
+  V.hurt(eel);
+  assert.equal(eel.effects.filter(effect => effect.kind === 'hurt').length, 1);
   const diva = V.newCombat(map.byId.diva, 'snail', {}, 'danger');
   diva.projectiles.push({ key: 'spotlight', x: diva.player.x, w: 84, zone: true, life: .3 });
   diva.player.x = 108;
@@ -683,6 +725,16 @@ test('all supplied media are mapped to their scenes and packaged for offline pla
   for (const file of artwork) {
     const data = fs.readFileSync(path.join(root, file));
     assert.equal(data.toString('ascii', 8, 12), 'WEBP', file);
+  }
+  for (const id of Object.keys(V.bosses)) {
+    const data = fs.readFileSync(path.join(root, V.imagePath('boss-intro-' + id)));
+    assert.equal(data.toString('ascii', 8, 12), 'WEBP', id);
+  }
+  for (const kind of ['hit', 'hurt', 'guard', 'parry']) {
+    const sprite = fs.readFileSync(path.join(root, V.imagePath('impact-' + kind)));
+    const sound = fs.readFileSync(path.join(root, 'assets/sfx', kind + '.wav'));
+    assert.equal(sprite.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', kind);
+    assert.equal(sound.toString('ascii', 8, 12), 'WAVE', kind);
   }
 });
 
@@ -789,6 +841,31 @@ test('missing boss track falls back to a built-in runner loop', () => {
   players[0].events.error();
   assert.equal(audio.current(), 'mid');
   assert.ok(players[1].src.endsWith('into-the-deep-mid.mp3'));
+});
+
+test('hit sounds use a bounded pool, play with music muted and stop when effects are muted', () => {
+  const { audio, players, document, listeners } = audioFixture();
+  audio.effect('hit');
+  assert.equal(players.length, 0);
+  audio.startLevel('arena');
+  audio.setEnabled(false);
+  for (let i = 0; i < 9; i++) audio.effect('hit', true);
+  assert.equal(players.length, 3);
+  assert.ok(players[0].paused);
+  assert.ok(players.slice(1).every(player => !player.paused && player.src === 'assets/sfx/hit.wav'));
+  assert.equal(players[2].playbackRate, .82);
+  audio.effect('hurt');
+  assert.equal(players[3].src, 'assets/sfx/hurt.wav');
+  assert.equal(players[3].playbackRate, 1);
+  audio.setEffectsEnabled(false);
+  audio.effect('parry');
+  assert.equal(players.length, 4);
+  assert.ok(players.every(player => player.paused));
+  audio.setEffectsEnabled(true);
+  audio.effect('guard');
+  document.hidden = true;
+  listeners.visibilitychange();
+  assert.ok(players.every(player => player.paused));
 });
 
 test('profile scores retain player name, run character, date and separate storage', () => {

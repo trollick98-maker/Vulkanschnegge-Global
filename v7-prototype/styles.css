@@ -337,6 +337,9 @@ canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; 
   image-rendering: pixelated;
 }
 .story-card { width: min(780px, 100%); padding: clamp(12px, 2.3vw, 24px); text-align: center; }
+.boss-intro-card .story-art { border-color: #c78c53; }
+.boss-intro-card .story-art img { aspect-ratio: 5 / 3; }
+.boss-intro-card .eyebrow { color: var(--gold); }
 .story-art {
   margin-bottom: 16px;
   border-radius: 7px;

@@ -112,7 +112,7 @@
     const squash = reducedMotion ? 0 : p.landTime * .85 + (dashing ? .16 : 0);
     const stretch = reducedMotion || dashing ? 0 : Math.min(.13, Math.abs(p.vy) / 5200);
     g.translate(p.x + p.w / 2, p.y + p.h * (1 + squash - stretch) / 2);
-    if (p.invuln > 0 && Math.floor(s.elapsed * 13) % 2 === 0) g.globalAlpha = .42;
+    if (!reducedMotion && p.invuln > 0 && Math.floor(s.elapsed * 13) % 2 === 0) g.globalAlpha = .42;
     g.rotate(p.angle * p.facing * Math.PI / 180);
     g.scale(p.facing * (1 + squash - stretch * .5), 1 - squash + stretch);
     if (!sprite(s.character, -p.w / 2, -p.h / 2, p.w, p.h)) {
@@ -200,6 +200,7 @@
       g.save();
       g.translate(x + w / 2, y + h);
       g.scale((enemy.facing > 0 ? -1 : 1) * (1 + crouch * .4), 1 - crouch);
+      if (!reducedMotion && enemy.flash > 0) g.filter = 'brightness(1.55)';
       const drawn = fittedSprite(s.biome + '-' + enemy.key, -w / 2, -h, w, h, true);
       g.restore();
       if (!drawn) {
@@ -368,34 +369,50 @@
     const art = atlas[b.definition.sprite];
     const aura = V.biomes[s.biome].accent;
     const lean = b.tell ? (1 - b.tell.left / b.tell.total) * 8 : 0;
-    const bodyX = b.x + (reducedMotion ? 0 : b.flash * 67 - lean);
+    const facing = b.facing ?? -1;
+    const bodyX = b.x + (reducedMotion ? 0 : b.flash * 67 * (b.hitSide ?? 1) + facing * lean);
     const bob = reducedMotion ? 0 : Math.sin(s.elapsed * 3.3) * 3;
+    if (finale) {
+      g.fillStyle = '#04111c';
+      g.globalAlpha = .36;
+      g.beginPath();
+      g.ellipse(b.x + b.w / 2, G + 2, b.w * .43, 7, 0, 0, Math.PI * 2);
+      g.fill();
+    }
     g.globalAlpha = .12;
     g.fillStyle = aura;
     g.beginPath();
     g.ellipse(b.x + b.w / 2, centerY, finale ? 96 : 104, finale ? 80 : 138, 0, 0, Math.PI * 2);
     g.fill();
     g.globalAlpha = 1;
+    g.save();
+    if (!reducedMotion && b.flash > .10) g.filter = 'brightness(1.36)';
     if (art) {
       const image = V.readyImage('atlas');
       const width = b.w;
       const height = Math.min(finale ? b.h : 231, width * art[3] / art[2]);
       const y = finale ? b.y + b.h - height : 286 - height / 2;
-      if (image) g.drawImage(image, ...art, bodyX, y + bob, width, height);
+      if (image) {
+        const mirror = facing > 0 && (s.biome === 'greed' || s.biome === 'diva');
+        g.translate(bodyX + (mirror ? width : 0), 0);
+        if (mirror) g.scale(-1, 1);
+        g.drawImage(image, ...art, 0, y + bob, width, height);
+      }
       else {
         g.fillStyle = aura;
         g.fillRect(b.x + 37, centerY - 54, b.w - 74, 108);
       }
     } else {
       g.save();
-      g.translate(bodyX + b.w, bob);
-      g.scale(-1, 1);
+      g.translate(bodyX + (facing < 0 ? b.w : 0), bob);
+      g.scale(facing < 0 ? -1 : 1, 1);
       if (!sprite('bossEel', 0, b.y, b.w, b.h)) {
         g.fillStyle = aura;
         g.fillRect(40, b.y + 25, b.w - 80, b.h * .55);
       }
       g.restore();
     }
+    g.restore();
     if (s.windTime > 0 || (s.biome === 'god' && b.phase > 0)) {
       g.globalAlpha = .32;
       g.fillStyle = aura;
@@ -412,7 +429,7 @@
       g.fillStyle = b.open ? '#a6ffd4' : '#cad9f4';
       g.font = 'bold 11px monospace';
       g.textAlign = 'center';
-      g.fillText(b.open ? 'OFFEN · DASH!' : 'DECKUNG ZU', x + 62, y + 12);
+      g.fillText(b.open ? 'OFFEN · DASH!' : b.move ? 'IN BEWEGUNG' : 'DECKUNG ZU', x + 62, y + 12);
       g.textAlign = 'start';
       g.fillRect(x, y + 17, 124 * b.hp / b.maxHp, 3);
     }
@@ -421,9 +438,37 @@
   }
 
   function drawImpacts(s) {
-    if (reducedMotion) return;
     for (const effect of s.effects) {
-      const progress = 1 - effect.left / .3;
+      const progress = 1 - effect.left / effect.life;
+      if (effect.kind) {
+        const size = reducedMotion ? effect.size : effect.size * (.76 + .46 * Math.min(1, progress * 2.5));
+        g.save();
+        g.globalAlpha = Math.min(1, effect.left * 7);
+        g.translate(effect.x, effect.y);
+        g.save();
+        g.scale(effect.direction < 0 ? -1 : 1, 1);
+        if (!fittedSprite('impact-' + effect.kind, -size / 2, -size / 2, size, size)) {
+          g.strokeStyle = effect.color;
+          g.lineWidth = 3;
+          g.strokeRect(-size * .23, -size * .23, size * .46, size * .46);
+        }
+        g.restore();
+        if (effect.amount > 0) {
+          const ownDamage = effect.kind === 'hurt';
+          const x = ownDamage ? -18 : 0;
+          const y = -size * .42 - (reducedMotion ? 0 : 26 * progress) - (ownDamage ? 12 : 0);
+          g.textAlign = 'center';
+          g.font = 'bold 19px monospace';
+          g.lineWidth = 5;
+          g.strokeStyle = '#12192a';
+          g.strokeText('−' + effect.amount, x, y);
+          g.fillStyle = effect.color;
+          g.fillText('−' + effect.amount, x, y);
+        }
+        g.restore();
+        continue;
+      }
+      if (reducedMotion) continue;
       const radius = 8 + progress * 32;
       g.globalAlpha = Math.max(0, 1 - progress);
       g.strokeStyle = effect.color;
@@ -436,6 +481,17 @@
       }
     }
     g.globalAlpha = 1;
+  }
+
+  function drawDamageEdge(s) {
+    const damage = s.effects.findLast(effect => effect.kind === 'hurt');
+    if (!damage) return;
+    g.save();
+    g.globalAlpha = Math.min(reducedMotion ? .55 : .84, damage.left * 3);
+    g.strokeStyle = '#e44668';
+    g.lineWidth = 11;
+    g.strokeRect(3, 3, W - 6, H - 6);
+    g.restore();
   }
 
   V.render = function (section) {
@@ -459,5 +515,6 @@
     drawPlayer(section);
     drawImpacts(section);
     if (local) g.restore();
+    drawDamageEdge(section);
   };
 })();

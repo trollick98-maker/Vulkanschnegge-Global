@@ -56,6 +56,7 @@
 
   function updateEnemy(s, enemy, dt) {
     const ground = enemy.floorY - enemy.h;
+    enemy.flash = Math.max(0, (enemy.flash ?? 0) - dt);
     enemy.attackLeft -= dt;
     if (enemy.attackState === 'tell') {
       if (enemy.attackLeft > 0) return;
@@ -104,11 +105,14 @@
   };
 
   function hitEnemy(s, enemy, damage) {
+    const amount = Math.min(enemy.hp, damage);
     enemy.hp = Math.max(0, enemy.hp - damage);
     V.rebound(s);
     enemy.attackState = 'recover';
     enemy.attackLeft = .56;
-    V.impact(s, enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, enemy.color, .042);
+    if (amount > 0) enemy.flash = .13;
+    V.hitFeedback(s, amount > 0 ? 'hit' : 'guard', enemy.x + enemy.w / 2, enemy.y + enemy.h / 2,
+      { amount, direction: s.player.facing, heavy: enemy.hp === 0 });
     if (enemy.hp === 0) {
       s.kills++;
       s.score += 75 + damage;
