@@ -5,7 +5,7 @@
   const playing = new Set();
   const failed = new Set();
   const effects = new Map();
-  const effectNames = ['hit', 'hurt', 'guard', 'parry'];
+  const effectNames = ['hit', 'hurt', 'guard', 'parry', 'dash', 'dash-fast', 'skid'];
   let scene = null;
   let wanted = null;
   let active = null;

@@ -437,8 +437,29 @@
     for (const q of s.projectiles) drawProjectile(q);
   }
 
+  function drawMovementEffects(s) {
+    if (reducedMotion) return;
+    for (const effect of s.effects) {
+      if (!effect.movement) continue;
+      const age = 1 - effect.left / effect.life;
+      const skid = effect.kind === 'skid';
+      const width = effect.size * (.84 + age * .46);
+      const height = width * (skid ? .30 : .43);
+      g.save();
+      g.globalAlpha = Math.min(1, effect.left * 9);
+      g.translate(effect.x - effect.direction * age * (skid ? 26 : 38), effect.y);
+      g.scale(effect.direction, 1);
+      if (!fittedSprite('movement-' + effect.kind, -width * .82, skid ? -height : -height / 2, width, height, skid)) {
+        g.fillStyle = skid ? '#d5c494' : effect.kind === 'dash-fast' ? '#ffb76d' : '#a6fff0';
+        g.fillRect(-width * .62, skid ? -3 : -2, width * .52, 3);
+      }
+      g.restore();
+    }
+  }
+
   function drawImpacts(s) {
     for (const effect of s.effects) {
+      if (effect.movement) continue;
       const progress = 1 - effect.left / effect.life;
       if (effect.kind) {
         const size = reducedMotion ? effect.size : effect.size * (.76 + .46 * Math.min(1, progress * 2.5));
@@ -512,6 +533,7 @@
       }
     }
     if (section.kind === 'boss') drawBoss(section);
+    drawMovementEffects(section);
     drawPlayer(section);
     drawImpacts(section);
     if (local) g.restore();

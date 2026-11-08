@@ -41,6 +41,9 @@
   for (const effect of ['hit', 'hurt', 'guard', 'parry']) {
     images['impact-' + effect] = 'treffer/' + effect + '.png';
   }
+  for (const effect of ['dash', 'dash-fast', 'skid']) {
+    images['movement-' + effect] = 'bewegung/' + effect + '.png';
+  }
   V.assets = {};
   V.imagePath = name => 'assets/images/' + images[name];
   V.image = function (name) {

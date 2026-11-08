@@ -18,7 +18,7 @@
       coins: [], obstacles: [], platforms: [], projectiles: [], effects: [], hitStop: 0, outcome: null, feedback: '', feedbackTime: 0,
       player: { x: V.START_X, y: G - 43, w: 44, h: 43, vx: 0, vy: 0, facing: 1, jumps: 0,
         gravity: motion.gravity * traits.gravity, invuln: 0, dashTime: 0, dashCooldown: 0, angle: 0,
-        grounded: true, airDash: true, dashPower: 0, dashLeft: 0, dashVelocity: 0, dashBuffer: 0, jumpBuffer: 0,
+        grounded: true, airDash: true, skidding: false, dashPower: 0, dashLeft: 0, dashVelocity: 0, dashBuffer: 0, jumpBuffer: 0,
         coyote: 0, landTime: 0 }
     };
     V.applyBuild(section, build);
@@ -48,6 +48,30 @@
     addEffect(s, { kind, x, y, color: look.color, size, amount, direction, left: life, life }, stop);
     V.audio?.effect?.(kind, heavy);
   };
+
+  function movementFeedback(s, kind, direction, speed) {
+    const p = s.player;
+    const skid = kind === 'skid';
+    const life = skid ? .34 : .24;
+    const size = skid ? V.clamp(65 + (speed - 380) * .07, 65, 106) : kind === 'dash-fast' ? 111 : 82;
+    addEffect(s, {
+      kind, movement: true, direction, size, life, left: life,
+      x: p.x + p.w / 2 - direction * (skid ? p.w * .12 : p.w * .39),
+      y: p.y + p.h * (skid ? 1 : .55)
+    }, 0);
+    V.audio?.effect?.(kind);
+  }
+
+  function updateSkid(s, canBrake, direction) {
+    const p = s.player;
+    const speed = Math.abs(p.vx);
+    const skidding = canBrake && p.grounded && p.vx * direction <= 0 &&
+      speed >= (p.skidding ? 185 : 380);
+    if (skidding && !p.skidding && !s.effects.some(effect => effect.kind === 'skid')) {
+      movementFeedback(s, 'skid', Math.sign(p.vx), speed);
+    }
+    p.skidding = skidding;
+  }
 
   V.projectileHits = function (player, shot, reach = 0) {
     const rx = shot.r * .77 + reach;
@@ -223,6 +247,7 @@
       p.jumps++;
     }
     const launch = p.dashBuffer > 0 && p.dashCooldown <= 0 && p.dashTime <= 0 && (!local || p.airDash);
+    updateSkid(s, local && p.dashTime <= 0 && !launch, direction);
     if (local && p.dashTime <= 0 && !launch) accelerate(s, direction, dt);
     if (launch) {
       p.dashBuffer = 0;
@@ -242,6 +267,8 @@
         p.vy *= .34;
         p.airDash = false;
       }
+      const fast = local ? Math.abs(p.vx) >= 460 : !boss && s.speed >= 625;
+      movementFeedback(s, fast ? 'dash-fast' : 'dash', p.facing);
     }
     if (local) {
       const dashing = p.dashTime > 0;

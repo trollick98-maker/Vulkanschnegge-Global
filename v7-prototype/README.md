@@ -32,7 +32,9 @@ In der Verfolgung springst du über Hindernisse und wirfst markierte Geschosse p
 
 In der Arena wechseln die Bosse nach ihren Angriffsfenstern die Position. Die Diva fliegt, GOD.EXE schwebt, und die übrigen Bosse bleiben in Bodennähe. Die Schussrichtung wird vor dem Schuss angezeigt. Nach einer Salve öffnet sich die Deckung für einen Dash-Treffer. Der Knopf zum Wiederholen startet nach einem Verlust direkt in der Bossarena.
 
-Treffer, eigener Schaden, Blocks und Konter haben eigene Pixel-Effekte und Töne. Schadenszahlen zeigen die verlorenen HP. Bei eigenem Schaden leuchtet der Rand des Spielfelds rot. Mit **Effekte an/aus** schaltest du die Treffertöne unabhängig von der Musik.
+Treffer, eigener Schaden, Blocks und Konter haben eigene Pixel-Effekte und Töne. Schadenszahlen zeigen die verlorenen HP. Bei eigenem Schaden leuchtet der Rand des Spielfelds rot. Mit **Effekte an/aus** schaltest du die Spielgeräusche unabhängig von der Musik.
+
+Der Dash zieht eine türkise Spur und hat einen eigenen Sound. Bei hohem Tempo wird die Spur lavafarben und der Dash klingt kräftiger. In Arenen hörst und siehst du ein kurzes Schlittern, wenn du auf dem Boden aus hohem Tempo abbremst oder gegenlenkst.
 
 ## Prozedurale Plattformwege
 
@@ -48,7 +50,7 @@ Gib auf der Weltkarte im Feld **Seed** `admin` ein und drücke **Enter**. Mit **
 
 Im Spielordner `node --test tests/smoke.test.js` ausführen. Für die Prüfung des vollständigen Offline-Pakets unter Linux oder macOS `REQUIRE_OFFLINE_MEDIA=1 node --test tests/smoke.test.js` verwenden.
 
-Die 35 Tests prüfen unter anderem die Dash-Distanz, Gegner-HP, Bossbewegungen und die Treffer-Audioeinstellungen. Eine separate Simulation prüfte für 40 Seeds die Plattformwege mit allen drei Grundfiguren in beide Richtungen.
+Die 36 Tests prüfen unter anderem die Dash-Distanz, Gegner-HP, Bossbewegungen und die Sound- und Bewegungseffekte. Eine separate Simulation prüfte für 40 Seeds die Plattformwege mit allen drei Grundfiguren in beide Richtungen.
 
 ## Messung des Runners vor dem Kampf-Update
 

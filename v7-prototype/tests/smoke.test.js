@@ -326,6 +326,44 @@ test('arena acceleration varies by character without a speed cap and dash distan
   assert.ok(dash(900) < dash(300));
 });
 
+test('movement feedback follows actual dashes and fast ground braking', () => {
+  const { V } = logic();
+  const calls = [];
+  V.audio = { effect: kind => calls.push(kind) };
+  const step = V.rules.step;
+  const node = V.generateMap('movement-feedback').byId['reef-arena'];
+  const setup = vx => {
+    const s = V.newArena(node, 'snail', {}, 'movement-feedback');
+    Object.assign(s.player, { x: 180, vx });
+    return s;
+  };
+  const buffered = setup(0);
+  buffered.player.dashCooldown = .06;
+  V.movePlayer(buffered, step, { dash: true });
+  assert.deepEqual(calls, []);
+  for (let i = 0; i < 6; i++) V.movePlayer(buffered, step, {});
+  assert.deepEqual(calls, ['dash']);
+  assert.equal(buffered.effects.at(-1).kind, 'dash');
+
+  const fast = setup(-520);
+  V.movePlayer(fast, step, { left: true, dash: true });
+  assert.equal(fast.effects.at(-1).kind, 'dash-fast');
+  assert.equal(fast.effects.at(-1).direction, -1);
+  assert.equal(fast.player.dashPower, V.dashDamage(fast, 520));
+
+  const braking = setup(520);
+  V.movePlayer(braking, step, { right: true });
+  assert.equal(braking.effects.length, 0);
+  V.movePlayer(braking, step, { left: true });
+  assert.equal(braking.effects.at(-1).kind, 'skid');
+  assert.equal(braking.effects.at(-1).direction, 1);
+  for (let i = 0; i < 10; i++) V.movePlayer(braking, step, { left: true });
+  assert.deepEqual(calls, ['dash', 'dash-fast', 'skid']);
+  V.movePlayer(setup(520), step, { left: true, jump: true });
+  V.movePlayer(setup(190), step, {});
+  assert.deepEqual(calls, ['dash', 'dash-fast', 'skid']);
+});
+
 test('mobs scale with zone and travel has progressively faster starts', () => {
   const { V } = logic();
   const graph = V.generateMap('tiers');
@@ -736,6 +774,12 @@ test('all supplied media are mapped to their scenes and packaged for offline pla
     assert.equal(sprite.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', kind);
     assert.equal(sound.toString('ascii', 8, 12), 'WAVE', kind);
   }
+  for (const kind of ['dash', 'dash-fast', 'skid']) {
+    const sprite = fs.readFileSync(path.join(root, V.imagePath('movement-' + kind)));
+    const sound = fs.readFileSync(path.join(root, 'assets/sfx', kind + '.wav'));
+    assert.equal(sprite.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', kind);
+    assert.equal(sound.toString('ascii', 8, 12), 'WAVE', kind);
+  }
 });
 
 test('the biome spritepack covers arena roles, projectiles, platforms and map landmarks', () => {
@@ -863,6 +907,10 @@ test('hit sounds use a bounded pool, play with music muted and stop when effects
   assert.ok(players.every(player => player.paused));
   audio.setEffectsEnabled(true);
   audio.effect('guard');
+  audio.effect('dash-fast');
+  audio.effect('skid');
+  assert.ok(players.at(-2).src.endsWith('/dash-fast.wav'));
+  assert.ok(players.at(-1).src.endsWith('/skid.wav'));
   document.hidden = true;
   listeners.visibilitychange();
   assert.ok(players.every(player => player.paused));
