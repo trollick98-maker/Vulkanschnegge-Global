@@ -87,7 +87,7 @@
     }
   }
 
-  function start(section) {
+  function start(section, resumeBossArena = false) {
     state.section = section;
     transition('play');
     state.story = null;
@@ -99,6 +99,7 @@
       state.level = V.newArena(section.node, campaign.character, campaign.build, campaign.seed);
     } else {
       state.level = V.newCombat(section.node, campaign.character, campaign.build, campaign.seed);
+      if (resumeBossArena) V.enterBossArena(state.level);
     }
     const zone = section.route ? graph.byId[section.route.edge.b] : section.node;
     V.audio.startLevel(section.kind, state.level.boss?.definition.track ?? zone?.music);
@@ -123,20 +124,21 @@
       V.completeNode(campaign, graph, section.node.id);
       if (section.node.id === graph.final) {
         level.player.dashBuffer = level.player.jumpBuffer = 0;
+        level.player.vx = level.player.dashTime = level.speed = 0;
+        state.outroLeft = 1.1;
         transition('outro');
       }
       else showMap();
     }
   }
 
-  function coast(level, dt) {
+  function outro(level, dt) {
     level.elapsed += dt;
-    level.dist += level.speed * dt;
-    level.speed = Math.max(0, level.speed - 245 * dt);
+    state.outroLeft -= dt;
     V.movePlayer(level, dt, {});
     ui.hud(level);
     V.render(level);
-    if (level.speed === 0) showMap();
+    if (state.outroLeft <= 0) showMap();
   }
 
   function frame(ms) {
@@ -146,7 +148,7 @@
     frameAt = ms;
     V.audio.tick(dt);
     if (state.mode === 'outro') {
-      coast(state.level, dt);
+      outro(state.level, dt);
       return;
     }
     if (state.mode !== 'play') return;
@@ -188,12 +190,23 @@
   };
   get('back-btn').addEventListener('click', V.backToMap);
   get('home').addEventListener('click', showMap);
-  get('restart-btn').addEventListener('click', () => start(state.section));
-  get('replay').addEventListener('click', () => start(state.section));
+  function retry() {
+    start(state.section, state.level.boss?.stage === 'arena');
+  }
+  get('restart-btn').addEventListener('click', retry);
+  get('replay').addEventListener('click', retry);
   get('arcade-btn').addEventListener('click', () => start({ kind: 'arcade', character: V.profile.character }));
   get('test-skip-btn').addEventListener('click', () => {
     if (!canSkip()) return;
     const level = state.level;
+    if (level.boss?.stage === 'chase') {
+      level.hitStop = 0;
+      V.input.reset();
+      V.enterBossArena(level);
+      ui.hud(level);
+      V.render(level);
+      return;
+    }
     level.outcome = true;
     if (level.boss) level.boss.hp = 0;
     finish();

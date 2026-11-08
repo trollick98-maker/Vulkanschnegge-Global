@@ -6,6 +6,7 @@
   const characters = Object.values(V.characters);
   const gravity = motion.gravity * Math.max(...characters.map(character => character.gravity));
   const run = motion.run + Math.min(...characters.map(character => character.speed));
+  const acceleration = Math.min(...characters.map(character => character.acceleration));
   const jumpHeight = motion.jump ** 2 / (2 * gravity);
   const patterns = {
     reef: [[.25, .48], [.38, .32, .16]],
@@ -24,8 +25,8 @@
     const discriminant = motion.jump ** 2 - 2 * gravity * (fromY - toY);
     if (discriminant < 0) return 0;
     const time = (motion.jump + Math.sqrt(discriminant)) / gravity;
-    const accelerationTime = Math.min(time, run / motion.acceleration);
-    return .72 * (motion.acceleration * accelerationTime ** 2 / 2 + run * (time - accelerationTime));
+    const accelerationTime = Math.min(time, run / acceleration);
+    return .72 * (acceleration * accelerationTime ** 2 / 2 + run * (time - accelerationTime));
   }
 
   V.arenaJumpGap = (fromY, toY) => Math.min(landingDistance(fromY, toY), landingDistance(toY, fromY));

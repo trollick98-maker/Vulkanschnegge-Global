@@ -147,24 +147,30 @@
     dialog(null);
     world.classList.add('hidden');
     game.classList.remove('hidden');
-    content('level-kind', kinds[s.kind]);
     content('level-title', s.title);
-    content('level-tip', s.kind === 'boss' ? s.boss.definition.counter :
-      s.kind === 'arena' ? 'Besiege die Gegner · Spring über die Lücken · Ziel rechts' : 'Springen · Kisten per Dash zerlegen');
     hud(s);
     get('game').focus({ preventScroll: true });
   }
 
   function hud(s) {
     const p = s.player;
-    const dashReady = p.dashCooldown <= 0 && p.dashTime <= 0 && (s.kind !== 'arena' || p.airDash);
+    const local = V.usesMomentum(s);
+    const finale = s.boss?.stage === 'arena';
+    const chasing = s.boss?.stage === 'chase';
+    content('level-kind', finale ? 'BOSSARENA · 2/2' : chasing ? 'VERFOLGUNG · 1/2' : kinds[s.kind]);
+    content('level-tip', finale ? 'Schüssen ausweichen · Mit Anlauf in die offene Deckung dashen' :
+      chasing ? s.boss.definition.counter : local ? 'Anlauf nehmen · Gegner besiegen · Ziel rechts' : 'Springen · Kisten per Dash zerlegen');
+    content('test-skip-btn', chasing ? 'Zur Bossarena' : 'Abschnitt überspringen');
+    const dashReady = p.dashCooldown <= 0 && (p.dashTime <= 0 || (local && p.dashLeft <= 0)) && (!local || p.airDash);
     content('hud-stats', '♥ ' + s.hp + ' / ' + s.maxHp + '    ◈ ' + s.coinsTaken + '    ⚡ ' +
       (dashReady ? 'bereit' : 'lädt'));
-    content('hud-score', Math.floor(s.score) + ' P · ×' + s.multiplier + ' · ' + Math.round(s.speed) + ' Tempo');
+    const dash = local ? ' · Dash ' + (p.dashTime > 0 ? p.dashPower : V.dashDamage(s, s.speed)) : '';
+    content('hud-score', Math.floor(s.score) + ' P · ×' + s.multiplier + ' · ' + Math.round(s.speed) + ' Tempo' + dash);
     const alive = s.kind === 'arena' ? s.enemies.filter(enemy => enemy.hp > 0).length : 0;
-    const label = s.kind === 'boss' ? 'BOSS · PHASE ' + (s.boss.phase + 1) :
+    const label = finale ? 'BOSS · PHASE ' + (s.boss.phase + 1) :
+      chasing ? (s.dist < s.boss.chaseDistance ? 'ARENA IN ' + Math.ceil((s.boss.chaseDistance - s.dist) / Math.max(1, s.speed)) + ' S' : 'ARENA IN SICHT') :
       s.kind === 'travel' ? 'REISEZEIT' : s.kind === 'arena' ? 'KAMPFSTRECKE' : 'DISTANZ';
-    const value = s.kind === 'boss' ? s.boss.hp + ' / ' + s.boss.maxHp : s.kind === 'travel' ?
+    const value = s.kind === 'boss' ? (chasing ? 'Schild ' : '') + s.boss.hp + ' / ' + s.boss.maxHp : s.kind === 'travel' ?
       duration(Math.max(0, Math.ceil(s.duration - s.elapsed))) : s.kind === 'arena' ?
         (alive ? alive + ' Gegner' : 'Zum Ziel →') : Math.floor(s.dist) + ' m';
     const ratio = s.kind === 'boss' ? s.boss.hp / s.boss.maxHp : s.kind === 'travel' ?

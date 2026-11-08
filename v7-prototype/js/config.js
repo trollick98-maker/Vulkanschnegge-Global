@@ -6,7 +6,7 @@
   V.GROUND = 450;
   V.START_X = 214;
   V.rules = Object.freeze({ travelMin: 120, travelMax: 180, step: 1 / 60 });
-  V.arenaMotion = Object.freeze({ jump: 730, gravity: 1790, run: 330, acceleration: 1900 });
+  V.arenaMotion = Object.freeze({ jump: 730, gravity: 1790, run: 330, brake: 1750, retainedSpeed: .65, dashRange: 144 });
   V.clamp = (value, low, high) => Math.max(low, Math.min(high, value));
   V.lerp = (a, b, amount) => a + (b - a) * amount;
   V.overlap = (a, b) => a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;

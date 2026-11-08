@@ -4,9 +4,9 @@ Entpacke die ZIP und öffne `v7-prototype/index.html`. Der Offline-Build enthäl
 
 ## Spielen
 
-- Wähle eine Figur und starte eine neue Kampagne, wenn du mit dieser Figur spielen willst. Derselbe Seed erzeugt dieselbe Karte. Die Reisezeiten liegen zwischen 2 und 3 Minuten.
+- Wähle eine Figur und starte eine neue Kampagne, wenn du mit dieser Figur spielen willst. Derselbe Seed erzeugt dieselbe Karte. Reisen dauern zwischen 2 und 3 Minuten, beschleunigen automatisch und starten pro späterer Zone mit 42 Tempo mehr.
 - **A/D oder Pfeiltasten** zum Steuern, **Leertaste** zum Springen und Doppelspringen, **Shift** für den Panzer-Dash und **Esc** für die Karte. Auf Touch-Geräten stehen eigene Tasten zur Verfügung.
-- Im Gegnerlevel erhöhen Anlauf und Rebounds die Wirkung des Dashs. Im Bossrunner verraten Ansagen und Markierungen die Angriffe. Die konterbaren Geschosse lassen sich mit einem Dash zurückwerfen.
+- In Gegnerleveln und Bossarenen baut jede Figur beim Lenken Tempo auf. Otter beschleunigt am stärksten, danach folgen Frogo und Schnegg. Loslassen bremst.
 - Gegner und Plattformen haben je Biom eigene Sprites. In der optionalen Hafengasse steht eine Schildkrabbe. Boss-Geschosse haben eigene Silhouetten, und Kartenmotive markieren die Regionen.
 - Nach Kämpfen wählst du einen Perk. Der Build gilt für alle weiteren Abschnitte der Kampagne. Offene Belohnungen bleiben beim Neuladen erhalten. Der Endlos-Modus hat einen eigenen Startzustand.
 - Reisen und Gegnerlevel haben feste Musik pro Kampagnenzone. In Zone 1 läuft „Pixel Depths“, in Zone 2 und 3 „Into the Deep“ und ab Zone 4 „Vulkanschnegge Theme“. Bosse haben ihre eigenen Tracks. Im Endlos-Modus wechseln die Tracks weiterhin mit dem Tempo.
@@ -16,10 +16,17 @@ Entpacke die ZIP und öffne `v7-prototype/index.html`. Der Offline-Build enthäl
 
 - Gegnerlevel führen über sieben oder acht Inseln mit Aufstiegen und Abstiegen. Die Kamera folgt dir auch in der Höhe. Besiege alle Gegner und erreiche das Tor am Ende der Strecke. Ein Sturz kostet ein Herz und setzt dich auf die letzte erreichte Insel zurück.
 - Im Riff schnappen Muscheln zu, im Tresor fahren Goldstacheln aus, bei der Diva markieren Scheinwerfer ihre Trefferzone und im Wrack schleudern Wasserfontänen dich hoch. Jede Falle warnt vor dem Angriff und hat eigene Sprites für Ruhe und Aktivierung.
-- Ein etwas zu früh gedrückter Dash löst aus, sobald die Abklingzeit endet. Im Bosskampf stößt der Dash nach vorn, mit **A/D** auch in die gewählte Richtung. Der Konter hat etwas Reichweite um die Figur und gibt den Dash schneller wieder frei.
+- In Arenen entspricht der Dash-Schaden dem Tempo beim Start geteilt durch drei, auf ganze HP gerundet. Mehr Tempo macht denselben 144-Pixel-Dash schneller. Schneckenzorn verlängert die Strecke unabhängig vom Tempo. Gegnerkontakt oder ein Treffer kostet 35 % des aktuellen Tempos.
+- Krabbler starten mit 100 HP, Springer mit 80 HP und gepanzerte Gegner mit 175 HP. Der Lebensbalken sitzt über jedem Gegner. In Zone vier haben sie 225 % ihrer Start-HP.
 - Krabbler stürmen in die angekündigte Richtung, Springer markieren ihre Landestelle und gepanzerte Gegner feuern eine Bodenwelle. Ein Dash-Treffer unterbricht ihren Angriff.
 - Landungen, Dash und Wind-ups verformen die Sprites kurz. Konter und Treffer zeigen Partikel, einen kurzen Trefferstopp und beim Boss einen sichtbaren Rückstoß. Die Systemeinstellung für reduzierte Bewegung schaltet die zusätzlichen Verformungen, Nachbilder und Partikel ab.
 - Zeitpolster verlängert den Eingabepuffer, Kettenreaktion lädt den Dash beim Treffer auf und Durchschlag erhöht den Schaden. Münzschwarm kann pro Abschnitt ein Herz heilen. Bestehende Perks und offene Perk-Auswahlen nutzen dieselben IDs und laden mit ihren überarbeiteten Effekten.
+
+## Bosskämpfe
+
+In der Verfolgung springst du über Hindernisse und wirfst markierte Geschosse per Dash zurück. Sobald du die Arena erreichst und der Schild gebrochen ist, beginnt das Finale. Herzen und Bossmusik gehen in die nächste Phase mit.
+
+In der Arena kannst du frei laufen und über Plattformen ausweichen. Die Schussrichtung wird vor dem Schuss angezeigt. Nach einer Salve öffnet sich die Deckung für einen Dash-Treffer. Der Knopf zum Wiederholen startet nach einem Verlust direkt in der Bossarena.
 
 ## Prozedurale Plattformwege
 
@@ -29,13 +36,13 @@ Die maximale Höhe eines Grundsprungs ist `v₀² / (2g)`. Für ein Ziel, das um
 
 ## Testmodus
 
-Gib auf der Weltkarte im Feld **Seed** `admin` ein und drücke **Enter**. Mit **Abschnitt überspringen** kannst du Reisen, Gegnerlevel und Bosskämpfe sofort abschließen. Nach einem übersprungenen Kampf folgt die reguläre Perk-Auswahl. Der Testmodus startet mit einer Kopie deiner Kampagne und speichert keine Kampagnenfortschritte oder Rekorde. Erneut `admin` eingeben oder die Seite neu laden, um zum regulären Spielstand zurückzukehren.
+Gib auf der Weltkarte im Feld **Seed** `admin` ein und drücke **Enter**. Mit **Abschnitt überspringen** kannst du Reisen, Gegnerlevel und Bossarenen sofort abschließen. In der Verfolgung bringt dich **Zur Bossarena** direkt ins Finale. Nach einem übersprungenen Kampf folgt die reguläre Perk-Auswahl. Der Testmodus startet mit einer Kopie deiner Kampagne und speichert keine Kampagnenfortschritte oder Rekorde. Erneut `admin` eingeben oder die Seite neu laden, um zum regulären Spielstand zurückzukehren.
 
 ## Tests
 
 Im Spielordner `node --test tests/smoke.test.js` ausführen. Für die Prüfung des vollständigen Offline-Pakets unter Linux oder macOS `REQUIRE_OFFLINE_MEDIA=1 node --test tests/smoke.test.js` verwenden.
 
-Alle 30 Tests bestanden. Eine separate Simulation prüfte für 40 Seeds die Plattformwege mit allen drei Grundfiguren in beide Richtungen. Ein zusätzlicher Kampagnendurchlauf mit nachgebildeten Browser-Schnittstellen deckte neun Reisen, vier Gegnerlevel mit Sprungeingaben, alle fünf Bosse und den Abspann ab. Kampftreffer wurden dabei gezielt vorbereitet. Die Fallenansichten wurden separat gerendert.
+Die 33 Tests prüfen unter anderem die Dash-Distanz, den Tempoverlust, Gegner-HP, Reisestarts und beide Bossabschnitte. Eine separate Simulation prüfte für 40 Seeds die Plattformwege mit allen drei Grundfiguren in beide Richtungen. Lebensbalken, Schusswarnungen und die offene Bossdeckung wurden separat gerendert.
 
 ## Messung des Runners vor dem Kampf-Update
 

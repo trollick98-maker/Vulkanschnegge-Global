@@ -68,6 +68,8 @@
       title: route ? 'Weg nach ' + route.node.name : 'Endlos-Modus'
     });
     section.duration = edge?.seconds || Infinity;
+    section.startSpeed = 345 + V.characters[character].speed + (edge ? ((edge.tier ?? route.node.tier ?? 1) - 1) * 42 : 0);
+    section.speed = section.startSpeed;
     section.spawnCursor = { terrain: 0, coins: 0 };
     V.spawnCourse(section);
     return section;
@@ -76,7 +78,7 @@
   V.updateRunner = function (s, dt, actions) {
     if (s.outcome !== null) return;
     s.elapsed += dt;
-    const speed = 345 + V.characters[s.character].speed + Math.min(520, s.elapsed * 6.4);
+    const speed = s.startSpeed + Math.min(520, s.elapsed * 6.4);
     s.speed = V.clamp(speed, 155, 900);
     V.movePlayer(s, dt, actions);
     s.dist += (s.speed + (s.player.dashTime > 0 ? 170 : 0)) * dt;

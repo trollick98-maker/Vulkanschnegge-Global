@@ -56,7 +56,9 @@
     nodes.push({ id: LAST, kind: 'boss', name: 'GOD.EXE', x: 950, y: 171, color: '#a6ff82',
       biome: LAST, gate: entrance, tier: 5, music: musicByZone[4] });
     connect(entrance, LAST, LAST, entrance);
-    return { nodes, edges, byId: Object.fromEntries(nodes.map(node => [node.id, node])), lastGod: entrance, final: LAST };
+    const byId = Object.fromEntries(nodes.map(node => [node.id, node]));
+    for (const edge of edges) edge.tier = byId[edge.b].tier;
+    return { nodes, edges, byId, lastGod: entrance, final: LAST };
   };
 
   V.createCampaign = function (seed, character) {

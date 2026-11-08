@@ -96,10 +96,11 @@
     g.save();
     const dashing = p.dashTime > 0;
     if (dashing && !reducedMotion) {
+      const streak = V.usesMomentum(s) ? V.clamp(p.dashVelocity / 650, 1, 2) : 1;
       g.globalAlpha = .16;
-      sprite(s.character, p.x - p.facing * 29, p.y + 4, p.w, p.h);
+      sprite(s.character, p.x - p.facing * 29 * streak, p.y + 4, p.w, p.h);
       g.globalAlpha = .32;
-      sprite(s.character, p.x - p.facing * 15, p.y + 2, p.w, p.h);
+      sprite(s.character, p.x - p.facing * 15 * streak, p.y + 2, p.w, p.h);
       g.globalAlpha = .55;
       g.fillStyle = '#a6fff0';
       const trailX = p.facing > 0 ? p.x - 19 : p.x + p.w - 4;
@@ -197,14 +198,14 @@
         g.fillRect(x + 12, y + 11, 5, 5);
         g.fillRect(x + 22, y + 11, 5, 5);
       }
-      if (enemy.key === 'armored' && enemy.hp > 1) {
-        g.fillStyle = '#d1fff7';
-        g.fillRect(x + 11, y - 4, w - 22, 3);
-      }
+      g.fillStyle = '#111827';
+      g.fillRect(x - 1, y - 10, w + 2, 7);
+      g.fillStyle = enemy.key === 'armored' ? '#85dcff' : '#ff7c97';
+      g.fillRect(x + 1, y - 8, (w - 2) * (enemy.hp / enemy.maxHp), 3);
       if (windingUp) {
         const progress = 1 - enemy.attackLeft / enemy.windup;
         g.fillStyle = '#ffd080';
-        g.fillRect(x + w / 2 - 12, y - 10, 24 * progress, 3);
+        g.fillRect(x + w / 2 - 12, y - 15, 24 * progress, 3);
         g.globalAlpha = .28 + progress * .46;
         if (enemy.key === 'jumper') {
           g.strokeStyle = '#ffb6d9';
@@ -275,13 +276,24 @@
     g.fillStyle = attack.color;
     g.globalAlpha = .16 + progress * .23;
     if (attack.zone) {
-      g.fillRect(tell.targetX - attack.width / 2, 122, attack.width, G - 122);
+      const top = s.boss.stage === 'arena' ? 0 : 122;
+      g.fillRect(tell.targetX - attack.width / 2, top, attack.width, G - top);
       g.globalAlpha = .78;
       g.fillRect(tell.targetX - attack.width / 2, G - 5, attack.width * progress, 5);
     } else if (attack.wind) {
       g.globalAlpha = .7;
       g.font = '800 22px monospace';
-      g.fillText('» » »', 475, 344);
+      const x = s.boss.stage === 'arena' ? tell.targetX : 475;
+      g.fillText('» » »', x, 344);
+    } else if (s.boss.stage === 'arena') {
+      g.strokeStyle = attack.color;
+      g.lineWidth = 3;
+      g.beginPath();
+      g.moveTo(tell.sourceX, tell.sourceY);
+      g.lineTo(tell.targetX, tell.targetY);
+      g.stroke();
+      g.globalAlpha = .85;
+      g.strokeRect(tell.targetX - 8, tell.targetY - 8, 16, 16);
     } else {
       g.fillRect(110, tell.lane - 1, s.boss.x - 110, 2);
       g.globalAlpha = .85;
@@ -300,7 +312,7 @@
     if (q.zone) {
       g.fillStyle = attack.color;
       g.globalAlpha = .40;
-      g.fillRect(q.x, 122, q.w, G - 122);
+      g.fillRect(q.x, q.top ?? 122, q.w, G - (q.top ?? 122));
       g.globalAlpha = 1;
       g.fillRect(q.x, G - 3, q.w, 3);
       return;
@@ -327,7 +339,7 @@
         g.fillRect(x - 3, y - 3, 6, 6);
       }
     }
-    if (attack.reflect || q.reflected) {
+    if ((attack.reflect && q.counter !== false) || q.reflected) {
       g.strokeStyle = q.reflected ? '#fff1a8' : '#fbffec';
       g.lineWidth = q.reflected ? 3 : 1.5;
       const halo = r + (q.reflected ? 6 : 4);
@@ -337,6 +349,8 @@
 
   function drawBoss(s) {
     const b = s.boss;
+    const finale = b.stage === 'arena';
+    const centerY = finale ? b.y + b.h / 2 : 288;
     const art = atlas[b.definition.sprite];
     const aura = V.biomes[s.biome].accent;
     const lean = b.tell ? (1 - b.tell.left / b.tell.total) * 8 : 0;
@@ -345,17 +359,18 @@
     g.globalAlpha = .12;
     g.fillStyle = aura;
     g.beginPath();
-    g.ellipse(b.x + b.w / 2, 288, 104, 138, 0, 0, Math.PI * 2);
+    g.ellipse(b.x + b.w / 2, centerY, finale ? 96 : 104, finale ? 80 : 138, 0, 0, Math.PI * 2);
     g.fill();
     g.globalAlpha = 1;
     if (art) {
       const image = V.readyImage('atlas');
       const width = b.w;
-      const height = Math.min(231, width * art[3] / art[2]);
-      if (image) g.drawImage(image, ...art, bodyX, 286 - height / 2 + bob, width, height);
+      const height = Math.min(finale ? b.h : 231, width * art[3] / art[2]);
+      const y = finale ? b.y + b.h - height : 286 - height / 2;
+      if (image) g.drawImage(image, ...art, bodyX, y + bob, width, height);
       else {
         g.fillStyle = aura;
-        g.fillRect(b.x + 37, 232, b.w - 74, 118);
+        g.fillRect(b.x + 37, centerY - 54, b.w - 74, 108);
       }
     } else {
       g.save();
@@ -363,7 +378,7 @@
       g.scale(-1, 1);
       if (!sprite('bossEel', 0, b.y, b.w, b.h)) {
         g.fillStyle = aura;
-        g.fillRect(40, b.y + 25, b.w - 80, 130);
+        g.fillRect(40, b.y + 25, b.w - 80, b.h * .55);
       }
       g.restore();
     }
@@ -371,9 +386,21 @@
       g.globalAlpha = .32;
       g.fillStyle = aura;
       for (let i = 0; i < 9; i++) {
-        g.fillRect((i * 109 + s.elapsed * 113) % W, 142 + (i * 77) % 252, s.windTime > 0 ? 28 : 11, 2);
+        g.fillRect((s.cameraX ?? 0) + (i * 109 + s.elapsed * 113) % W, 142 + (i * 77) % 252, s.windTime > 0 ? 28 : 11, 2);
       }
       g.globalAlpha = 1;
+    }
+    if (finale && b.hp > 0) {
+      const x = b.x + b.w / 2 - 62;
+      const y = b.y - 28;
+      g.fillStyle = '#101a2d';
+      g.fillRect(x, y, 124, 18);
+      g.fillStyle = b.open ? '#a6ffd4' : '#cad9f4';
+      g.font = 'bold 11px monospace';
+      g.textAlign = 'center';
+      g.fillText(b.open ? 'OFFEN · DASH!' : 'DECKUNG ZU', x + 62, y + 12);
+      g.textAlign = 'start';
+      g.fillRect(x, y + 17, 124 * b.hp / b.maxHp, 3);
     }
     drawTell(s);
     for (const q of s.projectiles) drawProjectile(q);
@@ -399,8 +426,9 @@
 
   V.render = function (section) {
     const arena = section.kind === 'arena';
-    background(section.biome, section.elapsed, arena ? section.cameraX : section.dist, arena, section.cameraY);
-    if (arena) {
+    const local = V.usesMomentum(section);
+    background(section.biome, section.elapsed, local ? section.cameraX : section.dist, local, section.cameraY);
+    if (local) {
       g.save();
       g.translate(-Math.round(section.cameraX), -Math.round(section.cameraY));
     }
@@ -416,6 +444,6 @@
     if (section.kind === 'boss') drawBoss(section);
     drawPlayer(section);
     drawImpacts(section);
-    if (arena) g.restore();
+    if (local) g.restore();
   };
 })();

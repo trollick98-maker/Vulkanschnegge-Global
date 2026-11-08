@@ -3,9 +3,9 @@
   'use strict';
   const V=window.VS7;
   V.characters={
-    snail:{name:'Schnegg',detail:'❤️ +1 HP · 🐢 Langsamer · 🌎 +10% Schwerkraft',hp:1,speed:-80,gravity:1.10,magnet:1},
-    otter:{name:'Otter im Eimer',detail:'🧲 +20% Münz-Reichweite · 🐬 Standardtempo',hp:0,speed:0,gravity:1,magnet:1.2},
-    frog:{name:'Frogo',detail:'🦘 −20% Schwerkraft · 🐇 Höhere Sprünge',hp:0,speed:0,gravity:.8,magnet:1}
+    snail:{name:'Schnegg',detail:'❤️ +1 HP · 🐢 Schwerer Antritt · 🌎 +10% Schwerkraft',hp:1,speed:-80,acceleration:1700,gravity:1.10,magnet:1},
+    otter:{name:'Otter im Eimer',detail:'🧲 +20% Münz-Reichweite · 🐬 Schneller Antritt',hp:0,speed:0,acceleration:2150,gravity:1,magnet:1.2},
+    frog:{name:'Frogo',detail:'🦘 −20% Schwerkraft · 🐇 Mittlerer Antritt',hp:0,speed:0,acceleration:1900,gravity:.8,magnet:1}
   };
   const KEY='vulkanschnegge-v7-profile-v1';
   let saved={};try{saved=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(_ignored){}

@@ -12,7 +12,8 @@
       coins: [], obstacles: [], platforms: [], projectiles: [], effects: [], hitStop: 0, outcome: null, feedback: '', feedbackTime: 0,
       player: { x: V.START_X, y: G - 43, w: 44, h: 43, vx: 0, vy: 0, facing: 1, jumps: 0,
         gravity: motion.gravity * traits.gravity, invuln: 0, dashTime: 0, dashCooldown: 0, angle: 0,
-        grounded: true, airDash: true, dashPower: 1, dashBuffer: 0, jumpBuffer: 0, coyote: 0, landTime: 0 }
+        grounded: true, airDash: true, dashPower: 0, dashLeft: 0, dashVelocity: 0, dashBuffer: 0, jumpBuffer: 0,
+        coyote: 0, landTime: 0 }
     };
     V.applyBuild(section, build);
     return section;
@@ -36,8 +37,11 @@
       player.y < shot.y + ry && player.y + player.h > shot.y - ry;
   };
 
+  V.usesMomentum = s => s.kind === 'arena' || s.boss?.stage === 'arena';
   V.scrollX = (section, worldX) => V.START_X + worldX - section.dist;
-  V.stageX = (section, worldX) => section.kind === 'arena' ? worldX : V.scrollX(section, worldX);
+  V.stageX = (section, worldX) => V.usesMomentum(section) ? worldX : V.scrollX(section, worldX);
+  V.dashDamage = (s, speed) => Math.round(speed / 3 * (1 + .25 * s.strikeBonus));
+  V.slowOnImpact = s => { s.player.vx *= motion.retainedSpeed; };
 
   V.addCoin = function (s, x, y) {
     s.coins.push({ worldX: x, y, r: 9, taken: false, missed: false });
@@ -64,7 +68,7 @@
           V.impact(s, x, coin.y, '#83ffc4');
           V.say(s, 'Münzschwarm · +1 HP');
         }
-      } else if (s.kind !== 'arena' && !coin.missed && x + reach < p.x - 30) {
+      } else if (!V.usesMomentum(s) && !coin.missed && x + reach < p.x - 30) {
         coin.missed = true;
         s.multiplier = 1;
       }
@@ -77,33 +81,34 @@
     s.hp--;
     p.invuln = 1.18;
     p.vy = -245;
-    p.vx = direction * 220;
+    if (V.usesMomentum(s)) V.slowOnImpact(s);
+    else p.vx = direction * 220;
     p.dashTime = 0;
     V.impact(s, p.x + p.w / 2, p.y + p.h / 2, '#ff728d', s.kind === 'arena' || s.kind === 'boss' ? .035 : 0);
     V.say(s, 'Treffer!');
     if (s.hp <= 0) s.outcome = false;
   };
 
-  V.rebound = function (s, direction) {
+  V.rebound = function (s) {
     const p = s.player;
     p.dashTime = 0;
     p.dashCooldown = s.chainDash ? 0 : .12 * s.dashFactor;
     p.airDash = true;
-    p.vy = -410;
-    p.vx = -direction * 245;
+    p.vy = -265;
+    V.slowOnImpact(s);
     p.jumps = Math.min(p.jumps, 1);
     p.invuln = Math.max(p.invuln, .23);
   };
 
   function moveVertical(s, dt) {
     const p = s.player;
-    const arena = s.kind === 'arena';
+    const local = V.usesMomentum(s);
     const wasGrounded = p.grounded;
     const previousBottom = p.y + p.h;
     p.grounded = false;
     p.vy += p.gravity * dt;
     p.y += p.vy * dt;
-    let floor = arena ? Infinity : G;
+    let floor = s.kind === 'arena' ? Infinity : G;
     let landed;
     if (p.vy >= 0) {
       for (const platform of s.platforms) {
@@ -122,7 +127,7 @@
       p.jumps = 0;
       p.grounded = true;
       p.airDash = true;
-      if (arena) {
+      if (s.kind === 'arena') {
         s.supportY = floor;
         if (landed?.ground) {
           s.checkpointX = landed.worldX + 54;
@@ -130,19 +135,56 @@
         }
       }
     }
-    if (!arena && p.y < -70) {
+    if (!local && p.y < -70) {
       p.y = -70;
       p.vy = Math.max(0, p.vy);
     }
   }
 
+  function accelerate(s, direction, dt) {
+    const p = s.player;
+    if (!direction) {
+      p.vx = Math.sign(p.vx) * Math.max(0, Math.abs(p.vx) - motion.brake * dt);
+    } else {
+      const trait = V.characters[s.character];
+      const excess = Math.max(0, p.vx * direction - motion.run - trait.speed);
+      const acceleration = trait.acceleration / (1 + excess / 95) ** 2;
+      p.vx += direction * acceleration * dt;
+      p.facing = direction;
+    }
+    p.vx += (s.wind || 0) * dt;
+  }
+
+  // Find the first contact along this frame's movement, even if the player crosses a whole hitbox.
+  V.movementContact = function (p, target) {
+    let entry = 0;
+    let exit = 1;
+    for (const [from, to, low, high] of [
+      [p.previousX, p.x, target.x - p.w, target.x + target.w],
+      [p.previousY, p.y, target.y - p.h, target.y + target.h]
+    ]) {
+      if (from === to) {
+        if (from <= low || from >= high) return Infinity;
+        continue;
+      }
+      const a = (low - from) / (to - from);
+      const b = (high - from) / (to - from);
+      entry = Math.max(entry, Math.min(a, b));
+      exit = Math.min(exit, Math.max(a, b));
+      if (entry >= exit) return Infinity;
+    }
+    return entry;
+  };
+
   V.movePlayer = function (s, dt, actions) {
     const p = s.player;
-    const arena = s.kind === 'arena';
-    const boss = s.kind === 'boss';
+    const local = V.usesMomentum(s);
+    const boss = s.kind === 'boss' && !local;
     const direction = Number(Boolean(actions.right)) - Number(Boolean(actions.left));
+    p.previousX = p.x;
+    p.previousY = p.y;
     p.invuln = Math.max(0, p.invuln - dt);
-    p.dashTime = Math.max(0, p.dashTime - dt);
+    p.dashTime = local && p.dashLeft <= 0 ? 0 : Math.max(0, p.dashTime - dt);
     p.dashCooldown = Math.max(0, p.dashCooldown - dt);
     p.landTime = Math.max(0, p.landTime - dt);
     p.coyote = p.grounded ? .10 : Math.max(0, p.coyote - dt);
@@ -159,35 +201,37 @@
       p.coyote = p.jumpBuffer = p.landTime = 0;
       p.jumps++;
     }
-    if (arena && p.dashTime <= 0) {
-      const cap = motion.run + V.characters[s.character].speed;
-      if (direction) {
-        p.facing = direction;
-        p.vx = V.clamp(p.vx + direction * motion.acceleration * dt, -cap, cap);
-      } else {
-        p.vx = Math.sign(p.vx) * Math.max(0, Math.abs(p.vx) - 1750 * dt);
-      }
-    }
-    if (p.dashBuffer > 0 && p.dashCooldown <= 0 && p.dashTime <= 0 && (!arena || p.airDash)) {
+    const launch = p.dashBuffer > 0 && p.dashCooldown <= 0 && p.dashTime <= 0 && (!local || p.airDash);
+    if (local && p.dashTime <= 0 && !launch) accelerate(s, direction, dt);
+    if (launch) {
       p.dashBuffer = 0;
       p.dashTime = (boss ? .31 : .24) + s.dashExtension;
-      p.dashCooldown = (arena ? .50 : boss ? .73 : 1.35) * s.dashFactor;
+      p.dashCooldown = (local ? .50 : boss ? .73 : 1.35) * s.dashFactor;
       if (boss) {
         p.facing = direction || 1;
         p.vx = p.facing * 580;
         p.vy *= .55;
       }
-      if (arena) {
+      if (local) {
+        p.facing = direction || Math.sign(p.vx) || p.facing;
         const momentum = Math.abs(p.vx);
-        p.facing = direction || (momentum > 55 ? Math.sign(p.vx) : p.facing);
-        p.dashPower = (p.vx * p.facing >= 185 ? 2 : 1) + s.strikeBonus;
-        p.vx = p.facing * (510 + Math.min(500, momentum) * .72);
+        p.dashPower = V.dashDamage(s, momentum);
+        p.dashVelocity = 650 + momentum * .95;
+        p.dashLeft = motion.dashRange + 600 * s.dashExtension;
         p.vy *= .34;
         p.airDash = false;
       }
     }
-    if (arena) {
-      p.x = V.clamp(p.x + p.vx * dt, 22, s.worldWidth - p.w - 22);
+    if (local) {
+      const dashing = p.dashTime > 0;
+      const distance = dashing ? Math.min(p.dashLeft, p.dashVelocity * dt) : 0;
+      const next = p.x + (dashing ? p.facing * distance : p.vx * dt);
+      p.x = V.clamp(next, 22, s.worldWidth - p.w - 22);
+      if (dashing) p.dashLeft -= distance;
+      if (p.x !== next) {
+        p.vx = 0;
+        p.dashLeft = 0;
+      }
     } else if (boss) {
       if (direction && p.dashTime <= 0) p.facing = direction;
       const swim = direction * 245 + (s.wind || 0);

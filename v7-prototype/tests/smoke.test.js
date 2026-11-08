@@ -264,22 +264,84 @@ test('coins score with multiplier and missed coins reset the streak', () => {
   assert.equal(s.multiplier, 1);
 });
 
-test('normal arena dashes reward momentum and use the original rebound loop', () => {
+test('an arena dash deals one third of launch speed and contact retains 65 percent of it', () => {
   const { V } = logic();
   const c = V.createCampaign('arena', 'snail');
   const node = V.routesFrom(c, V.generateMap(c.seed))[0].node;
   const s = V.newArena(node, 'snail', {}, c.seed);
   const p = s.player;
-  s.enemies = [{ key: 'armored', x: 300, y: V.GROUND - 40, floorY: V.GROUND, w: 51, h: 40, hp: 2,
+  s.enemies = [{ key: 'armored', x: 300, y: V.GROUND - 40, floorY: V.GROUND, w: 51, h: 40, hp: 175, maxHp: 175,
     attackState: 'ready', attackLeft: 10, range: 245, left: 22, right: 400 }];
   p.x = 281;
-  p.vx = 245;
+  p.vx = 300;
+  V.updateArena(s, V.rules.step, { dash: true, right: true });
+  assert.equal(s.enemies[0].hp, 75);
+  assert.equal(p.dashPower, 100);
+  assert.equal(s.speed, 195);
+  assert.ok(p.vy < 0 && p.airDash);
+  assert.equal(s.exitOpen, false);
+  Object.assign(p, { x: 281, y: V.GROUND - p.h, vx: 300, vy: 0, dashCooldown: 0 });
   V.updateArena(s, V.rules.step, { dash: true, right: true });
   assert.equal(s.enemies[0].hp, 0);
-  assert.equal(p.dashPower, 2);
-  assert.ok(p.vy < 0 && p.airDash);
   assert.equal(s.exitOpen, true);
   assert.equal(s.outcome, null);
+  const enemy = s.enemies[0];
+  Object.assign(enemy, { hp: 175, touching: false });
+  Object.assign(p, { x: 290, y: V.GROUND - p.h, vx: 300, vy: 0, invuln: 0 });
+  V.updateArena(s, V.rules.step, idle);
+  const slowed = (300 - V.arenaMotion.brake * V.rules.step) * .65;
+  assert.equal(p.vx, slowed);
+  V.updateArena(s, V.rules.step, idle);
+  assert.equal(p.vx, slowed - V.arenaMotion.brake * V.rules.step);
+});
+
+test('arena acceleration varies by character without a speed cap and dash distance stays fixed', () => {
+  const { V } = logic();
+  const node = V.generateMap('momentum').byId['reef-arena'];
+  const step = V.rules.step;
+  const players = Object.keys(V.characters).map(character => V.newArena(node, character, {}, 'momentum'));
+  for (const s of players) {
+    s.worldWidth = 1e7;
+    for (let i = 0; i < 8; i++) V.movePlayer(s, step, { right: true });
+  }
+  const [snail, otter, frog] = players.map(s => s.player.vx);
+  assert.ok(snail < frog && frog < otter);
+  const s = players[1];
+  const p = s.player;
+  for (let i = 0; i < 240; i++) V.movePlayer(s, step, { right: true });
+  const early = p.vx;
+  for (let i = 0; i < 480; i++) V.movePlayer(s, step, { right: true });
+  assert.ok(p.vx > early && early > V.arenaMotion.run * 2);
+  const dash = vx => {
+    Object.assign(p, { x: 300, vx, dashCooldown: 0, dashTime: 0, airDash: true });
+    V.movePlayer(s, step, { dash: true, right: true });
+    let frames = 1;
+    while (p.dashLeft > 0 && frames < 30) {
+      V.movePlayer(s, step, idle);
+      frames++;
+    }
+    assert.ok(Math.abs(p.x - 300 - V.arenaMotion.dashRange) < 1e-8);
+    return frames;
+  };
+  assert.ok(dash(900) < dash(300));
+});
+
+test('mobs scale with zone and travel has progressively faster starts', () => {
+  const { V } = logic();
+  const graph = V.generateMap('tiers');
+  const hp = tier => V.newArena({ ...graph.byId['reef-arena'], tier }, 'snail', {}, 'tiers').enemies;
+  assert.ok(hp(1).some(e => e.key === 'crawler' && e.hp === 100));
+  assert.ok(hp(4).every(e => e.hp === e.maxHp && e.hp >= 180));
+  const starts = [1, 2, 3, 4, 5].map(tier => {
+    const edge = graph.edges.find(e => e.tier === tier);
+    const s = V.newRunner({ edge, node: graph.byId[edge.b] }, 'otter');
+    const start = s.speed;
+    V.updateRunner(s, V.rules.step, idle);
+    assert.ok(s.speed > start);
+    return start;
+  });
+  assert.deepEqual(starts, [345, 387, 429, 471, 513]);
+  assert.equal(V.newRunner(null, 'otter').speed, 345);
 });
 
 test('arena routes vary by seed and keep every gap within bidirectional base jump range', () => {
@@ -502,7 +564,7 @@ test('every boss scrolls, telegraphs and provides a counter in every phase', () 
   }
 });
 
-test('timed dash returns each boss counter and completes the fight on the last hit', () => {
+test('the last boss counter breaks the shield, then reaching the arena starts the finale', () => {
   const { V } = logic();
   const graph = V.generateMap('counter');
   for (const [id, boss] of Object.entries(V.bosses)) {
@@ -516,9 +578,59 @@ test('timed dash returns each boss counter and completes the fight on the last h
     s.projectiles.push(q);
     V.updateCombat(s, V.rules.step, { dash: true });
     assert.ok(q.reflected, id);
-    for (let i = 0; i < 50 && s.outcome === null; i++) V.updateCombat(s, V.rules.step, idle);
-    assert.equal(s.outcome, true, id);
-    assert.equal(s.hp, s.maxHp);
+    for (let i = 0; i < 50 && b.hp > 0; i++) V.updateCombat(s, V.rules.step, idle);
+    assert.equal(b.hp, 0, id);
+    assert.equal(b.stage, 'chase');
+    s.dist = b.chaseDistance;
+    s.hp -= 2;
+    p.invuln = 1;
+    V.updateCombat(s, V.rules.step, idle);
+    assert.equal(b.stage, 'arena', id);
+    assert.ok(b.hp >= 650 && s.platforms.length > 2);
+    assert.equal(s.outcome, null);
+    assert.equal(s.hp, s.maxHp - 2);
+  }
+});
+
+test('boss arena salvos aim in world space and only a timed momentum dash deals damage', () => {
+  const { V } = logic();
+  const graph = V.generateMap('finale');
+  const step = V.rules.step;
+  for (const id of Object.keys(V.bosses)) {
+    const s = V.newCombat(graph.byId[id], 'snail', {}, 'finale');
+    V.enterBossArena(s);
+    const { boss: b, player: p } = s;
+    const attack = b.definition.phases[0].findIndex(key => V.bossAttacks[key].reflect);
+    b.cursor = attack;
+    b.wait = 0;
+    p.x = b.x - 200;
+    V.updateCombat(s, step, idle);
+    const tell = b.tell;
+    assert.equal(tell.targetX, p.x + p.w / 2);
+    assert.equal(b.open, false);
+    p.x -= 150;
+    b.tell.left = 0;
+    V.updateCombat(s, step, idle);
+    const q = s.projectiles[0];
+    assert.ok(q.vx < 0 && q.vy > 0);
+    assert.equal(q.counter, false);
+    assert.equal(b.open, true);
+    assert.equal(s.outcome, null);
+    s.projectiles = [];
+    const dash = () => {
+      Object.assign(p, { x: b.x - p.w - 2, y: V.GROUND - p.h, vx: 450, vy: 0, dashTime: 0, dashCooldown: 0, airDash: true });
+      V.updateCombat(s, step, { right: true, dash: true });
+    };
+    dash();
+    assert.equal(b.hp, b.maxHp - 150);
+    assert.equal(p.vx, 292.5);
+    assert.equal(b.open, false);
+    dash();
+    assert.equal(b.hp, b.maxHp - 150);
+    b.hp = 150;
+    b.open = true;
+    dash();
+    assert.equal(s.outcome, true);
   }
 });
 
