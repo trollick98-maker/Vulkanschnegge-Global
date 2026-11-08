@@ -33,15 +33,18 @@
     const entry = V.stories[id];
     state.story = { entry, index: 0, done };
     if (entry.track) V.audio.startLevel('story', entry.track);
-    ui.showSlide(entry.slides[0], campaign.character);
+    ui.showSlide(entry.slides[0]);
+    for (const slide of entry.slides.slice(1)) V.image('story-' + slide.art);
   }
 
   function showMap() {
+    const returnToAtlas = Boolean(state.section);
     transition('map');
     state.level = null;
     state.section = null;
     state.story = null;
     ui.map(campaign, graph, { enter: enterNode, travel: route => start({ kind: 'travel', route }) });
+    if (returnToAtlas) get('atlas-heading').scrollIntoView({ block: 'start' });
     if (campaign.pending) {
       ui.reward(campaign, graph, id => {
         if (V.claimPerk(campaign, id)) showMap();
@@ -241,7 +244,7 @@
     if (!story) return;
     story.index++;
     const slide = story.entry.slides[story.index];
-    if (slide) ui.showSlide(slide, campaign.character);
+    if (slide) ui.showSlide(slide);
     else {
       state.story = null;
       story.done();

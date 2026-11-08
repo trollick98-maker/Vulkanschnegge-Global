@@ -19,7 +19,20 @@
     </header>
 
     <section id="world-ui" class="world">
-      <div class="map-head"><div><p class="eyebrow">ATLAS DER TIEFSEE</p><h2>Weltkarte</h2></div><span id="seed-badge" class="tag"></span></div>
+      <div class="campaign-hero">
+        <img class="hero-art" src="assets/images/story/hero.webp" alt="" decoding="async">
+        <div class="hero-copy">
+          <p class="eyebrow">THE GREAT UPDATE</p>
+          <h2>Unter der Oberfläche</h2>
+          <p>Eine kleine Schnecke. Eine ganze Tiefsee voller Götter.</p>
+          <div class="extra-actions">
+            <a class="primary" href="#atlas-heading">Zur Weltkarte ↓</a>
+            <button id="arcade-btn" class="quiet" type="button">∞ Endlos-Modus</button>
+            <button id="board-btn" class="quiet" type="button">Schneggboard</button>
+          </div>
+        </div>
+      </div>
+      <div class="map-head"><div><p class="eyebrow">ATLAS DER TIEFSEE</p><h2 id="atlas-heading" tabindex="-1">Weltkarte</h2></div><span id="seed-badge" class="tag"></span></div>
       <div id="map-scroll" class="map-scroll" tabindex="0" aria-label="Weltkarte, horizontal scrollbar">
         <div id="map-plot" class="map-plot"></div>
       </div>
@@ -47,7 +60,6 @@
             <button class="quiet" type="submit">Neue Kampagne</button>
           </form>
           <p id="test-mode-status" class="caption hidden" role="status">Testmodus aktiv · Gib „admin“ erneut ein, um zurückzukehren.</p>
-          <div class="extra-actions"><button id="arcade-btn" class="quiet" type="button">∞ Endlos-Modus</button><button id="board-btn" class="quiet" type="button">Schneggboard</button></div>
         </section>
       </div>
     </section>
@@ -73,7 +85,7 @@
     </section>
 
     <section id="upgrade-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="reward-title">
-      <div class="overlay-card"><p id="reward-tag" class="eyebrow">LEVEL ABGESCHLOSSEN</p><h2 id="reward-title">Wähle einen Perk</h2><div id="upgrade-choices" class="upgrade-choices"></div></div>
+      <div class="overlay-card"><img class="reward-art" src="assets/images/story/reward.webp" alt="" loading="lazy" decoding="async"><p id="reward-tag" class="eyebrow">LEVEL ABGESCHLOSSEN</p><h2 id="reward-title">Wähle einen Perk</h2><div id="upgrade-choices" class="upgrade-choices"></div></div>
     </section>
     <section id="leaderboard-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="leaderboard-title">
       <div class="overlay-card"><p class="eyebrow">REKORDE</p><h2 id="leaderboard-title">Schneggboard</h2>
@@ -90,7 +102,7 @@
     </section>
     <section id="story-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="story-line">
       <div id="story-card" class="overlay-card story-card">
-        <div class="story-art" aria-hidden="true"><span class="portal"></span><img class="story-ghost" src="assets/images/snail.png" alt=""><img class="story-snail" src="assets/images/snail.png" alt=""></div>
+        <div class="story-art"><img id="story-illustration" alt=""></div>
         <p id="story-label" class="eyebrow"></p><h2 id="story-line" lang="en"></h2><p id="story-note"></p>
         <button id="story-next" class="primary" type="button"></button>
       </div>

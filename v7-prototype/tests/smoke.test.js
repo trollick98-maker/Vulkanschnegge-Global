@@ -670,6 +670,20 @@ test('all supplied media are mapped to their scenes and packaged for offline pla
   for (const id of ['snail', 'otter', 'frog', 'bossEel', 'platform', 'plasma', 'toxic', 'mine', 'crate', 'atlas']) {
     assert.ok(fs.statSync(path.join(root, V.imagePath(id))).size > 1000, id);
   }
+  const slides = Object.values(V.stories).flatMap(story => story.slides);
+  const artwork = [
+    ...slides.map(slide => {
+      assert.ok(slide.alt, slide.art);
+      return V.imagePath('story-' + slide.art);
+    }),
+    ...['harbor', 'reef', 'greed', 'diva', 'vortex', 'god'].map(place => V.imagePath('map-' + place)),
+    ...Array.from(read('index.html').matchAll(/src="(assets\/images\/story\/[^"]+\.webp)"/g), match => match[1])
+  ];
+  assert.equal(new Set(artwork).size, 15);
+  for (const file of artwork) {
+    const data = fs.readFileSync(path.join(root, file));
+    assert.equal(data.toString('ascii', 8, 12), 'WEBP', file);
+  }
 });
 
 test('the biome spritepack covers arena roles, projectiles, platforms and map landmarks', () => {

@@ -29,6 +29,12 @@
   for (const attack of ['net', 'ingot', 'gold', 'star', 'feathers', 'anchor', 'surge', 'fault', 'packet']) {
     images[attack] = 'boss-angriffe/' + attack + '.png';
   }
+  for (const place of ['harbor', 'reef', 'greed', 'diva', 'vortex', 'god']) {
+    images['map-' + place] = 'weltkarte/' + place + '.webp';
+  }
+  for (const scene of ['pair', 'taken', 'fade', 'rift', 'source', 'shore', 'credits']) {
+    images['story-' + scene] = 'story/' + scene + '.webp';
+  }
   V.assets = {};
   V.imagePath = name => 'assets/images/' + images[name];
   V.image = function (name) {

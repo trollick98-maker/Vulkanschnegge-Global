@@ -4,6 +4,8 @@ Entpacke die ZIP und öffne `v7-prototype/index.html`. Der Offline-Build enthäl
 
 ## Spielen
 
+- Das Hauptmenü führt zur Weltkarte, zum Endlos-Modus und zum Schneggboard. Im Atlas folgen die illustrierten Biome der Reihenfolge des Seeds. Der Riss erscheint mit dem passenden Story-Kapitel.
+- Sieben Pixelart-Bilder erzählen Schneggs Geschichte von der Heimatbucht bis zum Abspann. Das Perk-Menü hat ein eigenes Bild.
 - Wähle eine Figur und starte eine neue Kampagne, wenn du mit dieser Figur spielen willst. Derselbe Seed erzeugt dieselbe Karte. Reisen dauern zwischen 2 und 3 Minuten, beschleunigen automatisch und starten pro späterer Zone mit 42 Tempo mehr.
 - **A/D oder Pfeiltasten** zum Steuern, **Leertaste** zum Springen und Doppelspringen, **Shift** für den Panzer-Dash und **Esc** für die Karte. Auf Touch-Geräten stehen eigene Tasten zur Verfügung.
 - In Gegnerleveln und Bossarenen baut jede Figur beim Lenken Tempo auf. Otter beschleunigt am stärksten, danach folgen Frogo und Schnegg. Loslassen bremst.

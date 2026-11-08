@@ -44,11 +44,31 @@
     content('character-detail', V.characters[V.profile.character].detail);
   }
 
+  function drawMapTerrain(campaign, graph) {
+    const terrain = document.createElement('div');
+    terrain.className = 'map-terrain';
+    terrain.setAttribute('aria-hidden', 'true');
+    for (const node of graph.nodes) {
+      if (node.kind === 'arena' || (node.id === graph.final && !campaign.story.rift)) continue;
+      const harbor = node.kind === 'start';
+      const rift = node.id === graph.final;
+      const art = document.createElement('img');
+      art.alt = '';
+      art.decoding = 'async';
+      art.className = harbor || rift ? 'map-island map-island-small' : 'map-island';
+      art.style.left = (node.x - (harbor || rift ? 0 : 62)) / 10 + '%';
+      art.src = V.imagePath('map-' + (harbor ? 'harbor' : node.biome));
+      terrain.append(art);
+    }
+    plot.append(terrain);
+  }
+
   function map(campaign, graph, handlers) {
     game.classList.add('hidden');
     world.classList.remove('hidden');
     dialog(null);
     plot.replaceChildren();
+    drawMapTerrain(campaign, graph);
     const routes = V.routesFrom(campaign, graph);
     const byTarget = new Map(routes.map(route => [route.to, route]));
     const svg = document.createElementNS(NS, 'svg');
@@ -213,9 +233,10 @@
     dialog('result');
   }
 
-  function showSlide(slide, character) {
-    get('story-card').dataset.art = slide.art;
-    get('story-card').querySelector('.story-snail').src = V.imagePath(character);
+  function showSlide(slide) {
+    const art = get('story-illustration');
+    art.alt = slide.alt;
+    art.src = V.imagePath('story-' + slide.art);
     content('story-label', slide.label);
     content('story-line', slide.line);
     content('story-note', slide.note || '');
