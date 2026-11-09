@@ -23,6 +23,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2
 .hidden { display: none !important; }
 .app { width: min(1160px, calc(100% - 36px)); margin: 0 auto; }
 .title-screen {
+  --title-flight: 8s;
   position: fixed;
   z-index: 4;
   inset: 0;
@@ -57,7 +58,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2
   width: min(54vw, 1000px);
   margin: 43dvh 0 0 8vw;
   text-align: center;
-  animation: title-descent 3.4s cubic-bezier(.14,.65,.22,1) both;
+  animation: title-descent var(--title-flight) cubic-bezier(.37,.16,.43,1) both;
 }
 .title-lockup h1 {
   margin: 0;
@@ -83,13 +84,12 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2
 .title-actions {
   display: grid;
   justify-items: center;
-  gap: 8px;
   padding-top: 15px;
   min-height: 99px;
   align-content: start;
-  animation: title-actions-in .6s 2.2s both;
+  animation: title-actions-in .4s var(--title-flight) both;
 }
-.title-actions:focus-within { animation: none; }
+.title-actions:focus-within, .title-settled .title-lockup, .title-settled .title-actions { animation: none; }
 .title-start {
   min-width: 160px;
   min-height: 48px;
@@ -105,20 +105,15 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2
 }
 .title-start:hover { background: #694144; }
 .title-start span { margin-left: 5px; color: #ffbd76; font-size: 11px; }
-.title-music {
-  padding: 6px 10px;
-  border: 1px solid #b4afd16b;
-  border-radius: 4px;
-  background: #090d22db;
-  color: #f0e6fb;
-  font-size: 12px;
-}
 @keyframes title-descent {
   from { transform: translateY(-66dvh); opacity: 0; }
-  18% { opacity: 1; }
+  10% { opacity: 1; }
   to { transform: translateY(0); opacity: 1; }
 }
-@keyframes title-actions-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes title-actions-in {
+  from { opacity: 0; visibility: hidden; }
+  to { opacity: 1; visibility: visible; }
+}
 @media (max-aspect-ratio: 4/3) {
   .title-backdrop {
     top: 51%;

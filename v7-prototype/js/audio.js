@@ -34,7 +34,7 @@
     const track = V.soundtracks[key];
     const audio = new Audio();
     const voice = { audio, gain: 0 };
-    audio.preload = 'none';
+    audio.preload = key === 'home-at-last' ? 'auto' : 'none';
     audio.volume = 0;
     audio.addEventListener('error', () => {
       if (track.remote && !voice.remote) {
@@ -61,8 +61,8 @@
     const voice = voiceFor(active);
     voice.audio.loop = scene === 'menu' || !V.soundtracks[active].once;
     if (!playing.has(voice)) {
-      voice.gain = 0;
-      voice.audio.volume = 0;
+      voice.gain = scene === 'menu' ? 1 : 0;
+      voice.audio.volume = volume * voice.gain;
       playing.add(voice);
     }
     return play(voice);

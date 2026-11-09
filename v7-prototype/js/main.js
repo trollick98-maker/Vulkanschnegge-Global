@@ -3,6 +3,7 @@
   const V = window.VS7;
   const ui = V.ui;
   const state = V.state = { mode: 'title', level: null, section: null, story: null, testMode: false };
+  V.audio.startMenu();
   const step = V.rules.step;
   const updates = { travel: V.updateRunner, arcade: V.updateRunner, arena: V.updateArena, boss: V.updateCombat };
   const get = id => document.getElementById(id);
@@ -228,18 +229,21 @@
     if (!get('leaderboard-overlay').classList.contains('hidden')) ui.dialog(null);
     else if (state.mode === 'play' || state.mode === 'boss-intro' || state.mode === 'result' || state.mode === 'outro') showMap();
   };
-  function playTitleMusic() {
-    V.audio.startMenu().then(playing => {
-      if (state.mode !== 'title') return;
-      const control = get('title-music');
-      control.classList.toggle('hidden', playing);
-      if (playing && document.activeElement === control) get('title-start').focus();
-    });
-  }
+  get('title-screen').addEventListener('click', event => {
+    if (state.mode !== 'title') return;
+    V.audio.startMenu();
+    const title = event.currentTarget;
+    if (!title.getAnimations) {
+      title.classList.add('title-settled');
+      return;
+    }
+    for (const animation of title.getAnimations({ subtree: true })) {
+      if (animation.playState !== 'finished') animation.updatePlaybackRate(6);
+    }
+  });
   get('title-start').addEventListener('click', () => {
     if (state.mode === 'title') showMap();
   });
-  get('title-music').addEventListener('click', playTitleMusic);
   get('boss-intro-next').addEventListener('click', startBossChase);
   get('back-btn').addEventListener('click', V.backToMap);
   get('home').addEventListener('click', showMap);
@@ -307,6 +311,5 @@
     const player = state.level?.player;
     if (player) player.jumpBuffer = player.dashBuffer = 0;
   });
-  playTitleMusic();
   requestAnimationFrame(frame);
 })();

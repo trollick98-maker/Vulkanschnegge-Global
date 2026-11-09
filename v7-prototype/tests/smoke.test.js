@@ -891,6 +891,8 @@ test('title and atlas share the menu song playhead, while the credits play once'
   assert.equal(players.length, 1);
   const song = players[0];
   assert.ok(song.loop);
+  assert.equal(song.preload, 'auto');
+  assert.equal(song.volume, .30);
   song.currentTime = 18;
   assert.equal(await audio.startMenu(), true);
   assert.equal(song.currentTime, 18);
