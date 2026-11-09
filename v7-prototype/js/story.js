@@ -4,8 +4,11 @@
   V.stories = {
     intro: {
       slides: [
-        { art: 'pair', alt: 'Zwei Schnecken schauen von einem Felsen zur hellen Wasseroberfläche.', label: 'I · HEIMATBUCHT', line: 'Two small lives beneath an impossible sky.', button: 'Weiter' },
-        { art: 'taken', alt: 'Ein Lichtstrahl zieht die Gefährtin nach oben. Schneggs Panzer beginnt zu glühen.', label: 'I · HEIMATBUCHT', line: 'The gods took her light. Something woke inside his shell.', button: 'Zur Weltkarte' }
+        { art: 'intro-harbor', alt: 'Auf einem Felsen in der Heimatbucht berühren sich fast die Fühler zweier Schnecken.', label: 'I · HEIMATBUCHT', line: 'They spent their mornings here, where the light reached the seabed.', button: 'Weiter' },
+        { art: 'intro-omens', alt: 'Gewaltige Schatten der Götter fallen auf die beiden Schnecken.', label: 'II · DIE SCHATTEN', line: 'Then the gods came, and the water went dark.', button: 'Weiter' },
+        { art: 'intro-abduction', alt: 'Ein türkisfarbener Lichtstrahl reißt die goldene Schnecke von der Klippe fort.', label: 'III · DIE ENTFÜHRUNG', line: 'He lunged for her, but the light carried her beyond the ledge.', button: 'Weiter' },
+        { art: 'intro-sealed', alt: 'Schnegg sieht seine Gefährtin im schließenden Tor verschwinden.', label: 'IV · DAS TOR', line: 'The gate closed before he could follow.', button: 'Weiter' },
+        { art: 'intro-pursuit', alt: 'Magma glüht in Schneggs Panzer. Vor ihm führt eine goldene Spur in die Tiefe.', label: 'V · DER AUFBRUCH', line: 'A few sparks drifted into the depths. He followed.', button: 'Aufbrechen' }
       ]
     },
     rift: {

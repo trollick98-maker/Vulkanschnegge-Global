@@ -32,7 +32,10 @@
   for (const place of ['harbor', 'reef', 'greed', 'diva', 'vortex', 'god']) {
     images['map-' + place] = 'weltkarte/' + place + '.webp';
   }
-  for (const scene of ['pair', 'taken', 'fade', 'rift', 'source', 'shore', 'credits']) {
+  for (const scene of [
+    'intro-harbor', 'intro-omens', 'intro-abduction', 'intro-sealed', 'intro-pursuit',
+    'fade', 'rift', 'source', 'shore', 'credits'
+  ]) {
     images['story-' + scene] = 'story/' + scene + '.webp';
   }
   for (const biome of ['reef', 'greed', 'diva', 'vortex', 'god']) {

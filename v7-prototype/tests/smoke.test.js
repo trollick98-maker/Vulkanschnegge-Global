@@ -738,6 +738,7 @@ test('all supplied media are mapped to their scenes and packaged for offline pla
   assert.equal(V.bosses.god.track, 'run-the-loop');
   assert.equal(V.stories.source.track, 'i-am-the-source');
   assert.equal(V.stories.credits.track, 'home-at-last');
+  assert.equal(V.stories.intro.slides.length, 5);
   const introArt = ['constellations.webp', 'logo.png'];
   for (const file of introArt) {
     assert.ok(read('index.html').includes('assets/images/intro/' + file));
@@ -764,7 +765,7 @@ test('all supplied media are mapped to their scenes and packaged for offline pla
     ...['harbor', 'reef', 'greed', 'diva', 'vortex', 'god'].map(place => V.imagePath('map-' + place)),
     ...Array.from(read('index.html').matchAll(/src="(assets\/images\/story\/[^"]+\.webp)"/g), match => match[1])
   ];
-  assert.equal(new Set(artwork).size, 15);
+  assert.equal(new Set(artwork).size, artwork.length);
   for (const file of artwork) {
     const data = fs.readFileSync(path.join(root, file));
     assert.equal(data.toString('ascii', 8, 12), 'WEBP', file);

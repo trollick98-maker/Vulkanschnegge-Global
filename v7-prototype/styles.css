@@ -70,16 +70,6 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2
 .title-backdrop, [data-player-art] { image-rendering: pixelated; }
 [data-player-art="otter"] { --art-scale: .65; --art-floor: 5.5%; }
 [data-player-art="frog"] { --art-scale: .77; --art-floor: 3.3%; }
-.title-character, .hero-character {
-  position: absolute;
-  height: auto;
-  transform: translate(-50%, var(--art-floor, 17.5%));
-}
-.title-character {
-  left: 26.6%;
-  bottom: 23.4%;
-  width: calc(20% * var(--art-scale, 1));
-}
 .title-screen::after {
   z-index: -1;
   content: "";
@@ -236,9 +226,12 @@ a.primary:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 }
 .hero-art { image-rendering: pixelated; }
 .hero-character {
+  position: absolute;
   left: 58.5%;
   bottom: 18%;
   width: calc(27% * var(--art-scale, 1));
+  height: auto;
+  transform: translate(-50%, var(--art-floor, 17.5%));
 }
 .campaign-hero::after {
   z-index: -1;
