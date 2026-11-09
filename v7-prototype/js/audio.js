@@ -25,7 +25,8 @@
   }
 
   function play(voice) {
-    if (scene && enabled && !document.hidden) voice.audio.play().catch(() => {});
+    if (!scene || !enabled || document.hidden) return Promise.resolve(false);
+    return voice.audio.play().then(() => true, () => false);
   }
 
   function voiceFor(key) {
@@ -34,7 +35,6 @@
     const audio = new Audio();
     const voice = { audio, gain: 0 };
     audio.preload = 'none';
-    audio.loop = !track.once;
     audio.volume = 0;
     audio.addEventListener('error', () => {
       if (track.remote && !voice.remote) {
@@ -57,21 +57,28 @@
     wanted = key;
     const fallback = scene === 'boss' ? 'mid' : 'slow';
     active = failed.has(key) ? (failed.has(fallback) ? null : fallback) : key;
-    if (!active || !enabled || document.hidden) return;
+    if (!active || !enabled || document.hidden) return Promise.resolve(false);
     const voice = voiceFor(active);
+    voice.audio.loop = scene === 'menu' || !V.soundtracks[active].once;
     if (!playing.has(voice)) {
       voice.gain = 0;
       voice.audio.volume = 0;
       playing.add(voice);
     }
-    play(voice);
+    return play(voice);
   }
 
   V.audio = {
     startLevel(mode, track = 'slow') {
       this.stop();
       scene = mode;
-      select(Object.hasOwn(V.soundtracks, track) ? track : 'slow');
+      return select(Object.hasOwn(V.soundtracks, track) ? track : 'slow');
+    },
+    startMenu() {
+      if (scene !== 'menu') return this.startLevel('menu', 'home-at-last');
+      const voice = voices.get(active);
+      if (voice && !voice.audio.paused) return Promise.resolve(true);
+      return select(wanted);
     },
     updateRunner(speed, dt) {
       if (scene !== 'arcade') return;
@@ -92,7 +99,7 @@
       if (!effectsEnabled) pauseEffects();
     },
     effect(key, heavy = false) {
-      if (!scene || scene === 'story' || !effectsEnabled || volume === 0 || document.hidden || !effectNames.includes(key)) return;
+      if (!scene || scene === 'story' || scene === 'menu' || !effectsEnabled || volume === 0 || document.hidden || !effectNames.includes(key)) return;
       if (!effects.has(key)) effects.set(key, []);
       const pool = effects.get(key);
       const idle = pool.findIndex(voice => voice.paused);

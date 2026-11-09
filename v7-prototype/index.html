@@ -9,7 +9,18 @@
 </head>
 <body>
   <main class="app">
-    <header class="masthead">
+    <section id="title-screen" class="title-screen" aria-labelledby="title-logo">
+      <img class="title-backdrop" src="assets/images/intro/constellations.webp" alt="" fetchpriority="high">
+      <div class="title-lockup">
+        <h1 id="title-logo"><img src="assets/images/intro/logo.png" alt="VULKANSCHNEGGE"></h1>
+        <p>THE GREAT UPDATE <span>·</span> 7.0</p>
+      </div>
+      <div class="title-actions">
+        <button id="title-start" class="title-start" type="button">Start <span aria-hidden="true">▶</span></button>
+        <button id="title-music" class="title-music hidden" type="button">♫ Musik starten</button>
+      </div>
+    </section>
+    <header id="shell-header" class="masthead hidden">
       <div class="brand"><img src="assets/images/snail.png" alt=""><div><div class="eyebrow">ABYSS CAMPAIGN</div><h1>Vulkanschnegge <span>7.0</span></h1></div></div>
       <div class="top-controls">
         <button id="fullscreen-btn" class="quiet" aria-label="Vollbild">⛶ <span>Vollbild</span></button>
@@ -19,7 +30,7 @@
       </div>
     </header>
 
-    <section id="world-ui" class="world">
+    <section id="world-ui" class="world hidden">
       <div class="campaign-hero">
         <img class="hero-art" src="assets/images/story/hero.webp" alt="" decoding="async">
         <div class="hero-copy">
@@ -117,7 +128,7 @@
       </div>
     </section>
 
-    <footer class="foot"><kbd>A</kbd> <kbd>D</kbd> Bewegen <span>·</span> <kbd>Leertaste</kbd> Springen <span>·</span> <kbd>Shift</kbd> Panzer-Dash <span>·</span> <kbd>Esc</kbd> Weltkarte</footer>
+    <footer id="shell-footer" class="foot hidden"><kbd>A</kbd> <kbd>D</kbd> Bewegen <span>·</span> <kbd>Leertaste</kbd> Springen <span>·</span> <kbd>Shift</kbd> Panzer-Dash <span>·</span> <kbd>Esc</kbd> Weltkarte</footer>
   </main>
   <script src="js/config.js"></script>
   <script src="js/assets.js"></script>

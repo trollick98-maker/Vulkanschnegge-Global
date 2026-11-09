@@ -2,7 +2,7 @@
   'use strict';
   const V = window.VS7;
   const ui = V.ui;
-  const state = V.state = { mode: 'map', level: null, section: null, story: null, testMode: false };
+  const state = V.state = { mode: 'title', level: null, section: null, story: null, testMode: false };
   const step = V.rules.step;
   const updates = { travel: V.updateRunner, arcade: V.updateRunner, arena: V.updateArena, boss: V.updateCombat };
   const get = id => document.getElementById(id);
@@ -14,14 +14,14 @@
   let hudAt = 0;
   V.saveCampaign(campaign);
 
-  function transition(mode) {
+  function transition(mode, keepMusic = false) {
     state.mode = mode;
     get('restart-btn').disabled = mode === 'outro';
     get('test-skip-btn').classList.toggle('hidden', !canSkip());
     frameAt = 0;
     carry = 0;
     V.input.reset();
-    V.audio.stop();
+    if (!keepMusic) V.audio.stop();
   }
 
   function canSkip() {
@@ -29,7 +29,7 @@
   }
 
   function showStory(id, done) {
-    transition('story');
+    transition('story', id === 'intro');
     const entry = V.stories[id];
     state.story = { entry, index: 0, done };
     if (entry.track) V.audio.startLevel('story', entry.track);
@@ -38,22 +38,27 @@
   }
 
   function showMap() {
-    const returnToAtlas = Boolean(state.section);
-    transition('map');
+    const fromTitle = state.mode === 'title';
+    const returnToAtlas = fromTitle || Boolean(state.section);
+    transition('map', true);
+    V.audio.startMenu();
+    if (fromTitle) {
+      get('title-screen').classList.add('hidden');
+      get('shell-header').classList.remove('hidden');
+      get('shell-footer').classList.remove('hidden');
+    }
     state.level = null;
     state.section = null;
     state.story = null;
-    ui.map(campaign, graph, { enter: enterNode, travel: route => start({ kind: 'travel', route }) });
-    if (returnToAtlas) get('atlas-heading').scrollIntoView({ block: 'start' });
+    ui.map(campaign, graph, { enter: enterNode, travel: beginTravel });
+    if (returnToAtlas) {
+      const atlas = get('atlas-heading');
+      atlas.scrollIntoView({ block: 'start' });
+      if (fromTitle) atlas.focus({ preventScroll: true });
+    }
     if (campaign.pending) {
       ui.reward(campaign, graph, id => {
         if (V.claimPerk(campaign, id)) showMap();
-      });
-    } else if (!campaign.story.intro) {
-      showStory('intro', () => {
-        campaign.story.intro = true;
-        V.saveCampaign(campaign);
-        showMap();
       });
     } else if (!campaign.story.rift && campaign.cleared.includes(graph.lastGod)) {
       showStory('rift', () => {
@@ -64,6 +69,18 @@
     } else if (!campaign.story.ending && campaign.cleared.includes(graph.final)) {
       endStory();
     }
+  }
+
+  function beginTravel(route) {
+    if (campaign.story.intro) {
+      start({ kind: 'travel', route });
+      return;
+    }
+    showStory('intro', () => {
+      campaign.story.intro = true;
+      V.saveCampaign(campaign);
+      start({ kind: 'travel', route });
+    });
   }
 
   function endStory() {
@@ -211,6 +228,18 @@
     if (!get('leaderboard-overlay').classList.contains('hidden')) ui.dialog(null);
     else if (state.mode === 'play' || state.mode === 'boss-intro' || state.mode === 'result' || state.mode === 'outro') showMap();
   };
+  function playTitleMusic() {
+    V.audio.startMenu().then(playing => {
+      if (state.mode !== 'title') return;
+      const control = get('title-music');
+      control.classList.toggle('hidden', playing);
+      if (playing && document.activeElement === control) get('title-start').focus();
+    });
+  }
+  get('title-start').addEventListener('click', () => {
+    if (state.mode === 'title') showMap();
+  });
+  get('title-music').addEventListener('click', playTitleMusic);
   get('boss-intro-next').addEventListener('click', startBossChase);
   get('back-btn').addEventListener('click', V.backToMap);
   get('home').addEventListener('click', showMap);
@@ -278,6 +307,6 @@
     const player = state.level?.player;
     if (player) player.jumpBuffer = player.dashBuffer = 0;
   });
-  showMap();
+  playTitleMusic();
   requestAnimationFrame(frame);
 })();

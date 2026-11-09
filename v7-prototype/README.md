@@ -4,6 +4,8 @@ Entpacke die ZIP und öffne `v7-prototype/index.html`. Der Offline-Build enthäl
 
 ## Spielen
 
+Beim Öffnen des Spiels sinkt der Pixel-Titel vor Schnegg und den fünf Götter-Sternbildern ins Bild. **Start** öffnet direkt die Weltkarte. „Home, At Last“ läuft dabei an derselben Stelle weiter und begleitet die Karte. Falls der Browser Musik erst nach einem Klick zulässt, kannst du sie schon auf dem Titelbild mit **Musik starten** einschalten. Der Prolog beginnt vor der ersten Reise.
+
 - Das Hauptmenü führt zur Weltkarte, zum Endlos-Modus und zum Schneggboard. Im Atlas folgen die illustrierten Biome der Reihenfolge des Seeds. Der Riss erscheint mit dem passenden Story-Kapitel.
 - Sieben Pixelart-Bilder erzählen Schneggs Geschichte von der Heimatbucht bis zum Abspann. Das Perk-Menü hat ein eigenes Bild.
 - Wähle eine Figur und starte eine neue Kampagne, wenn du mit dieser Figur spielen willst. Derselbe Seed erzeugt dieselbe Karte. Reisen dauern zwischen 2 und 3 Minuten, beschleunigen automatisch und starten pro späterer Zone mit 42 Tempo mehr.

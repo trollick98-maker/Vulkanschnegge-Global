@@ -738,6 +738,11 @@ test('all supplied media are mapped to their scenes and packaged for offline pla
   assert.equal(V.bosses.god.track, 'run-the-loop');
   assert.equal(V.stories.source.track, 'i-am-the-source');
   assert.equal(V.stories.credits.track, 'home-at-last');
+  const introArt = ['constellations.webp', 'logo.png'];
+  for (const file of introArt) {
+    assert.ok(read('index.html').includes('assets/images/intro/' + file));
+    assert.ok(fs.statSync(path.join(root, 'assets/images/intro', file)).size > 1000);
+  }
   for (const track of Object.values(V.soundtracks)) {
     const target = path.join(root, 'assets/music', track.file);
     if (!fs.existsSync(target)) {
@@ -877,6 +882,26 @@ test('leaving a scene revokes playback across tab changes and later starts resto
   audio.startLevel('story', 'home-at-last');
   assert.equal(players[1].loop, false);
   assert.ok(!players[1].paused);
+});
+
+test('title and atlas share the menu song playhead, while the credits play once', async () => {
+  const { audio, players } = audioFixture();
+  assert.equal(await audio.startMenu(), true);
+  assert.equal(audio.current(), 'home-at-last');
+  assert.equal(players.length, 1);
+  const song = players[0];
+  assert.ok(song.loop);
+  song.currentTime = 18;
+  assert.equal(await audio.startMenu(), true);
+  assert.equal(song.currentTime, 18);
+  assert.ok(!song.paused);
+
+  song.pause();
+  assert.equal(await audio.startMenu(), true);
+  assert.equal(song.currentTime, 18);
+  audio.startLevel('story', 'home-at-last');
+  assert.equal(song.currentTime, 0);
+  assert.equal(song.loop, false);
 });
 
 test('missing boss track falls back to a built-in runner loop', () => {
