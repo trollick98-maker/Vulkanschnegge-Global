@@ -2,8 +2,7 @@
   'use strict';
   const V = window.VS7;
   const ui = V.ui;
-  const state = V.state = { mode: 'title', level: null, section: null, story: null, testMode: false };
-  V.audio.startMenu();
+  const state = V.state = { mode: 'launch', level: null, section: null, story: null, testMode: false };
   const step = V.rules.step;
   const updates = { travel: V.updateRunner, arcade: V.updateRunner, arena: V.updateArena, boss: V.updateCombat };
   const get = id => document.getElementById(id);
@@ -229,6 +228,15 @@
     if (!get('leaderboard-overlay').classList.contains('hidden')) ui.dialog(null);
     else if (state.mode === 'play' || state.mode === 'boss-intro' || state.mode === 'result' || state.mode === 'outro') showMap();
   };
+  get('launch-screen').addEventListener('click', event => {
+    if (state.mode !== 'launch') return;
+    state.mode = 'title';
+    V.audio.startMenu();
+    event.currentTarget.classList.add('hidden');
+    const title = get('title-screen');
+    title.classList.remove('hidden');
+    title.focus({ preventScroll: true });
+  });
   get('title-screen').addEventListener('click', event => {
     if (state.mode !== 'title') return;
     V.audio.startMenu();

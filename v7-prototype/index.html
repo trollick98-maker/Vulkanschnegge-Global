@@ -9,8 +9,12 @@
 </head>
 <body>
   <main class="app">
-    <section id="title-screen" class="title-screen" aria-labelledby="title-logo">
-      <img class="title-backdrop" src="assets/images/intro/constellations.webp" alt="" fetchpriority="high">
+    <button id="launch-screen" class="launch-screen" type="button">LAUNCH</button>
+    <section id="title-screen" class="title-screen hidden" aria-labelledby="title-logo" tabindex="-1">
+      <div class="title-scene" aria-hidden="true">
+        <img class="title-backdrop" src="assets/images/intro/constellations.webp" alt="" fetchpriority="high">
+        <img class="title-character" src="assets/images/snail.png" alt="">
+      </div>
       <div class="title-lockup">
         <h1 id="title-logo"><img src="assets/images/intro/logo.png" alt="VULKANSCHNEGGE"></h1>
         <p>THE GREAT UPDATE <span>·</span> 7.0</p>
