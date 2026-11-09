@@ -44,7 +44,7 @@
     const look = hitLooks[kind];
     const life = kind === 'hurt' ? .46 : .39;
     const size = look.size * (heavy ? 1.36 : 1);
-    const stop = s.kind === 'arena' || s.kind === 'boss' ? look.stop + (heavy ? .013 : 0) : 0;
+    const stop = s.kind === 'arena' ? look.stop + (heavy ? .013 : 0) : 0;
     addEffect(s, { kind, x, y, color: look.color, size, amount, direction, left: life, life }, stop);
     V.audio?.effect?.(kind, heavy);
   };

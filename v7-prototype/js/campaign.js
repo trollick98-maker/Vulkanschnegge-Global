@@ -76,6 +76,8 @@
     return !edge.hidden || campaign.cleared.includes(edge.a) || campaign.cleared.includes(edge.b);
   };
 
+  V.isBossRoute = (campaign, route) => route.node.kind === 'boss' && !campaign.cleared.includes(route.to);
+
   V.routesFrom = function (campaign, graph) {
     if (campaign.pending) return [];
     const position = campaign.position;

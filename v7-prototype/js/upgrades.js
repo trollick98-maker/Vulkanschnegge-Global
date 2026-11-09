@@ -15,7 +15,7 @@
     { id: 'magnet', name: 'Magnet', effect: '+75 % Münzreichweite.', uses: 3, tier: 'common' },
     { id: 'coinSpawnBoost', name: 'Münzschwarm', effect: 'Bonusmünzen. Einmal pro Abschnitt heilt eine Münze ab Nummer 12 ein fehlendes Herz.', uses: 1, tier: 'common' },
     { id: 'sisyphos', name: 'Sprungfeder', effect: 'Ein zusätzlicher Luftsprung. Der erste Luftsprung stellt den Luft-Dash in Arenen wieder her.', uses: 1, tier: 'epic' },
-    { id: 'turboHunter', name: 'Durchschlag', effect: '+25 % Dash-Schaden in Arenen und ein zusätzlicher Schildschaden durch Bosskonter.', uses: 1, tier: 'epic' },
+    { id: 'turboHunter', name: 'Durchschlag', effect: '+25 % Dash-Schaden gegen Gegner und Bosskonter können ein zusätzliches Geschoss abräumen.', uses: 1, tier: 'epic' },
     { id: 'hardplastic', name: 'Eimer aus Hartplastik', effect: '+2 HP für Otter.', uses: 1, tier: 'rare', allowed: 'otter' },
     { id: 'springLegs', name: 'Federnde Beine', effect: '+25 % Kraft bei Luftsprüngen für Frogo.', uses: 1, tier: 'rare', allowed: 'frog' },
     { id: 'snailRage', name: 'Schneckenzorn', effect: 'Der Dash hält 60 ms länger und hat 30 % weniger Abklingzeit.', uses: 1, tier: 'epic', allowed: 'snail' }

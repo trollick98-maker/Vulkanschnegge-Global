@@ -290,11 +290,18 @@
     g.save();
     g.fillStyle = attack.color;
     g.globalAlpha = .16 + progress * .23;
-    if (attack.zone) {
+    if (attack.height) {
+      const x = s.cameraX ?? 0;
+      g.fillRect(0, G - attack.height, tell.width, attack.height);
+      g.globalAlpha = .88;
+      g.fillRect(x, G - 5, W * progress, 5);
+      g.font = '900 24px monospace';
+      for (let i = 28; i < W; i += 58) g.fillText('↑', x + i, G - 12);
+    } else if (attack.zone) {
       const top = s.boss.stage === 'arena' ? 0 : 122;
-      g.fillRect(tell.targetX - attack.width / 2, top, attack.width, G - top);
+      g.fillRect(tell.targetX - tell.width / 2, top, tell.width, G - top);
       g.globalAlpha = .78;
-      g.fillRect(tell.targetX - attack.width / 2, G - 5, attack.width * progress, 5);
+      g.fillRect(tell.targetX - tell.width / 2, G - 5, tell.width * progress, 5);
     } else if (attack.wind) {
       g.globalAlpha = .7;
       g.font = '800 22px monospace';
@@ -325,6 +332,20 @@
   function drawProjectile(q) {
     const attack = V.bossAttacks[q.key];
     if (q.zone) {
+      if (attack.height) {
+        const crest = q.top + 2;
+        g.fillStyle = '#35aade';
+        g.globalAlpha = .82;
+        g.fillRect(q.x, crest + 11, q.w, G - crest - 11);
+        g.globalAlpha = 1;
+        g.fillStyle = '#b8f7ff';
+        for (let x = q.x; x < q.x + q.w; x += 48) {
+          g.fillRect(x, crest + 5, 18, 7);
+          g.fillRect(x + 18, crest, 14, 8);
+          g.fillRect(x + 32, crest + 4, 16, 8);
+        }
+        return;
+      }
       g.fillStyle = attack.color;
       g.globalAlpha = .40;
       g.fillRect(q.x, q.top ?? 122, q.w, G - (q.top ?? 122));
@@ -354,7 +375,7 @@
         g.fillRect(x - 3, y - 3, 6, 6);
       }
     }
-    if ((attack.reflect && q.counter !== false) || q.reflected) {
+    if (attack.reflect || q.reflected) {
       g.strokeStyle = q.reflected ? '#fff1a8' : '#fbffec';
       g.lineWidth = q.reflected ? 3 : 1.5;
       const halo = r + (q.reflected ? 6 : 4);
@@ -370,7 +391,7 @@
     const aura = V.biomes[s.biome].accent;
     const lean = b.tell ? (1 - b.tell.left / b.tell.total) * 8 : 0;
     const facing = b.facing ?? -1;
-    const bodyX = b.x + (reducedMotion ? 0 : b.flash * 67 * (b.hitSide ?? 1) + facing * lean);
+    const bodyX = b.x + (reducedMotion ? 0 : facing * lean);
     const bob = reducedMotion ? 0 : Math.sin(s.elapsed * 3.3) * 3;
     if (finale) {
       g.fillStyle = '#04111c';
@@ -420,18 +441,6 @@
         g.fillRect((s.cameraX ?? 0) + (i * 109 + s.elapsed * 113) % W, 142 + (i * 77) % 252, s.windTime > 0 ? 28 : 11, 2);
       }
       g.globalAlpha = 1;
-    }
-    if (finale && b.hp > 0) {
-      const x = b.x + b.w / 2 - 62;
-      const y = b.y - 28;
-      g.fillStyle = '#101a2d';
-      g.fillRect(x, y, 124, 18);
-      g.fillStyle = b.open ? '#a6ffd4' : '#cad9f4';
-      g.font = 'bold 11px monospace';
-      g.textAlign = 'center';
-      g.fillText(b.open ? 'OFFEN · DASH!' : b.move ? 'IN BEWEGUNG' : 'DECKUNG ZU', x + 62, y + 12);
-      g.textAlign = 'start';
-      g.fillRect(x, y + 17, 124 * b.hp / b.maxHp, 3);
     }
     drawTell(s);
     for (const q of s.projectiles) drawProjectile(q);

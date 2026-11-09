@@ -25,7 +25,7 @@
   }
 
   function play(voice) {
-    if (!scene || !enabled || document.hidden) return Promise.resolve(false);
+    if (!scene || (!enabled && scene !== 'boss') || document.hidden) return Promise.resolve(false);
     return voice.audio.play().then(() => true, () => false);
   }
 
@@ -57,12 +57,14 @@
     wanted = key;
     const fallback = scene === 'boss' ? 'mid' : 'slow';
     active = failed.has(key) ? (failed.has(fallback) ? null : fallback) : key;
-    if (!active || !enabled || document.hidden) return Promise.resolve(false);
+    if (!active || (!enabled && scene !== 'boss') || document.hidden) return Promise.resolve(false);
     const voice = voiceFor(active);
-    voice.audio.loop = scene === 'menu' || !V.soundtracks[active].once;
+    const bossTrack = scene === 'boss' && active === wanted;
+    voice.audio.muted = !enabled;
+    voice.audio.loop = scene === 'menu' || (!bossTrack && !V.soundtracks[active].once);
     if (!playing.has(voice)) {
-      voice.gain = scene === 'menu' ? 1 : 0;
-      voice.audio.volume = volume * voice.gain;
+      voice.gain = scene === 'menu' || bossTrack ? 1 : 0;
+      voice.audio.volume = enabled ? volume * voice.gain : 0;
       playing.add(voice);
     }
     return play(voice);
@@ -92,6 +94,17 @@
       }
     },
     current: () => active,
+    bossClock(fallbackTime) {
+      if (scene !== 'boss' || active !== wanted) return null;
+      const audio = voices.get(active)?.audio;
+      if (!audio || (!audio.ended && (audio.paused || (audio.readyState < 2 && audio.currentTime === 0)))) return null;
+      const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
+      // If playback only became available after the fallback clock started, join the live fight.
+      if (!audio.ended && audio.currentTime + .28 < fallbackTime) {
+        audio.currentTime = Math.min(fallbackTime, duration || fallbackTime);
+      }
+      return { time: audio.currentTime, duration, ended: audio.ended };
+    },
     isEnabled: () => enabled,
     effectsEnabled: () => effectsEnabled,
     setEffectsEnabled(on) {
@@ -119,7 +132,12 @@
     },
     setEnabled(on) {
       enabled = Boolean(on);
-      if (!enabled) pause();
+      if (!enabled && scene === 'boss') {
+        for (const voice of playing) {
+          voice.audio.muted = true;
+          voice.audio.volume = 0;
+        }
+      } else if (!enabled) pause();
       else if (scene && wanted) select(wanted);
     },
     volume(value) {
@@ -141,11 +159,11 @@
       playing.clear();
     },
     tick(dt) {
-      if (!scene || !enabled || document.hidden) return;
+      if (!scene || (!enabled && scene !== 'boss') || document.hidden) return;
       for (const voice of playing) {
         const target = voices.get(active) === voice ? 1 : 0;
         voice.gain = V.clamp(voice.gain + (target ? 1 : -1) * dt / 1.1, 0, 1);
-        voice.audio.volume = volume * voice.gain;
+        voice.audio.volume = enabled ? volume * voice.gain : 0;
         if (!target && voice.gain === 0) {
           voice.audio.pause();
           if (voice.audio.readyState > 0) voice.audio.currentTime = 0;
@@ -159,7 +177,7 @@
     if (document.hidden) {
       pause();
       pauseEffects();
-    } else if (scene && enabled && active) {
+    } else if (scene && (enabled || scene === 'boss') && active) {
       const voice = voices.get(active);
       if (voice && (voice.audio.loop || !voice.audio.ended)) play(voice);
     }

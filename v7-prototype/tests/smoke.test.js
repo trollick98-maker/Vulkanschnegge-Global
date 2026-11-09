@@ -8,10 +8,10 @@ const root = path.join(__dirname, '..');
 const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
 const modules = [
-  'config', 'assets', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data',
+  'config', 'assets', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats',
   'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'combat', 'audio', 'online-board', 'input', 'story', 'render', 'ui', 'main'
 ];
-const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'combat', 'story'];
+const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'combat', 'story'];
 const idle = {};
 
 function logic(storage = new Map(), files = rules, extra = {}) {
@@ -557,125 +557,123 @@ test('biome traps telegraph, use local elevation, and hurt only during activatio
   }
 });
 
-test('boss dash remembers a slightly early input, lunges and delivers the counter perk', () => {
+test('a buffered boss dash parries and intercepts projectiles without damaging the boss', () => {
   const { V } = logic();
   const graph = V.generateMap('lunge');
-  const s = V.newCombat(graph.byId.reef, 'snail', { turboHunter: 1, hyperMode: 1 }, 'lunge');
-  const p = s.player;
-  const b = s.boss;
   const step = V.rules.step;
-  const x = p.x;
-  p.dashCooldown = .06;
-  V.updateCombat(s, step, { dash: true });
-  assert.equal(p.dashTime, 0);
-  for (let i = 0; i < 6; i++) V.updateCombat(s, step, idle);
-  assert.ok(p.dashTime > 0 && p.x > x + 20);
-  const q = { key: 'plasma', x: p.x + p.w + 18, y: p.y + 22, r: 16, vx: -5 };
-  s.projectiles.push(q);
-  V.updateCombat(s, step, idle);
-  assert.equal(q.reflected, true);
-  assert.equal(p.dashCooldown, 0);
-  assert.ok(s.hitStop > 0 && s.effects.length > 0);
-  q.x = b.x;
-  V.updateCombat(s, step, idle);
-  assert.equal(b.hp, b.maxHp - 2);
-});
-
-test('every boss scrolls, telegraphs and provides a counter in every phase', () => {
-  const { V } = logic();
-  const graph = V.generateMap('boss');
-  for (const [id, boss] of Object.entries(V.bosses)) {
-    for (const phase of boss.phases) assert.ok(phase.some(key => V.bossAttacks[key].reflect), id);
-    const s = V.newCombat(graph.byId[id], 'snail', {}, 'boss');
-    const x = s.boss.x;
-    s.player.invuln = 100;
-    let telegraphs = 0;
-    for (let i = 0; i < 900; i++) {
-      V.updateCombat(s, V.rules.step, idle);
-      if (s.boss.tell) telegraphs++;
+  for (const arena of [false, true]) {
+    const s = V.newCombat(graph.byId.reef, 'snail', { turboHunter: 1, hyperMode: 1 }, 'lunge');
+    if (arena) V.enterBossArena(s);
+    const p = s.player;
+    const x = p.x;
+    p.dashCooldown = .06;
+    V.updateCombat(s, step, { dash: true, right: true });
+    assert.equal(p.dashTime, 0);
+    for (let i = 0; i < 6; i++) V.updateCombat(s, step, idle);
+    assert.ok(p.dashTime > 0 && p.x > x + 20);
+    const q = { key: 'plasma', x: p.x + p.w + 18, y: p.y + 22, r: 16, vx: -5, vy: 0 };
+    s.projectiles.push(q);
+    V.updateCombat(s, step, idle);
+    assert.equal(q.reflected, true);
+    assert.equal(q.intercepts, 2);
+    assert.equal(p.dashCooldown, 0);
+    assert.equal(s.effects.at(-1).kind, 'parry');
+    assert.equal(s.hitStop, 0);
+    for (let i = 0; i < 2; i++) {
+      const hostile = { key: 'toxic', x: q.x + 35, y: q.y, r: 17, vx: -500, vy: 0 };
+      s.projectiles.push(hostile);
+      V.updateCombat(s, step, idle);
+      assert.ok(hostile.dead);
+      assert.equal(q.intercepts, 1 - i);
+      assert.equal(s.effects.at(-1).kind, 'guard');
     }
-    assert.equal(s.boss.x, x);
-    assert.ok(s.boss.x > V.W * .7);
-    assert.ok(s.dist > 4000 && s.platforms.length > 0 && s.obstacles.length > 0);
-    assert.ok(s.boss.attacks > 5 && telegraphs > 100);
-    assert.ok(s.projectiles.length < 16);
+    assert.equal(s.projectiles.length, 0);
+    assert.equal(s.outcome, null);
+    assert.equal(s.hp, s.maxHp);
   }
 });
 
-test('the last boss counter breaks the shield, then reaching the arena starts the finale', () => {
+test('all five bosses appear on the route and enter the arena without a shield gate', () => {
   const { V } = logic();
-  const graph = V.generateMap('counter');
+  const graph = V.generateMap('boss');
+  const step = V.rules.step;
   for (const [id, boss] of Object.entries(V.bosses)) {
-    const s = V.newCombat(graph.byId[id], 'snail', {}, 'counter');
-    const p = s.player;
-    const b = s.boss;
-    b.wait = 100;
-    b.hp = 1;
-    const key = boss.phases[0].find(attack => V.bossAttacks[attack].reflect);
-    const q = { key, x: p.x + 28, y: p.y + 22, r: V.bossAttacks[key].radius, vx: -410, reflected: false, dead: false };
-    s.projectiles.push(q);
-    V.updateCombat(s, V.rules.step, { dash: true });
-    assert.ok(q.reflected, id);
-    for (let i = 0; i < 50 && b.hp > 0; i++) V.updateCombat(s, V.rules.step, idle);
-    assert.equal(b.hp, 0, id);
-    assert.equal(b.stage, 'chase');
-    s.dist = b.chaseDistance;
+    for (const phase of boss.phases) assert.ok(phase.some(key => V.bossAttacks[key].reflect), id);
+    const s = V.newCombat(graph.byId[id], 'snail', {}, 'boss');
+    assert.ok(s.boss.x > V.W * .7 && s.boss.x < V.W);
+    assert.equal(s.boss.stage, 'chase');
+    assert.ok(s.platforms.length > 0 && s.obstacles.length > 0);
     s.hp -= 2;
-    p.invuln = 1;
-    V.updateCombat(s, V.rules.step, idle);
-    assert.equal(b.stage, 'arena', id);
-    assert.ok(b.hp >= 650 && s.platforms.length > 2);
+    s.player.invuln = 100;
+    let salvos = 0;
+    while (s.boss.stage === 'chase' && s.songTime < 26) {
+      V.updateCombat(s, step, idle);
+      if (s.boss.flash === .14) salvos++;
+    }
+    assert.ok(salvos >= 2);
+    assert.equal(s.boss.stage, 'arena', id);
+    assert.ok(s.songTime > 10 && s.songTime < 26);
+    assert.ok(s.platforms.length > 2);
     assert.equal(s.outcome, null);
     assert.equal(s.hp, s.maxHp - 2);
   }
 });
 
-test('boss arena salvos aim in world space and only a timed momentum dash deals damage', () => {
+test('the measured beat grid drives warnings and progressively denser salvos for the whole song', () => {
   const { V } = logic();
-  const graph = V.generateMap('finale');
+  const graph = V.generateMap('beats');
   const step = V.rules.step;
   for (const id of Object.keys(V.bosses)) {
-    const s = V.newCombat(graph.byId[id], 'snail', {}, 'finale');
+    const rhythm = V.bossRhythms[id];
+    assert.ok(rhythm.beats.length > 300 && rhythm.beats.at(-1) / 1000 < rhythm.duration);
+    assert.ok(rhythm.beats.every((beat, i) => !i || beat > rhythm.beats[i - 1]));
+    const s = V.newCombat(graph.byId[id], 'snail', {}, 'beats');
     V.enterBossArena(s);
-    const { boss: b, player: p } = s;
-    const attack = b.definition.phases[0].findIndex(key => V.bossAttacks[key].reflect);
-    b.cursor = attack;
-    b.wait = 0;
-    p.x = b.x - 200;
-    V.updateCombat(s, step, idle);
-    const tell = b.tell;
-    assert.equal(tell.targetX, p.x + p.w / 2);
-    assert.equal(b.open, false);
-    p.x -= 150;
-    b.tell.left = 0;
-    V.updateCombat(s, step, idle);
-    const q = s.projectiles[0];
-    assert.ok(q.vx < 0 && q.vy > 0);
-    assert.equal(q.counter, false);
-    assert.equal(b.open, true);
-    assert.equal(s.outcome, null);
-    s.projectiles = [];
-    const dash = () => {
-      Object.assign(p, { x: b.x - p.w - 2, y: V.GROUND - p.h, vx: 450, vy: 0, dashTime: 0, dashCooldown: 0, airDash: true });
-      V.updateCombat(s, step, { right: true, dash: true });
-    };
-    dash();
-    assert.equal(b.hp, b.maxHp - 150);
-    assert.equal(s.effects.at(-1).kind, 'hit');
-    assert.equal(s.effects.at(-1).amount, 150);
-    assert.equal(p.vx, 292.5);
-    assert.equal(b.open, false);
-    dash();
-    assert.equal(b.hp, b.maxHp - 150);
-    assert.equal(s.effects.at(-1).kind, 'guard');
-    b.hp = 150;
-    b.open = true;
-    dash();
+    s.player.invuln = 500;
+    const counts = [0, 0, 0];
+    const fans = [0, 0, 0];
+    while (s.outcome === null) {
+      const { cue, tell } = s.boss;
+      V.updateCombat(s, step, idle);
+      if (s.boss.flash !== .14) continue;
+      assert.ok(tell && cue);
+      assert.equal(rhythm.beats[cue.beat] / 1000, cue.at);
+      assert.ok(s.songTime >= cue.at - 1e-7 && s.songTime - cue.at <= step + 1e-7);
+      counts[cue.phase]++;
+      const attack = V.bossAttacks[cue.key];
+      if (!attack.zone && !attack.wind) fans[cue.phase] = Math.max(fans[cue.phase], (attack.fan || 1) + cue.phase);
+      assert.ok(s.projectiles.length < 22, id);
+    }
+    assert.ok(counts[0] < counts[1] && counts[1] < counts[2], id);
+    assert.ok(fans[0] < fans[2], id);
     assert.equal(s.outcome, true);
+    assert.equal(s.songTime, rhythm.duration);
   }
 });
 
-test('boss finales patrol and settle for telegraphed shots and dash openings', () => {
+test('a stalled boss song holds the cues, the live end wins, and a loss stays a loss', () => {
+  const { V } = logic();
+  const s = V.newCombat(V.generateMap('clock').byId.reef, 'snail', {}, 'clock');
+  const tick = (time, ended = false) => V.updateCombat(s, V.rules.step, idle, { time, duration: 207, ended });
+  const cue = s.boss.cue;
+  for (let i = 0; i < 160; i++) tick(cue.warningAt - .1);
+  assert.equal(s.boss.tell, null);
+  tick(cue.warningAt);
+  assert.equal(s.boss.tell.key, cue.key);
+  tick(cue.at);
+  assert.ok(s.projectiles.length);
+  tick(207);
+  assert.equal(s.outcome, null);
+  tick(207, true);
+  assert.equal(s.outcome, true);
+  const losing = V.newCombat(s.node, 'snail', {}, 'clock');
+  losing.hp = 1;
+  V.hurt(losing);
+  V.updateCombat(losing, V.rules.step, idle, { time: 207, duration: 207, ended: true });
+  assert.equal(losing.outcome, false);
+});
+
+test('boss arenas patrol between cues and lock the salvo direction during a warning', () => {
   const { V } = logic();
   const graph = V.generateMap('patrol');
   for (const id of Object.keys(V.bosses)) {
@@ -685,29 +683,41 @@ test('boss finales patrol and settle for telegraphed shots and dash openings', (
     s.player.invuln = 100;
     const stops = new Set();
     let lift = 0;
-    let openings = 0;
-    for (let i = 0; i < 1500; i++) {
+    for (let i = 0; i < 2300; i++) {
       const lastTell = b.tell;
       const lastX = b.x;
       const lastY = b.y;
-      const wasOpen = b.open;
-      V.updateCombat(s, V.rules.step, idle);
+      V.updateCombat(s, V.rules.step, { right: i % 140 < 70, left: i % 140 >= 70 });
       assert.ok(b.x >= 0 && b.x + b.w <= s.worldWidth);
       lift = Math.max(lift, V.GROUND - (b.y + b.h));
       if (lastTell && b.tell === lastTell) {
         assert.equal(b.x, lastX, id);
         assert.equal(b.y, lastY, id);
       }
-      if (b.open) {
-        assert.ok(Math.abs(b.y + b.h - V.GROUND) < 1e-6, id);
-        assert.equal(b.move, null, id);
-        if (!wasOpen) openings++;
-        stops.add(b.x);
-      }
+      if (b.flash === .14) stops.add(b.x);
     }
-    assert.ok(stops.size >= 3 && openings >= 5, id);
-    if (id === 'diva' || id === 'god') assert.ok(lift > 90, id);
+    assert.ok(stops.size >= 3, id);
+    if (id === 'diva' || id === 'god') assert.ok(lift > 80, id);
     if (id === 'greed') assert.equal(lift, 0, id);
+  }
+});
+
+test('the Trawler telegraphs its floor wave and jumping clears its damage zone', () => {
+  const { V } = logic();
+  const node = V.generateMap('flood').byId.greed;
+  const step = V.rules.step;
+  for (const arena of [false, true]) {
+    for (const jump of [false, true]) {
+      const s = V.newCombat(node, 'snail', {}, 'flood');
+      if (arena) V.enterBossArena(s);
+      s.boss.cue = { key: 'wave', warningAt: .08, at: 1.2, beat: 2, phase: 0 };
+      for (let i = 0; i < 55; i++) V.updateCombat(s, step, idle);
+      assert.equal(s.boss.tell.key, 'wave');
+      assert.equal(s.boss.tell.width, arena ? s.worldWidth : V.W);
+      assert.equal(s.hp, s.maxHp);
+      for (let i = 55; i < 87; i++) V.updateCombat(s, step, { jump: jump && i === 61 });
+      assert.equal(s.hp, s.maxHp - Number(!jump));
+    }
   }
 });
 
@@ -716,7 +726,7 @@ test('toxic shots hurt instead of reflecting and a spotlight has a dodgeable lan
   const map = V.generateMap('danger');
   const eel = V.newCombat(map.byId.reef, 'snail', {}, 'danger');
   const p = eel.player;
-  eel.projectiles.push({ key: 'toxic', x: p.x + 27, y: p.y + 22, r: 17, vx: -310 });
+  eel.projectiles.push({ key: 'toxic', x: p.x + 27, y: p.y + 22, r: 17, vx: -310, vy: 0 });
   V.updateCombat(eel, V.rules.step, { dash: true });
   assert.equal(eel.hp, eel.maxHp - 1);
   assert.equal(eel.effects.at(-1).kind, 'hurt');
@@ -913,6 +923,42 @@ test('missing boss track falls back to a built-in runner loop', () => {
   players[0].events.error();
   assert.equal(audio.current(), 'mid');
   assert.ok(players[1].src.endsWith('into-the-deep-mid.mp3'));
+  assert.ok(players[1].loop);
+  assert.equal(audio.bossClock(10), null);
+});
+
+test('boss tracks play once and mute without stopping or rewinding the encounter clock', () => {
+  const { audio, players, document, listeners } = audioFixture();
+  audio.startLevel('boss', 'reef-tax');
+  const track = players[0];
+  assert.equal(track.loop, false);
+  assert.ok(track.volume > 0);
+  track.readyState = 4;
+  track.duration = 206.36;
+  track.currentTime = 3;
+  assert.equal(audio.bossClock(3).time, 3);
+  audio.setEnabled(false);
+  assert.equal(track.paused, false);
+  assert.equal(track.muted, true);
+  assert.equal(track.volume, 0);
+  track.currentTime = 4;
+  assert.equal(audio.bossClock(4).time, 4);
+  document.hidden = true;
+  listeners.visibilitychange();
+  assert.ok(track.paused);
+  document.hidden = false;
+  listeners.visibilitychange();
+  assert.ok(!track.paused);
+  audio.setEnabled(true);
+  audio.tick(.1);
+  assert.equal(track.muted, false);
+  assert.ok(track.volume > 0);
+  assert.equal(audio.bossClock(5).time, 5, 'late audio playback joins the encounter');
+  track.currentTime = track.duration;
+  track.ended = track.paused = true;
+  assert.equal(audio.bossClock(5).ended, true);
+  audio.stop();
+  assert.equal(audio.bossClock(5), null);
 });
 
 test('hit sounds use a bounded pool, play with music muted and stop when effects are muted', () => {

@@ -18,287 +18,282 @@
     god: { stops: [1136, 620, 970, 763, 1220], speed: 480, lift: 110 }
   };
 
+  const beatsBetweenSalvos = [8, 6, 4];
+  const beatTime = (b, index) => b.beats[index] / 1000;
+
+  function schedule(s, firstBeat, earliest) {
+    const b = s.boss;
+    let beat = firstBeat;
+    while (beat < b.beats.length && beatTime(b, beat) < earliest) beat++;
+    if (beat >= b.beats.length || beatTime(b, beat) >= s.duration - .4) return null;
+    const at = beatTime(b, beat);
+    const phase = Math.min(2, Math.floor(3 * at / s.duration));
+    const pattern = b.definition.phases[phase];
+    if (phase !== b.patternPhase) {
+      b.patternPhase = phase;
+      b.cursor = 0;
+    }
+    const key = pattern[b.cursor++ % pattern.length];
+    let warningBeat = beat;
+    while (warningBeat > 0 && at - beatTime(b, warningBeat) < attacks[key].tell) warningBeat--;
+    return { beat, at, key, phase, warningAt: Math.max(s.songTime, beatTime(b, warningBeat)) };
+  }
+
   V.newCombat = function (node, character, build, seed) {
     const definition = V.bosses[node.biome];
+    const { duration, beats } = V.bossRhythms[node.biome];
     const s = V.newSection({ kind: 'boss', character, build, biome: node.biome,
       seed: seed + ':' + node.id, hp: 5, title: definition.name });
-    s.node = node;
-    s.spawnCursor = { terrain: 0, coins: 0 };
-    s.wind = 0;
-    s.windTime = 0;
-    s.speed = 355 + V.characters[character].speed * .25;
-    s.boss = { definition, stage: 'chase', chaseDistance: 355 * (14 + node.tier * 2),
-      x: 756, y: 156, w: 188, h: 235, hp: definition.hp, maxHp: definition.hp,
-      phase: 0, cursor: 0, attacks: 0, wait: .65, tell: null, flash: 0 };
+    Object.assign(s, { node, duration, songTime: 0, spawnCursor: { terrain: 0, coins: 0 },
+      wind: 0, windTime: 0, speed: 355 + V.characters[character].speed * .25 });
+    const b = s.boss = { definition, beats, stage: 'chase', chaseDistance: 355 * (14 + node.tier * 2),
+      x: 756, y: 156, w: 188, h: 235, phase: 0, patternPhase: 0, cursor: 0, tell: null, flash: 0 };
+    b.cue = schedule(s, 0, 1.5);
     V.spawnCourse(s);
-    V.say(s, definition.counter);
+    V.say(s, definition.tip);
     return s;
   };
 
   V.enterBossArena = function (s) {
     const b = s.boss;
     if (b.stage === 'arena') return;
-    const hp = 650 + (s.node.tier - 1) * 155;
     Object.assign(b, { stage: 'arena', x: patrols[s.biome].stops[0], y: V.GROUND - 128, w: 164, h: 128,
-      hp, maxHp: hp, phase: 0, cursor: 0, attacks: 0, wait: 1.25, tell: null, flash: 0,
-      open: false, touching: false, facing: -1, stopIndex: 0, move: null });
+      tell: null, flash: 0, touching: false, facing: -1, stopIndex: 0, move: null });
+    b.cue = schedule(s, b.cue?.beat ?? 0, s.songTime + 1.6);
     Object.assign(s, { worldWidth: 1620, cameraX: 0, cameraY: 0, speed: 0, wind: 0, windTime: 0,
       platforms: [{ worldX: 0, y: V.GROUND, w: 1620, h: 17, ground: true }],
       projectiles: [], obstacles: [], coins: [], effects: [] });
     for (const [worldX, y, w] of decks[s.biome]) s.platforms.push({ worldX, y, w, h: 17 });
     const p = s.player;
     Object.assign(p, { x: 76, y: V.GROUND - p.h, vx: 0, vy: 0, angle: 0, grounded: true, jumps: 0, airDash: true,
-      coyote: 0, dashTime: 0, dashLeft: 0, dashCooldown: 0, dashBuffer: 0, jumpBuffer: 0, invuln: 0, landTime: 0 });
-    V.say(s, 'Arena erreicht · Folge dem Boss und nutze die offene Deckung');
+      coyote: 0, dashTime: 0, dashLeft: 0, dashCooldown: 0, dashBuffer: 0, jumpBuffer: 0, landTime: 0 });
+    V.say(s, 'Arena erreicht · Überlebe bis zum letzten Beat');
   };
 
-  function prepare(s) {
+  function prepare(s, cue) {
     const b = s.boss;
     const p = s.player;
-    const pattern = b.definition.phases[b.phase];
-    const key = pattern[b.cursor++ % pattern.length];
-    const attack = attacks[key];
-    const total = Math.max(.41, attack.tell - b.phase * .045);
-    if (b.stage === 'arena') {
+    const attack = attacks[cue.key];
+    const total = cue.at - cue.warningAt;
+    const tell = b.tell = { key: cue.key, total, left: cue.at - s.songTime };
+    const arena = b.stage === 'arena';
+    if (attack.height) {
+      Object.assign(tell, { width: arena ? s.worldWidth : V.W, targetX: (arena ? s.worldWidth : V.W) / 2 });
+    } else if (arena) {
       const targetX = p.x + p.w * .5;
       const targetY = p.y + p.h * .5;
       b.facing = targetX < b.x + b.w * .5 ? -1 : 1;
       const sourceX = b.facing < 0 ? b.x : b.x + b.w;
       const sourceY = attack.low ? V.GROUND - 19 : b.y + b.h * .48;
-      b.tell = { key, left: total, total, targetX, targetY: attack.low ? sourceY : targetY, sourceX, sourceY };
-      b.open = false;
-      b.attacks++;
-      return;
-    }
-    let lane = V.clamp(p.y + p.h * .5, 170, V.GROUND - 21);
-    if (attack.low) lane = V.GROUND - 23;
-    if (key === 'toxic') lane = b.attacks % 2 ? 353 : 300;
-    const targetX = V.clamp(p.x + p.w * .5, 145, 435);
-    b.tell = { key, left: total, total, lane, targetX };
-    b.attacks++;
-  }
-
-  function fireArena(s, tell, attack) {
-    const b = s.boss;
-    if (attack.wind) {
-      s.wind = (tell.targetX < b.x ? 1 : -1) * attack.wind * 3;
-      s.windTime = 1.25;
-    } else if (attack.zone) {
-      s.projectiles.push({ key: tell.key, zone: true, x: tell.targetX - attack.width / 2, w: attack.width, life: .32, top: 0 });
+      Object.assign(tell, { targetX, targetY: attack.low ? sourceY : targetY, sourceX, sourceY, width: attack.width });
     } else {
-      const count = attack.fan || 1;
-      const angle = Math.atan2(tell.targetY - tell.sourceY, tell.targetX - tell.sourceX);
-      for (let i = 0; i < count; i++) {
-        const aim = angle + (i - (count - 1) / 2) * .23;
-        const speed = attack.speed + b.phase * 26;
-        s.projectiles.push({ key: tell.key, x: tell.sourceX, y: tell.sourceY, r: attack.radius,
-          vx: Math.cos(aim) * speed, vy: Math.sin(aim) * speed, counter: false });
-      }
+      let lane = V.clamp(p.y + p.h * .5, 165, V.GROUND - 21);
+      if (attack.low) lane = V.GROUND - 23;
+      if (cue.key === 'toxic') lane = p.grounded ? 391 : 305;
+      Object.assign(tell, { lane, targetX: V.clamp(p.x + p.w * .5, 130, 495), width: attack.width });
     }
-    b.open = true;
-    b.wait = 1.60 - b.phase * .12;
-    V.say(s, 'Deckung offen · Dash!');
   }
 
-  function fire(s, tell) {
+  function fire(s, tell, phase) {
     const b = s.boss;
-    const { key, targetX, lane } = tell;
+    const { key, targetX, lane, width } = tell;
     const attack = attacks[key];
-    if (b.stage === 'arena') return fireArena(s, tell, attack);
+    const arena = b.stage === 'arena';
+    b.flash = .14;
     if (attack.wind) {
-      s.wind = attack.wind;
-      s.windTime = 1.55;
+      s.wind = arena ? (targetX < b.x ? 1 : -1) * attack.wind * 3 : attack.wind;
+      s.windTime = arena ? 1.25 : 1.55;
     } else if (attack.zone) {
-      s.projectiles.push({ key, zone: true, x: targetX - attack.width / 2, w: attack.width, life: .32 });
+      const top = attack.height ? V.GROUND - attack.height : arena ? 0 : 122;
+      s.projectiles.push({ key, zone: true, x: targetX - width / 2, w: width, top, life: .32 });
     } else {
-      const count = attack.fan || 1;
+      const count = (attack.fan || 1) + phase;
+      const speed = attack.speed + phase * 24;
+      const angle = arena ? Math.atan2(tell.targetY - tell.sourceY, targetX - tell.sourceX) : 0;
       for (let i = 0; i < count; i++) {
-        const offset = (i - (count - 1) / 2) * (key === 'fault' && b.phase > 0 ? 76 : 47);
-        s.projectiles.push({ key, x: b.x - 16, y: V.clamp(lane + offset, 153, V.GROUND - 14),
-          r: attack.radius, vx: -(attack.speed + b.phase * 23),
-          reflected: false, dead: false });
+        const spread = i - (count - 1) / 2;
+        const aim = angle + spread * .23;
+        s.projectiles.push({ key, r: attack.radius, x: arena ? tell.sourceX : b.x - 16,
+          y: arena ? tell.sourceY : V.clamp(lane + spread * 43, 153, V.GROUND - 14),
+          vx: arena ? Math.cos(aim) * speed : -speed, vy: arena ? Math.sin(aim) * speed : 0 });
       }
     }
-    b.wait = Math.max(.42, attack.rest - b.phase * .16);
   }
 
-  function startPatrol(s) {
+  function startPatrol(s, until) {
     const b = s.boss;
     const patrol = patrols[s.biome];
+    const window = until - s.songTime;
+    if (window < .32) return;
     b.stopIndex = (b.stopIndex + 1) % patrol.stops.length;
-    const toX = patrol.stops[b.stopIndex];
-    const duration = Math.max(.58, Math.abs(toX - b.x) / (patrol.speed * (1 + b.phase * .12)));
-    b.facing = Math.sign(toX - b.x);
-    b.move = { fromX: b.x, toX, duration, elapsed: 0, lift: patrol.lift };
-    b.open = false;
+    const speed = patrol.speed * (1 + b.phase * .12);
+    const delta = V.clamp(patrol.stops[b.stopIndex] - b.x, -speed * window, speed * window);
+    const duration = Math.min(window, Math.max(.52, Math.abs(delta) / speed));
+    b.facing = Math.sign(delta) || b.facing;
+    b.move = { fromX: b.x, toX: b.x + delta, duration, start: s.songTime, lift: patrol.lift };
   }
 
-  function advancePatrol(s, dt) {
+  function advancePatrol(s) {
     const b = s.boss;
     const move = b.move;
-    move.elapsed = Math.min(move.duration, move.elapsed + dt);
-    const t = move.elapsed / move.duration;
+    const t = Math.min(1, (s.songTime - move.start) / move.duration);
     b.x = V.lerp(move.fromX, move.toX, t * t * (3 - 2 * t));
     b.y = V.GROUND - b.h - Math.sin(Math.PI * t) * move.lift;
-    if (t === 1) {
-      b.move = null;
-      prepare(s);
-    }
+    if (t === 1) b.move = null;
   }
 
-  function updateAttacks(s, dt) {
+  function updateAttacks(s) {
     const b = s.boss;
-    const phase = b.hp * 3 <= b.maxHp ? 2 : b.hp * 3 <= 2 * b.maxHp ? 1 : 0;
+    const phase = Math.min(2, Math.floor(3 * s.songTime / s.duration));
     if (phase !== b.phase) {
       b.phase = phase;
-      b.cursor = 0;
-      V.say(s, s.biome === 'god' ? ['RUN THE LOOP', 'YOU ARE NOT STRONG ENOUGH', 'I AM NOT STRONG ENOUGH'][phase] :
-        'Phase ' + (phase + 1));
+      V.say(s, phase === 2 ? 'Finale · Dichtere Salven' : 'Phase 2 · Der Takt zieht an');
     }
-    if (b.move) {
-      advancePatrol(s, dt);
-    } else if (b.tell) {
-      b.tell.left -= dt;
-      if (b.tell.left <= 0) {
-        fire(s, b.tell);
-        b.tell = null;
-      }
-    } else {
-      b.wait -= dt;
-      if (b.wait <= 0) {
-        if (b.stage === 'arena' && b.attacks > 0) startPatrol(s);
-        else prepare(s);
+    if (b.move) advancePatrol(s);
+    const cue = b.cue;
+    if (!cue || s.songTime < cue.warningAt) return;
+    if (!b.tell && cue.at - s.songTime >= .23) prepare(s, cue);
+    if (b.tell) b.tell.left = Math.max(0, cue.at - s.songTime);
+    if (s.songTime + 1e-7 < cue.at) return;
+    // A skipped or stalled frame must not send a stack of unannounced attacks.
+    if (b.tell && s.songTime - cue.at < .26) fire(s, b.tell, cue.phase);
+    b.tell = null;
+    b.cue = schedule(s, cue.beat + beatsBetweenSalvos[b.phase], s.songTime + 1.28);
+    if (b.stage === 'arena' && b.cue) startPatrol(s, b.cue.warningAt);
+  }
+
+  function shotContact(body, shot, reach = 0) {
+    const rx = shot.r * .77 + reach;
+    const ry = shot.r * .77 + reach * .55;
+    const relative = { x: body.x, y: body.y, w: body.w, h: body.h, previousX: body.previousX + shot.x - shot.previousX,
+      previousY: body.previousY + shot.y - shot.previousY };
+    return V.movementContact(relative, { x: shot.x - rx, y: shot.y - ry, w: 2 * rx, h: 2 * ry });
+  }
+
+  function parry(s, q) {
+    const p = s.player;
+    const factor = 950 / Math.hypot(q.vx, q.vy);
+    q.vx *= -factor;
+    q.vy *= -factor;
+    q.reflected = true;
+    q.intercepts = 1 + s.strikeBonus;
+    if (s.boss.stage === 'chase') {
+      p.vx *= .45;
+      p.vy = -145;
+      p.dashTime = Math.min(p.dashTime, .08);
+      p.jumps = Math.min(p.jumps, 1);
+    }
+    p.invuln = Math.max(p.invuln, .16);
+    p.dashCooldown = s.chainDash ? 0 : Math.min(p.dashCooldown, .29 * s.dashFactor);
+    if (s.chainDash) p.airDash = true;
+    V.hitFeedback(s, 'parry', q.x, q.y);
+    s.score += 80;
+    V.say(s, 'Geschoss zurückgeworfen');
+  }
+
+  function intercept(s, q) {
+    const r = q.r * .77;
+    const body = { x: q.x - r, y: q.y - r, w: 2 * r, h: 2 * r,
+      previousX: q.previousX - r, previousY: q.previousY - r };
+    let next = null;
+    let first = Infinity;
+    for (const hostile of s.projectiles) {
+      if (hostile.dead || hostile.zone || hostile.reflected) continue;
+      const time = shotContact(body, hostile);
+      if (time < first) {
+        first = time;
+        next = hostile;
       }
     }
+    if (!next) return;
+    next.dead = true;
+    if (--q.intercepts <= 0) q.dead = true;
+    V.hitFeedback(s, 'guard', next.x, next.y);
+    s.score += 100;
+    V.say(s, 'Geschoss abgefangen!');
   }
 
   function updateProjectiles(s, dt) {
     const p = s.player;
-    const b = s.boss;
     for (const q of s.projectiles) {
-      if (s.outcome !== null) break;
       if (q.dead) continue;
       if (q.zone) {
         q.life -= dt;
-        if (q.life <= 0) q.dead = true;
-        else if (p.x < q.x + q.w && p.x + p.w > q.x) V.hurt(s);
-        continue;
+        q.dead = q.life <= 0;
+      } else {
+        q.previousX = q.x;
+        q.previousY = q.y;
+        q.x += q.vx * dt;
+        q.y += q.vy * dt;
+        if (!q.reflected && p.dashTime > 0 && attacks[q.key].reflect && shotContact(p, q, s.parryReach) < Infinity) parry(s, q);
       }
-      q.x += q.vx * dt;
-      if (q.reflected) {
-        if (q.x + q.r >= b.x + 8) {
-          q.dead = true;
-          const amount = Math.min(b.hp, q.damage ?? 1);
-          s.score += 240;
-          if (amount > 0) {
-            b.hp -= amount;
-            b.flash = .22;
-            b.hitSide = 1;
-            V.hitFeedback(s, 'hit', b.x + 21, q.y, { amount, heavy: true });
-            V.say(s, 'Volltreffer!');
-          }
-        }
-        continue;
-      }
-      if (attacks[q.key].reflect && p.dashTime > 0 && V.projectileHits(p, q, s.parryReach)) {
-        q.reflected = true;
-        q.vx = 950;
-        q.damage = 1 + s.strikeBonus;
-        p.vx *= .45;
-        p.vy = -145;
-        p.dashTime = Math.min(p.dashTime, .08);
-        p.invuln = Math.max(p.invuln, .16);
-        p.jumps = Math.min(p.jumps, 1);
-        p.dashCooldown = s.chainDash ? 0 : Math.min(p.dashCooldown, .29 * s.dashFactor);
-        V.hitFeedback(s, 'parry', q.x, q.y);
-        s.score += 80;
-        V.say(s, 'Konter!');
-      } else if (V.projectileHits(p, q)) {
+    }
+    for (const q of s.projectiles) {
+      if (q.reflected && !q.dead) intercept(s, q);
+    }
+    for (const q of s.projectiles) {
+      if (s.outcome !== null) break;
+      if (q.dead || q.reflected) continue;
+      if (q.zone) {
+        const top = q.top ?? 122;
+        if (V.movementContact(p, { x: q.x, y: top, w: q.w, h: V.GROUND - top }) < Infinity) V.hurt(s);
+      } else if (shotContact(p, q) < Infinity) {
         q.dead = true;
         V.hurt(s, Math.sign(q.vx));
       }
     }
-    s.projectiles = s.projectiles.filter(q => !q.dead && (q.zone || (q.x > -65 && q.x < V.W + 70)));
-  }
-
-  function updateArenaProjectiles(s, dt) {
-    const p = s.player;
-    for (const q of s.projectiles) {
-      if (s.outcome !== null) break;
-      if (q.zone) {
-        q.life -= dt;
-        q.dead = q.life <= 0;
-        if (!q.dead && V.movementContact(p, { x: q.x, y: q.top, w: q.w, h: V.H - q.top }) < Infinity) V.hurt(s);
-        continue;
-      }
-      q.x += q.vx * dt;
-      q.y += q.vy * dt;
-      const radius = q.r * .77;
-      const relative = { ...p, previousX: p.previousX + q.vx * dt, previousY: p.previousY + q.vy * dt };
-      if (V.movementContact(relative, { x: q.x - radius, y: q.y - radius, w: 2 * radius, h: 2 * radius }) < Infinity) {
-        q.dead = true;
-        V.hurt(s);
-      }
-    }
+    const width = s.worldWidth ?? V.W;
     s.projectiles = s.projectiles.filter(q => !q.dead &&
-      (q.zone || (q.x > -65 && q.x < s.worldWidth + 65 && q.y > -100 && q.y < V.GROUND + 55)));
+      (q.zone || (q.x > -65 && q.x < width + 65 && q.y > -100 && q.y < V.GROUND + 55)));
   }
 
-  function updateFinale(s, dt, actions) {
+  function updateArena(s, dt, actions) {
     const b = s.boss;
     const p = s.player;
     V.movePlayer(s, dt, actions);
     s.cameraX = V.lerp(s.cameraX, V.arenaCameraTarget(s), Math.min(1, dt * 8));
     const bossX = b.x;
     const bossY = b.y;
-    updateAttacks(s, dt);
-    updateArenaProjectiles(s, dt);
+    updateAttacks(s);
+    updateProjectiles(s, dt);
     if (s.outcome !== null) return;
     const relative = { ...p, previousX: p.previousX + b.x - bossX, previousY: p.previousY + b.y - bossY };
-    if (V.movementContact(relative, b) < Infinity) {
+    if (!b.touching && V.movementContact(relative, b) < Infinity) {
       if (p.dashTime > 0) {
-        const damage = b.open ? p.dashPower : 0;
-        const amount = Math.min(b.hp, damage);
-        const hitX = p.x + p.w / 2 < b.x + b.w / 2 ? b.x + 13 : b.x + b.w - 13;
-        const hitY = V.clamp(p.y + p.h / 2, b.y + 12, b.y + b.h - 12);
         V.rebound(s);
-        b.hp = Math.max(0, b.hp - damage);
-        if (damage > 0) {
-          b.open = false;
-          b.flash = .22;
-          b.hitSide = p.facing;
-          b.wait = Math.min(b.wait, .42);
-          s.score += damage;
-          V.hitFeedback(s, 'hit', hitX, hitY, { amount, heavy: true, direction: p.facing });
-          V.say(s, 'Volltreffer · −' + damage + ' HP');
-          if (b.hp === 0) s.outcome = true;
-        } else {
-          V.hitFeedback(s, 'guard', hitX, hitY, { direction: p.facing });
-          V.say(s, b.open ? 'Mehr Anlauf!' : 'Deckung geschlossen · Auf die Salve warten');
-        }
-      } else if (!b.touching) V.slowOnImpact(s);
+        V.hitFeedback(s, 'guard', p.x + p.w / 2, p.y + p.h / 2, { direction: p.facing });
+      } else V.slowOnImpact(s);
     }
     b.touching = V.overlap(p, b);
     s.speed = Math.abs(p.vx);
     s.score += s.speed * .1 * dt;
   }
 
-  V.updateCombat = function (s, dt, actions) {
+  V.updateCombat = function (s, dt, actions, clock = null) {
     if (s.outcome !== null) return;
     s.elapsed += dt;
+    if (clock) {
+      s.songTime = Math.max(s.songTime, clock.time);
+      if (clock.duration > 0) s.duration = clock.duration;
+    } else s.songTime += dt;
+    if (clock ? clock.ended : s.songTime + 1e-7 >= s.duration) {
+      s.songTime = s.duration;
+      s.outcome = true;
+      return;
+    }
     s.windTime = Math.max(0, s.windTime - dt);
     if (s.windTime <= 0) s.wind = 0;
     s.boss.flash = Math.max(0, s.boss.flash - dt);
     if (s.boss.stage === 'arena') {
-      updateFinale(s, dt, actions);
+      updateArena(s, dt, actions);
       return;
     }
     V.movePlayer(s, dt, actions);
     s.dist += s.speed * dt;
     s.score += s.speed * .1 * dt;
-    updateAttacks(s, dt);
+    updateAttacks(s);
     updateProjectiles(s, dt);
     if (s.outcome === null) V.updateCourse(s);
-    if (s.outcome === null && s.boss.hp === 0 && s.dist >= s.boss.chaseDistance) V.enterBossArena(s);
+    if (s.outcome === null && s.dist >= s.boss.chaseDistance) V.enterBossArena(s);
   };
 })();

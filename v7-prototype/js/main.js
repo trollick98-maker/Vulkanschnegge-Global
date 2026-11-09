@@ -73,14 +73,19 @@
 
   function beginTravel(route) {
     if (campaign.story.intro) {
-      start({ kind: 'travel', route });
+      depart(route);
       return;
     }
     showStory('intro', () => {
       campaign.story.intro = true;
       V.saveCampaign(campaign);
-      start({ kind: 'travel', route });
+      depart(route);
     });
+  }
+
+  function depart(route) {
+    if (V.isBossRoute(campaign, route)) beginBoss({ kind: 'boss', node: route.node, route });
+    else start({ kind: 'travel', route });
   }
 
   function endStory() {
@@ -96,18 +101,21 @@
   function enterNode() {
     if (!campaign.arrival || campaign.pending) return;
     const node = graph.byId[campaign.position];
-    if (node.id === graph.final && !campaign.story.source) {
+    if (node.kind === 'boss') beginBoss({ kind: 'boss', node });
+    else start({ kind: node.kind, node });
+  }
+
+  function beginBoss(section) {
+    if (section.node.id === graph.final && !campaign.story.source) {
       showStory('source', () => {
         campaign.story.source = true;
         V.saveCampaign(campaign);
-        start({ kind: 'boss', node });
+        start(section);
       });
-    } else {
-      start({ kind: node.kind, node });
-    }
+    } else start(section);
   }
 
-  function start(section, { resumeBossArena = false, skipIntro = false } = {}) {
+  function start(section, { skipIntro = false } = {}) {
     const intro = section.kind === 'boss' && !skipIntro;
     state.section = section;
     transition(intro ? 'boss-intro' : 'play');
@@ -120,11 +128,9 @@
       state.level = V.newArena(section.node, campaign.character, campaign.build, campaign.seed);
     } else {
       state.level = V.newCombat(section.node, campaign.character, campaign.build, campaign.seed);
-      if (resumeBossArena) V.enterBossArena(state.level);
     }
     const zone = section.route ? graph.byId[section.route.edge.b] : section.node;
-    if (section.route?.node.kind === 'boss') V.image('boss-intro-' + section.route.node.biome);
-    V.audio.startLevel(section.kind, state.level.boss?.definition.track ?? zone?.music);
+    if (!intro) V.audio.startLevel(section.kind, state.level.boss?.definition.track ?? zone?.music);
     ui.showGame(state.level);
     V.render(state.level);
     hudAt = 0;
@@ -139,6 +145,7 @@
     state.mode = 'play';
     frameAt = carry = 0;
     V.input.reset();
+    V.audio.startLevel('boss', state.level.boss.definition.track);
     get('test-skip-btn').classList.toggle('hidden', !canSkip());
     ui.showGame(state.level);
   }
@@ -156,6 +163,10 @@
       if (V.arrive(campaign, graph, section.route) && campaign.arrival) enterNode();
       else showMap();
     } else {
+      if (section.route && !V.arrive(campaign, graph, section.route)) {
+        showMap();
+        return;
+      }
       V.completeNode(campaign, graph, section.node.id);
       if (section.node.id === graph.final) {
         level.player.dashBuffer = level.player.jumpBuffer = 0;
@@ -204,9 +215,10 @@
       return;
     }
     carry += dt;
+    const clock = level.boss ? V.audio.bossClock(level.songTime) : null;
     while (carry + 1e-9 >= step) {
       carry -= step;
-      updates[level.kind](level, step, V.input.consume());
+      updates[level.kind](level, step, V.input.consume(), clock);
       if (level.hitStop > 0) {
         carry = 0;
         break;
@@ -256,7 +268,7 @@
   get('back-btn').addEventListener('click', V.backToMap);
   get('home').addEventListener('click', showMap);
   function retry() {
-    start(state.section, { resumeBossArena: state.level.boss?.stage === 'arena', skipIntro: true });
+    start(state.section, { skipIntro: true });
   }
   get('restart-btn').addEventListener('click', retry);
   get('replay').addEventListener('click', retry);
@@ -273,7 +285,6 @@
       return;
     }
     level.outcome = true;
-    if (level.boss) level.boss.hp = 0;
     finish();
   });
   get('campaign-form').addEventListener('submit', event => {

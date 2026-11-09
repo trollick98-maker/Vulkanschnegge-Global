@@ -8,7 +8,7 @@
   const dialogs = ['upgrade-overlay', 'leaderboard-overlay', 'result', 'story-overlay', 'boss-intro'].map(get);
   const NS = 'http://www.w3.org/2000/svg';
   const difficultyLabels = { common: 'Häufig', rare: 'Selten', epic: 'Episch' };
-  const kinds = { travel: 'REISE', arena: 'GEGNERLEVEL', boss: 'BOSS-RUNNER', arcade: 'ENDLOS' };
+  const kinds = { travel: 'REISE', arena: 'GEGNERLEVEL', arcade: 'ENDLOS' };
 
   function content(id, value) {
     const element = get(id);
@@ -26,6 +26,11 @@
 
   function duration(seconds) {
     return Math.floor(seconds / 60) + ':' + String(seconds % 60).padStart(2, '0');
+  }
+
+  function routeDuration(campaign, route) {
+    return V.isBossRoute(campaign, route) ? 'Boss · ' + duration(Math.ceil(V.bossRhythms[route.node.biome].duration)) :
+      'Reise · ' + duration(route.edge.seconds);
   }
 
   function dialog(id) {
@@ -112,7 +117,7 @@
       marker.style.setProperty('--node', node.color);
       marker.disabled = !route && !canEnter;
       marker.setAttribute('aria-label', node.name + (current ? ', aktueller Standort' : '') +
-        (route ? ', Reise ' + duration(route.edge.seconds) : cleared ? ', abgeschlossen' : ''));
+        (route ? ', ' + routeDuration(campaign, route) : cleared ? ', abgeschlossen' : ''));
       if (current) marker.setAttribute('aria-current', 'location');
       const icon = document.createElement('span');
       icon.className = 'node-symbol';
@@ -147,7 +152,7 @@
     choices.replaceChildren();
     if (campaign.arrival && !campaign.pending) choices.append(button('Kampf starten', 'primary', handlers.enter));
     for (const route of routes) {
-      const label = (route.edge.hidden ? 'Tunnel · ' : '') + route.node.name + ' · ' + duration(route.edge.seconds);
+      const label = (route.edge.hidden ? 'Tunnel · ' : '') + route.node.name + ' · ' + routeDuration(campaign, route);
       const control = button(label, 'quiet', () => handlers.travel(route));
       control.dataset.travel = route.to;
       choices.append(control);
@@ -184,22 +189,21 @@
     const finale = s.boss?.stage === 'arena';
     const chasing = s.boss?.stage === 'chase';
     content('level-kind', finale ? 'BOSSARENA · 2/2' : chasing ? 'VERFOLGUNG · 1/2' : kinds[s.kind]);
-    content('level-tip', finale ? 'Schüssen ausweichen · Mit Anlauf in die offene Deckung dashen' :
-      chasing ? s.boss.definition.counter : local ? 'Anlauf nehmen · Gegner besiegen · Ziel rechts' : 'Springen · Kisten per Dash zerlegen');
+    content('level-tip', s.boss ? s.boss.definition.tip :
+      local ? 'Anlauf nehmen · Gegner besiegen · Ziel rechts' : 'Springen · Kisten per Dash zerlegen');
     content('test-skip-btn', chasing ? 'Zur Bossarena' : 'Abschnitt überspringen');
     const dashReady = p.dashCooldown <= 0 && (p.dashTime <= 0 || (local && p.dashLeft <= 0)) && (!local || p.airDash);
     content('hud-stats', '♥ ' + s.hp + ' / ' + s.maxHp + '    ◈ ' + s.coinsTaken + '    ⚡ ' +
       (dashReady ? 'bereit' : 'lädt'));
-    const dash = local ? ' · Dash ' + (p.dashTime > 0 ? p.dashPower : V.dashDamage(s, s.speed)) : '';
+    const dash = s.kind === 'arena' ? ' · Dash ' + (p.dashTime > 0 ? p.dashPower : V.dashDamage(s, s.speed)) : '';
     content('hud-score', Math.floor(s.score) + ' P · ×' + s.multiplier + ' · ' + Math.round(s.speed) + ' Tempo' + dash);
     const alive = s.kind === 'arena' ? s.enemies.filter(enemy => enemy.hp > 0).length : 0;
-    const label = finale ? 'BOSS · PHASE ' + (s.boss.phase + 1) :
-      chasing ? (s.dist < s.boss.chaseDistance ? 'ARENA IN ' + Math.ceil((s.boss.chaseDistance - s.dist) / Math.max(1, s.speed)) + ' S' : 'ARENA IN SICHT') :
+    const label = s.boss ? 'BIS SONGENDE · PHASE ' + (s.boss.phase + 1) :
       s.kind === 'travel' ? 'REISEZEIT' : s.kind === 'arena' ? 'KAMPFSTRECKE' : 'DISTANZ';
-    const value = s.kind === 'boss' ? (chasing ? 'Schild ' : '') + s.boss.hp + ' / ' + s.boss.maxHp : s.kind === 'travel' ?
+    const value = s.boss ? duration(Math.max(0, Math.ceil(s.duration - s.songTime))) : s.kind === 'travel' ?
       duration(Math.max(0, Math.ceil(s.duration - s.elapsed))) : s.kind === 'arena' ?
         (alive ? alive + ' Gegner' : 'Zum Ziel →') : Math.floor(s.dist) + ' m';
-    const ratio = s.kind === 'boss' ? s.boss.hp / s.boss.maxHp : s.kind === 'travel' ?
+    const ratio = s.boss ? s.songTime / s.duration : s.kind === 'travel' ?
       s.elapsed / s.duration : s.kind === 'arena' ? 1 - alive / s.enemies.length : 0;
     content('hud-number', value);
     content('hud-label', label);
