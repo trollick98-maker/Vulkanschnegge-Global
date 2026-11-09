@@ -944,6 +944,21 @@ test('hit sounds use a bounded pool, play with music muted and stop when effects
   assert.ok(players.every(player => player.paused));
 });
 
+test('leaving a scene immediately stops active sound effects', () => {
+  const { audio, players } = audioFixture();
+  audio.startLevel('arena');
+  audio.effect('hit');
+  assert.equal(players.length, 2);
+  assert.ok(!players[1].paused);
+  audio.stop();
+  assert.ok(players.every(player => player.paused));
+  audio.startLevel('boss', 'reef-tax');
+  audio.effect('dash');
+  assert.ok(!players.at(-1).paused);
+  audio.startLevel('story', 'home-at-last');
+  assert.ok(players.filter(player => player.src?.endsWith('.wav')).every(player => player.paused));
+});
+
 test('profile scores retain player name, run character, date and separate storage', () => {
   const { V, storage } = logic();
   V.profile.name = 'Testspieler';
