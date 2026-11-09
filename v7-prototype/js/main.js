@@ -1,156 +1,334 @@
-/* V7 hybrid game controller: level navigation, legacy systems, UI and sound. */
-(function(){
+(function () {
   'use strict';
-  const V=window.VS7;
-  const find=id=>document.getElementById(id);
-  const dom={world:find('world-ui'),hud:find('hud'),bottom:find('game-bottom'),touch:find('touch-controls'),result:find('result'),
-    kind:find('level-kind'),title:find('level-title'),stats:find('hud-stats'),score:find('hud-score'),perk:find('hud-perk'),speed:find('hud-speed'),
-    number:find('hud-number'),meter:find('hud-meter'),label:find('hud-label'),tip:find('level-tip'),message:find('level-message'),
-    upgrade:find('upgrade-overlay'),choices:find('upgrade-choices'),board:find('leaderboard-overlay'),records:find('leaderboard-rows')};
-  V.state={mode:'map',level:null,time:0,lastFrame:0,upgrading:false,resultMode:null};
-  let messageTime=0;
-  function show(el,on){el.classList.toggle('hidden',!on);}
-  V.notify=text=>{dom.message.textContent=text;messageTime=2.5;};
+  const V = window.VS7;
+  const ui = V.ui;
+  const state = V.state = { mode: 'launch', level: null, section: null, story: null, testMode: false };
+  const step = V.rules.step;
+  const updates = { travel: V.updateRunner, arcade: V.updateRunner, arena: V.updateArena, boss: V.updateCombat };
+  const get = id => document.getElementById(id);
+  let campaign = V.loadCampaign() || V.createCampaign('', V.profile.character);
+  let regularCampaign;
+  let graph = V.generateMap(campaign.seed);
+  let frameAt = 0;
+  let carry = 0;
+  let hudAt = 0;
+  V.saveCampaign(campaign);
 
-  const nameInput=find('player-name');nameInput.value=V.profile.name;
-  nameInput.addEventListener('input',()=>{V.profile.name=nameInput.value.trim().slice(0,24);V.saveProfile();});
-  const characterButtons=[...document.querySelectorAll('[data-character]')];
-  for(const button of characterButtons){
-    const id=button.dataset.character;
-    const img=button.querySelector('img');if(img)img.src=V.assets[id].src;
-    button.addEventListener('click',()=>{V.profile.character=id;V.saveProfile();refreshCharacter();});
-  }
-  function refreshCharacter(){
-    for(const b of characterButtons){b.classList.toggle('selected',b.dataset.character===V.profile.character);b.setAttribute('aria-pressed',b.dataset.character===V.profile.character?'true':'false');}
-    find('character-detail').textContent=V.characters[V.profile.character].detail;
-  }
-  refreshCharacter();
-  function board(open){
-    if(!open){show(dom.board,false);return;}
-    dom.records.replaceChildren();
-    if(V.classicHighscore>0){const old=document.createElement('p');old.className='classic-best';old.textContent='Bestwert: '+V.classicHighscore;dom.records.appendChild(old);}
-    if(!V.records.length){const p=document.createElement('p');p.textContent='Noch keine Runs aufgezeichnet. Spiel zuerst einen Level!';dom.records.appendChild(p);}
-    else for(const [i,entry] of V.records.slice(0,10).entries()){
-      const line=document.createElement('div');line.className='record-row';
-      const who=document.createElement('span');who.textContent=`${i+1}. ${entry.name} · ${V.characters[entry.character]?.name||'Schnegg'}`;
-      const value=document.createElement('strong');value.textContent=`${entry.score} P · ${entry.mode==='runner'?'Runner':entry.mode==='arcade'?'Endlos':'Combat'}`;
-      line.append(who,value);dom.records.appendChild(line);
-    }
-    show(dom.board,true);
-  }
-  find('board-btn').addEventListener('click',()=>board(true));
-  find('board-close').addEventListener('click',()=>board(false));
-  find('online-board-btn').addEventListener('click',async()=>{
-    const section=find('online-board-rows');section.replaceChildren();
-    const status=document.createElement('p');status.textContent='Lade Rangliste ...';section.appendChild(status);
-    try{
-      const rows=await V.loadLegacyLeaderboard();section.replaceChildren();
-      if(!rows.length){status.textContent='Noch keine Einträge.';section.appendChild(status);}
-      rows.forEach((entry,i)=>{
-        const row=document.createElement('div');row.className='record-row';
-        const name=document.createElement('span');name.textContent=`${i+1}. ${entry.name} · ${entry.character}`;
-        const score=document.createElement('strong');score.textContent=`${entry.score} Punkte`;
-        row.append(name,score);section.appendChild(row);
-      });
-    }catch(err){status.textContent='Rangliste gerade nicht erreichbar.';console.warn(err);}
-  });
-  dom.board.addEventListener('click',e=>{if(e.target===dom.board)board(false);});
-  find('fullscreen-btn').addEventListener('click',async()=>{
-    try{if(document.fullscreenElement)await document.exitFullscreen();else await document.documentElement.requestFullscreen();}
-    catch(err){console.warn('Vollbild nicht verfügbar',err);}
-  });
-  find('sound-btn').addEventListener('click',()=>{
-    const enabled=!V.audio.isEnabled();V.audio.setEnabled(enabled);if(enabled)V.audio.start();
-    find('sound-btn').textContent=enabled?'♫ MUSIK AN':'♫ MUSIK AUS';
-  });
-  find('volume').addEventListener('input',e=>V.audio.volume(Number(e.target.value)));
-
-  function map(){
-    V.input.reset();V.audio.stop();V.state.mode='map';V.state.level=null;V.state.upgrading=false;
-    show(dom.world,true);show(dom.hud,false);show(dom.bottom,false);show(dom.touch,false);show(dom.result,false);show(dom.upgrade,false);board(false);
-    find('runner-done').textContent=V.progress.runner?'✓':'';
-    find('combat-done').textContent=V.progress.combat?'✓':'';
-  }
-  V.backToMap=map;
-  function start(mode){
-    if(mode!=='runner'&&mode!=='combat'&&mode!=='arcade')return;
-    V.input.reset();V.state.mode=mode;V.state.upgrading=false;
-    V.state.level=mode==='combat'?V.newCombat():V.newRunner(mode==='arcade');
-    show(dom.world,false);show(dom.hud,true);show(dom.bottom,true);show(dom.touch,true);show(dom.result,false);show(dom.upgrade,false);board(false);
-    dom.kind.textContent=mode==='runner'?'RUNNER':mode==='arcade'?'ENDLOS':'BOSS';
-    dom.title.textContent=V.levels[mode].name;
-    dom.tip.textContent=mode==='combat'?'SPACE SPRINGEN · SHIFT ROT KONTERN':'SPACE SPRINGEN · SHIFT DASH';
-    dom.message.textContent=mode==='combat'?'ROT KONTERN · GRÜN AUSWEICHEN':mode==='arcade'?'ENDLOS':'SPRINGEN · DASHEN';
-    messageTime=3;updateHUD();V.audio.startLevel(mode);
-  }
-  V.offerUpgrades=s=>{
-    if(!['runner','arcade'].includes(V.state.mode)||V.state.upgrading)return;
-    const options=V.chooseUpgrades(s,3);
-    if(!options.length)return;
-    V.state.upgrading=true;V.input.reset();dom.choices.replaceChildren();
-    for(const option of options){
-      const button=document.createElement('button');button.className='upgrade-choice';button.textContent=option.name;
-      button.addEventListener('click',()=>{
-        if(!V.applyUpgrade(s,option.id))return;
-        V.state.upgrading=false;show(dom.upgrade,false);V.input.reset();V.notify('PERK ERHALTEN: '+option.name);
-      });
-      dom.choices.appendChild(button);
-    }
-    show(dom.upgrade,true);
-  };
-  V.finish=function(won){
-    const mode=V.state.mode;if(mode!=='runner'&&mode!=='combat'&&mode!=='arcade')return;
-    const s=V.state.level;V.recordRun(mode,s);
-    V.state.mode='result';V.state.resultMode=mode;V.state.won=won;V.audio.stop();V.state.upgrading=false;
-    show(dom.hud,false);show(dom.bottom,false);show(dom.touch,false);show(dom.upgrade,false);show(dom.result,true);
-    find('result-symbol').textContent=won?'🏆':'💥';
-    find('result-tag').textContent=won?'LEVEL ABGESCHLOSSEN':'RUN VORBEI';
-    find('result-title').textContent=won?(mode==='runner'?'Strömung bezwungen!':'Boss besiegt!'):'Nochmal!';
-    find('result-description').textContent=(mode==='arcade'?`Endlos-Run beendet. ${Math.floor(s.dist)} Meter · ${s.coinsTaken} Münzen.`:mode==='runner'
-      ?(won?`Du hast den Strömungskanal geschafft und ${s.coinsTaken} Münzen eingesammelt.`:`Du bist ${Math.round(s.dist/s.course*100)} % der Strecke gekommen.`)
-      :(won?'Muräne besiegt!':'Dash gegen rote Schüsse. Grüne meiden.'))
-      +`   ${Math.floor(s.score||0)} PUNKTE`;
-    if(won){V.progress[mode]=true;if(mode==='runner')V.progress.bestCoins=Math.max(V.progress.bestCoins,s.coinsTaken);V.saveProgress();}
+  function transition(mode, keepMusic = false) {
+    state.mode = mode;
+    get('restart-btn').disabled = mode === 'outro';
+    get('test-skip-btn').classList.toggle('hidden', !canSkip());
+    frameAt = 0;
+    carry = 0;
     V.input.reset();
-  };
-  function updateHUD(){
-    const mode=V.state.mode,s=V.state.level;if(!s||!(['runner','arcade','combat'].includes(mode)))return;
-    dom.stats.textContent='♥ '.repeat(Math.max(0,s.hp))+(mode!=='combat'?'  ✦ '+s.coinsTaken:'');
-    dom.score.textContent='SCORE '+Math.floor(s.score||0)+(mode!=='combat'?' · x'+s.multiplier:'');
-    dom.perk.textContent=mode!=='combat'?'UPGRADES '+s.upgrades.cleared+'/'+s.upgrades.nextCost:'ROT = SHIFT';
-    dom.speed.textContent=mode==='combat'?'':('SPEED '+Math.round(s.speed));
-    if(mode==='arcade'){
-      const per=Math.min(100,Math.floor(100*s.upgrades.cleared/s.upgrades.nextCost));
-      dom.number.textContent=Math.floor(s.dist)+' M';dom.meter.style.width=per+'%';dom.label.textContent='NÄCHSTES UPGRADE';
-    }else if(mode==='runner'){
-      const percent=Math.min(100,Math.floor(s.dist/s.course*100));
-      dom.number.textContent=percent+' %';dom.meter.style.width=percent+'%';dom.label.textContent='FORTSCHRITT';
-    }else{
-      const hp=s.boss.hp;
-      dom.number.textContent=hp+' / '+s.boss.maxHp;dom.meter.style.width=100*hp/s.boss.maxHp+'%';dom.label.textContent='BOSS';
+    if (!keepMusic) V.audio.stop();
+  }
+
+  function canSkip() {
+    return state.testMode && state.mode === 'play' && state.section.kind !== 'arcade';
+  }
+
+  function showStory(id, done) {
+    transition('story', id === 'intro');
+    const entry = V.stories[id];
+    state.story = { entry, index: 0, done };
+    if (entry.track) V.audio.startLevel('story', entry.track);
+    ui.showSlide(entry.slides[0]);
+    for (const slide of entry.slides.slice(1)) V.image('story-' + slide.art);
+  }
+
+  function showMap() {
+    const fromTitle = state.mode === 'title';
+    const returnToAtlas = fromTitle || Boolean(state.section);
+    transition('map', true);
+    V.audio.startMenu();
+    if (fromTitle) {
+      get('title-screen').classList.add('hidden');
+      get('shell-header').classList.remove('hidden');
+      get('shell-footer').classList.remove('hidden');
+    }
+    state.level = null;
+    state.section = null;
+    state.story = null;
+    ui.map(campaign, graph, { enter: enterNode, travel: beginTravel });
+    if (returnToAtlas) {
+      const atlas = get('atlas-heading');
+      atlas.scrollIntoView({ block: 'start' });
+      if (fromTitle) atlas.focus({ preventScroll: true });
+    }
+    if (campaign.pending) {
+      ui.reward(campaign, graph, id => {
+        if (V.claimPerk(campaign, id)) showMap();
+      });
+    } else if (!campaign.story.rift && campaign.cleared.includes(graph.lastGod)) {
+      showStory('rift', () => {
+        campaign.story.rift = true;
+        V.saveCampaign(campaign);
+        showMap();
+      });
+    } else if (!campaign.story.ending && campaign.cleared.includes(graph.final)) {
+      endStory();
     }
   }
-  for(const node of document.querySelectorAll('[data-level]'))node.addEventListener('click',()=>start(node.dataset.level));
-  find('back-btn').addEventListener('click',map);
-  find('restart-btn').addEventListener('click',()=>start(V.state.mode));
-  find('home').addEventListener('click',map);
-  find('replay').addEventListener('click',()=>start(V.state.resultMode));
-  function frame(ms){
-    const state=V.state;
-    const dt=state.lastFrame?Math.min(.035,Math.max(0,(ms-state.lastFrame)/1000)):0;
-    state.lastFrame=ms;state.time+=dt;
-    if(messageTime>0&&!state.upgrading){messageTime-=dt;if(messageTime<=0)dom.message.textContent='';}
-    if(['runner','arcade','combat'].includes(state.mode)&&!state.upgrading){
-      const actions=V.input.consume();
-      if(state.mode==='combat')V.updateCombat(state.level,dt,actions);
-      else V.updateRunner(state.level,dt,actions);
-      if(['runner','arcade','combat'].includes(state.mode)){
-        updateHUD();
-        if(state.mode!=='combat')V.audio.runner(state.level.speed);
-      }
-    }else V.input.consume();
-    V.audio.tick(dt);V.render();requestAnimationFrame(frame);
+
+  function beginTravel(route) {
+    if (campaign.story.intro) {
+      depart(route);
+      return;
+    }
+    showStory('intro', () => {
+      campaign.story.intro = true;
+      V.saveCampaign(campaign);
+      depart(route);
+    });
   }
-  document.addEventListener('visibilitychange',()=>{V.state.lastFrame=0;V.input.reset();});
-  map();requestAnimationFrame(frame);
+
+  function depart(route) {
+    if (V.isBossRoute(campaign, route)) beginBoss({ kind: 'boss', node: route.node, route });
+    else start({ kind: 'travel', route });
+  }
+
+  function endStory() {
+    showStory('ending', () => {
+      showStory('credits', () => {
+        campaign.story.ending = true;
+        V.saveCampaign(campaign);
+        showMap();
+      });
+    });
+  }
+
+  function enterNode() {
+    if (!campaign.arrival || campaign.pending) return;
+    const node = graph.byId[campaign.position];
+    if (node.kind === 'boss') beginBoss({ kind: 'boss', node });
+    else start({ kind: node.kind, node });
+  }
+
+  function beginBoss(section) {
+    if (section.node.id === graph.final && !campaign.story.source) {
+      showStory('source', () => {
+        campaign.story.source = true;
+        V.saveCampaign(campaign);
+        start(section);
+      });
+    } else start(section);
+  }
+
+  function start(section, { skipIntro = false } = {}) {
+    const intro = section.kind === 'boss' && !skipIntro;
+    state.section = section;
+    transition(intro ? 'boss-intro' : 'play');
+    state.story = null;
+    if (section.kind === 'arcade') {
+      state.level = V.newRunner(null, section.character);
+    } else if (section.kind === 'travel') {
+      state.level = V.newRunner(section.route, campaign.character, campaign.build);
+    } else if (section.kind === 'arena') {
+      state.level = V.newArena(section.node, campaign.character, campaign.build, campaign.seed);
+    } else {
+      state.level = V.newCombat(section.node, campaign.character, campaign.build, campaign.seed);
+    }
+    const zone = section.route ? graph.byId[section.route.edge.b] : section.node;
+    if (!intro) V.audio.startLevel(section.kind, state.level.boss?.definition.track ?? zone?.music);
+    ui.showGame(state.level);
+    V.render(state.level);
+    hudAt = 0;
+    if (intro) {
+      state.bossIntroLeft = 3;
+      ui.bossIntro(state.level);
+    }
+  }
+
+  function startBossChase() {
+    if (state.mode !== 'boss-intro') return;
+    state.mode = 'play';
+    frameAt = carry = 0;
+    V.input.reset();
+    V.audio.startLevel('boss', state.level.boss.definition.track);
+    get('test-skip-btn').classList.toggle('hidden', !canSkip());
+    ui.showGame(state.level);
+  }
+
+  function finish() {
+    const level = state.level;
+    const section = state.section;
+    transition('result');
+    if (!state.testMode) V.recordRun(section.kind, level);
+    if (!level.outcome) {
+      ui.hud(level);
+      V.render(level);
+      ui.result(level);
+    } else if (section.kind === 'travel') {
+      if (V.arrive(campaign, graph, section.route) && campaign.arrival) enterNode();
+      else showMap();
+    } else {
+      if (section.route && !V.arrive(campaign, graph, section.route)) {
+        showMap();
+        return;
+      }
+      V.completeNode(campaign, graph, section.node.id);
+      if (section.node.id === graph.final) {
+        level.player.dashBuffer = level.player.jumpBuffer = 0;
+        level.player.vx = level.player.dashTime = level.speed = 0;
+        state.outroLeft = 1.1;
+        transition('outro');
+      }
+      else showMap();
+    }
+  }
+
+  function outro(level, dt) {
+    level.elapsed += dt;
+    state.outroLeft -= dt;
+    V.movePlayer(level, dt, {});
+    ui.hud(level);
+    V.render(level);
+    if (state.outroLeft <= 0) showMap();
+  }
+
+  function frame(ms) {
+    requestAnimationFrame(frame);
+    if (document.hidden) return;
+    const dt = frameAt ? V.clamp((ms - frameAt) / 1000, 0, .085) : 0;
+    frameAt = ms;
+    V.audio.tick(dt);
+    if (state.mode === 'boss-intro') {
+      state.bossIntroLeft -= dt;
+      if (state.bossIntroLeft <= 0) startBossChase();
+      return;
+    }
+    if (state.mode === 'outro') {
+      outro(state.level, dt);
+      return;
+    }
+    if (state.mode !== 'play') return;
+
+    const level = state.level;
+    if (level.hitStop > 0) {
+      level.hitStop = Math.max(0, level.hitStop - dt);
+      V.render(level);
+      return;
+    }
+    if (level.outcome !== null) {
+      finish();
+      return;
+    }
+    carry += dt;
+    const clock = level.boss ? V.audio.bossClock(level.songTime) : null;
+    while (carry + 1e-9 >= step) {
+      carry -= step;
+      updates[level.kind](level, step, V.input.consume(), clock);
+      if (level.hitStop > 0) {
+        carry = 0;
+        break;
+      }
+      if (level.outcome !== null) {
+        finish();
+        return;
+      }
+      if (level.kind === 'arcade') V.audio.updateRunner(level.speed, step);
+    }
+    if (ms >= hudAt) {
+      hudAt = ms + 76;
+      ui.hud(level);
+    }
+    V.render(level);
+  }
+
+  V.backToMap = function () {
+    if (!get('leaderboard-overlay').classList.contains('hidden')) ui.dialog(null);
+    else if (state.mode === 'play' || state.mode === 'boss-intro' || state.mode === 'result' || state.mode === 'outro') showMap();
+  };
+  get('launch-screen').addEventListener('click', event => {
+    if (state.mode !== 'launch') return;
+    state.mode = 'title';
+    V.audio.startMenu();
+    event.currentTarget.classList.add('hidden');
+    const title = get('title-screen');
+    title.classList.remove('hidden');
+    title.focus({ preventScroll: true });
+  });
+  get('title-screen').addEventListener('click', event => {
+    if (state.mode !== 'title') return;
+    V.audio.startMenu();
+    const title = event.currentTarget;
+    if (!title.getAnimations) {
+      title.classList.add('title-settled');
+      return;
+    }
+    for (const animation of title.getAnimations({ subtree: true })) {
+      if (animation.playState !== 'finished') animation.updatePlaybackRate(6);
+    }
+  });
+  get('title-start').addEventListener('click', () => {
+    if (state.mode === 'title') showMap();
+  });
+  get('boss-intro-next').addEventListener('click', startBossChase);
+  get('back-btn').addEventListener('click', V.backToMap);
+  get('home').addEventListener('click', showMap);
+  function retry() {
+    start(state.section, { skipIntro: true });
+  }
+  get('restart-btn').addEventListener('click', retry);
+  get('replay').addEventListener('click', retry);
+  get('arcade-btn').addEventListener('click', () => start({ kind: 'arcade', character: V.profile.character }));
+  get('test-skip-btn').addEventListener('click', () => {
+    if (!canSkip()) return;
+    const level = state.level;
+    if (level.boss?.stage === 'chase') {
+      level.hitStop = 0;
+      V.input.reset();
+      V.enterBossArena(level);
+      ui.hud(level);
+      V.render(level);
+      return;
+    }
+    level.outcome = true;
+    finish();
+  });
+  get('campaign-form').addEventListener('submit', event => {
+    event.preventDefault();
+    const seedInput = get('seed-input');
+    if (seedInput.value.trim().toLowerCase() === 'admin') {
+      if (state.testMode) {
+        campaign = regularCampaign;
+        regularCampaign = undefined;
+      } else {
+        regularCampaign = campaign;
+        campaign = structuredClone(campaign);
+      }
+      state.testMode = !state.testMode;
+      get('test-mode-status').classList.toggle('hidden', !state.testMode);
+      seedInput.value = '';
+      graph = V.generateMap(campaign.seed);
+      showMap();
+      return;
+    }
+    if ((campaign.travelled.length || campaign.arrival) &&
+      !window.confirm('Eine neue Kampagne ersetzt diesen Kampagnenspielstand. Neu starten?')) return;
+    campaign = V.createCampaign(seedInput.value, V.profile.character);
+    graph = V.generateMap(campaign.seed);
+    V.saveCampaign(campaign);
+    showMap();
+  });
+  get('story-next').addEventListener('click', () => {
+    const story = state.story;
+    if (!story) return;
+    story.index++;
+    const slide = story.entry.slides[story.index];
+    if (slide) ui.showSlide(slide);
+    else {
+      state.story = null;
+      story.done();
+    }
+  });
+  document.addEventListener('visibilitychange', () => {
+    frameAt = 0;
+    carry = 0;
+    V.input.reset();
+    const player = state.level?.player;
+    if (player) player.jumpBuffer = player.dashBuffer = 0;
+  });
+  requestAnimationFrame(frame);
 })();

@@ -11,11 +11,11 @@
   window.addEventListener('keydown',e=>{
     if(e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName))return;
     if(e.code==='Escape' && !e.repeat){ V.backToMap?.(); return; }
-    const key=translate[e.code];if(key){e.preventDefault();set(key,true);}
+    const key=translate[e.code];if(key&&V.state?.mode==='play'&&!/^(BUTTON|A)$/.test(e.target?.tagName)){e.preventDefault();set(key,true);}
   });
   window.addEventListener('keyup',e=>{const key=translate[e.code];if(key){e.preventDefault();set(key,false);}});
   window.addEventListener('blur',()=>I.reset());
-  I.consume=()=>{const x={jump:I.jumpQueued,dash:I.dashQueued};I.jumpQueued=false;I.dashQueued=false;return x;};
+  I.consume=()=>{const x={left:I.left,right:I.right,jump:I.jumpQueued,dash:I.dashQueued};I.jumpQueued=false;I.dashQueued=false;return x;};
   I.reset=()=>{for(const k of ['left','right','jump','dash','jumpQueued','dashQueued'])I[k]=false;};
   // Pointer controls for touch screens.
   for(const button of document.querySelectorAll('[data-key]')){
