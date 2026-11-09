@@ -79,7 +79,7 @@ button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline: 2
 .title-lockup {
   align-self: start;
   width: min(54vw, 1000px);
-  margin: 43dvh 0 0 8vw;
+  margin: 43dvh 0 0;
   text-align: center;
   animation: title-descent var(--title-flight) cubic-bezier(.37,.16,.43,1) both;
 }
