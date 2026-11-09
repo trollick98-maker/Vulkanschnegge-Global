@@ -36,12 +36,18 @@
   }
 
   function refreshCharacters() {
+    const character = V.profile.character;
     for (const control of document.querySelectorAll('[data-character]')) {
-      const selected = control.dataset.character === V.profile.character;
+      const selected = control.dataset.character === character;
       control.classList.toggle('selected', selected);
       control.setAttribute('aria-pressed', String(selected));
     }
-    content('character-detail', V.characters[V.profile.character].detail);
+    for (const art of document.querySelectorAll('[data-player-art]')) {
+      if (art.dataset.playerArt === character) continue;
+      art.dataset.playerArt = character;
+      art.src = V.imagePath(character);
+    }
+    content('character-detail', V.characters[character].detail);
   }
 
   function drawMapTerrain(campaign, graph) {

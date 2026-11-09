@@ -13,7 +13,7 @@
     <section id="title-screen" class="title-screen hidden" aria-labelledby="title-logo" tabindex="-1">
       <div class="title-scene" aria-hidden="true">
         <img class="title-backdrop" src="assets/images/intro/constellations.webp" alt="" fetchpriority="high">
-        <img class="title-character" src="assets/images/snail.png" alt="">
+        <img class="title-character" data-player-art="snail" src="assets/images/snail.png" alt="">
       </div>
       <div class="title-lockup">
         <h1 id="title-logo"><img src="assets/images/intro/logo.png" alt="VULKANSCHNEGGE"></h1>
@@ -24,7 +24,7 @@
       </div>
     </section>
     <header id="shell-header" class="masthead hidden">
-      <div class="brand"><img src="assets/images/snail.png" alt=""><div><div class="eyebrow">ABYSS CAMPAIGN</div><h1>Vulkanschnegge <span>7.0</span></h1></div></div>
+      <div class="brand"><img data-player-art="snail" src="assets/images/snail.png" alt=""><div><div class="eyebrow">ABYSS CAMPAIGN</div><h1>Vulkanschnegge <span>7.0</span></h1></div></div>
       <div class="top-controls">
         <button id="fullscreen-btn" class="quiet" aria-label="Vollbild">⛶ <span>Vollbild</span></button>
         <button id="sound-btn" class="quiet" aria-pressed="true">♫ <span>Musik an</span></button>
@@ -35,7 +35,12 @@
 
     <section id="world-ui" class="world hidden">
       <div class="campaign-hero">
-        <img class="hero-art" src="assets/images/story/hero.webp" alt="" decoding="async">
+        <div class="hero-viewport" aria-hidden="true">
+          <div class="hero-scene">
+            <img class="hero-art" src="assets/images/story/hero.webp" alt="" decoding="async">
+            <img class="hero-character" data-player-art="snail" src="assets/images/snail.png" alt="">
+          </div>
+        </div>
         <div class="hero-copy">
           <p class="eyebrow">THE GREAT UPDATE</p>
           <h2>Unter der Oberfläche</h2>
