@@ -1,7 +1,8 @@
 (function () {
   'use strict';
   const V = window.VS7;
-  const KEY = 'vulkanschnegge-v7-campaign-v1';
+  const KEY = 'vulkanschnegge-v7-overhaul-campaign-v1';
+  const LEGACY_KEY = 'vulkanschnegge-v7-campaign-v1';
   const START = 'harbor';
   const LAST = 'god';
   const musicByZone = ['slow', 'mid', 'mid', 'fast', 'fast'];
@@ -129,7 +130,7 @@
 
   V.loadCampaign = function () {
     try {
-      const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+      const saved = JSON.parse(localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY) ?? 'null');
       if (saved?.version !== 1 || typeof saved.seed !== 'string' || !saved.seed.trim()) return null;
       const campaign = V.createCampaign(saved.seed, saved.character);
       const graph = V.generateMap(campaign.seed);

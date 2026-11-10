@@ -549,3 +549,13 @@ kbd { padding: 2px 5px; background: #132439; border: 1px solid #3f596e; border-r
   .gauge { min-width: 61px; }
   .game-bottom { left: 5px; right: 5px; bottom: 3px; }
 }
+
+.boss-hp { position: relative; background: #2b1424; }
+.boss-hp #hud-meter { background: linear-gradient(90deg, #e13e67, #ff9d71); }
+.boss-hp::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 32.9%, #221324 32.9% 33.6%, transparent 33.6% 66%, #221324 66% 66.8%, transparent 66.8%);
+  pointer-events: none;
+}

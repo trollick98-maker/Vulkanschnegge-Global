@@ -5,7 +5,7 @@
   const images = {
     snail: 'snail.png', otter: 'otter.png', frog: 'frog.png', bossEel: 'boss-eel.png',
     plasma: 'plasma.png', toxic: 'toxic.png', platform: 'platform.png', mine: 'mine.png',
-    crate: 'crate.png', atlas: 'boss-atlas.webp',
+    crate: 'crate.png', atlas: 'boss-atlas.webp', katana: 'waffen/katana.png',
     coin: 'umgebung/coin.png', 'exit-closed': 'umgebung/exit-closed.png', 'exit-open': 'umgebung/exit-open.png',
     'platform-god': 'umgebung/platform-god.png',
     'landmark-reef': 'umgebung/landmark-reef-tunnel.png',

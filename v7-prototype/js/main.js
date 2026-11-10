@@ -140,7 +140,7 @@
     }
   }
 
-  function startBossChase() {
+  function startBossFight() {
     if (state.mode !== 'boss-intro') return;
     state.mode = 'play';
     frameAt = carry = 0;
@@ -195,7 +195,7 @@
     V.audio.tick(dt);
     if (state.mode === 'boss-intro') {
       state.bossIntroLeft -= dt;
-      if (state.bossIntroLeft <= 0) startBossChase();
+      if (state.bossIntroLeft <= 0) startBossFight();
       return;
     }
     if (state.mode === 'outro') {
@@ -215,7 +215,7 @@
       return;
     }
     carry += dt;
-    const clock = level.boss ? V.audio.bossClock(level.songTime) : null;
+    const clock = level.boss ? V.audio.bossClock() : null;
     while (carry + 1e-9 >= step) {
       carry -= step;
       updates[level.kind](level, step, V.input.consume(), clock);
@@ -264,7 +264,7 @@
   get('title-start').addEventListener('click', () => {
     if (state.mode === 'title') showMap();
   });
-  get('boss-intro-next').addEventListener('click', startBossChase);
+  get('boss-intro-next').addEventListener('click', startBossFight);
   get('back-btn').addEventListener('click', V.backToMap);
   get('home').addEventListener('click', showMap);
   function retry() {
@@ -276,14 +276,6 @@
   get('test-skip-btn').addEventListener('click', () => {
     if (!canSkip()) return;
     const level = state.level;
-    if (level.boss?.stage === 'chase') {
-      level.hitStop = 0;
-      V.input.reset();
-      V.enterBossArena(level);
-      ui.hud(level);
-      V.render(level);
-      return;
-    }
     level.outcome = true;
     finish();
   });

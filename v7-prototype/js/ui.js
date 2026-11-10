@@ -29,7 +29,7 @@
   }
 
   function routeDuration(campaign, route) {
-    return V.isBossRoute(campaign, route) ? 'Boss · ' + duration(Math.ceil(V.bossRhythms[route.node.biome].duration)) :
+    return V.isBossRoute(campaign, route) ? 'Bosskampf' :
       'Reise · ' + duration(route.edge.seconds);
   }
 
@@ -186,31 +186,32 @@
   function hud(s) {
     const p = s.player;
     const local = V.usesMomentum(s);
-    const finale = s.boss?.stage === 'arena';
-    const chasing = s.boss?.stage === 'chase';
-    content('level-kind', finale ? 'BOSSARENA · 2/2' : chasing ? 'VERFOLGUNG · 1/2' : kinds[s.kind]);
-    content('level-tip', s.boss ? s.boss.definition.tip :
+    const b = s.boss;
+    content('level-kind', b ? 'BOSS · PHASE ' + (b.phase + 1) + ' / 3' : kinds[s.kind]);
+    content('level-tip', b ? b.plan?.attack.hint ?? b.definition.tip :
       local ? 'Anlauf nehmen · Gegner besiegen · Ziel rechts' : 'Springen · Kisten per Dash zerlegen');
-    content('test-skip-btn', chasing ? 'Zur Bossarena' : 'Abschnitt überspringen');
+    content('test-skip-btn', 'Abschnitt überspringen');
     const dashReady = p.dashCooldown <= 0 && (p.dashTime <= 0 || (local && p.dashLeft <= 0)) && (!local || p.airDash);
     content('hud-stats', '♥ ' + s.hp + ' / ' + s.maxHp + '    ◈ ' + s.coinsTaken + '    ⚡ ' +
       (dashReady ? 'bereit' : 'lädt'));
-    const dash = s.kind === 'arena' ? ' · Dash ' + (p.dashTime > 0 ? p.dashPower : V.dashDamage(s, s.speed)) : '';
-    content('hud-score', Math.floor(s.score) + ' P · ×' + s.multiplier + ' · ' + Math.round(s.speed) + ' Tempo' + dash);
+    const dash = local ? ' · ' + s.weapon.name + ' ' + (p.dashTime > 0 ? p.dashPower : V.weaponDamage(s, s.speed)) : '';
+    content('hud-score', Math.floor(s.score) + ' P · ' + Math.round(s.speed) + ' Tempo' + dash);
     const alive = s.kind === 'arena' ? s.enemies.filter(enemy => enemy.hp > 0).length : 0;
-    const label = s.boss ? 'BIS SONGENDE · PHASE ' + (s.boss.phase + 1) :
+    const label = b ? b.definition.phases[b.phase].toUpperCase() + ' · BOSS-HP' :
       s.kind === 'travel' ? 'REISEZEIT' : s.kind === 'arena' ? 'KAMPFSTRECKE' : 'DISTANZ';
-    const value = s.boss ? duration(Math.max(0, Math.ceil(s.duration - s.songTime))) : s.kind === 'travel' ?
+    const value = b ? b.hp + ' / ' + b.maxHp : s.kind === 'travel' ?
       duration(Math.max(0, Math.ceil(s.duration - s.elapsed))) : s.kind === 'arena' ?
         (alive ? alive + ' Gegner' : 'Zum Ziel →') : Math.floor(s.dist) + ' m';
-    const ratio = s.boss ? s.songTime / s.duration : s.kind === 'travel' ?
+    const ratio = b ? b.hp / b.maxHp : s.kind === 'travel' ?
       s.elapsed / s.duration : s.kind === 'arena' ? 1 - alive / s.enemies.length : 0;
     content('hud-number', value);
     content('hud-label', label);
+    get('hud-track').classList.toggle('boss-hp', Boolean(b));
     const width = Math.min(100, Math.round(ratio * 100)) + '%';
     if (get('hud-meter').style.width !== width) get('hud-meter').style.width = width;
-    const tell = s.boss?.tell;
-    content('level-message', tell ? V.bossAttacks[tell.key].warning : s.feedbackTime > 0 ? s.feedback : '');
+    const effects = b ? Object.keys(s.arenaFX).map(key => V.bossArenaEffects[key]) : [];
+    const warning = b?.plan?.attack.name;
+    content('level-message', [s.feedbackTime > 0 ? s.feedback : '', warning, ...effects].filter(Boolean).join(' · '));
   }
 
   function reward(campaign, graph, select) {

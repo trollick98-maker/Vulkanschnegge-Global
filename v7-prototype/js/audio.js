@@ -5,7 +5,8 @@
   const playing = new Set();
   const failed = new Set();
   const effects = new Map();
-  const effectNames = ['hit', 'hurt', 'guard', 'parry', 'dash', 'dash-fast', 'skid'];
+  const effectNames = ['hit', 'hurt', 'guard', 'parry', 'dash', 'dash-fast', 'skid', 'katana',
+    'reef-charge', 'greed-strike', 'diva-note', 'vortex-slam', 'god-fault', 'boss-break'];
   let scene = null;
   let wanted = null;
   let active = null;
@@ -61,7 +62,7 @@
     const voice = voiceFor(active);
     const bossTrack = scene === 'boss' && active === wanted;
     voice.audio.muted = !enabled;
-    voice.audio.loop = scene === 'menu' || (!bossTrack && !V.soundtracks[active].once);
+    voice.audio.loop = scene === 'menu' || scene === 'boss' || !V.soundtracks[active].once;
     if (!playing.has(voice)) {
       voice.gain = scene === 'menu' || bossTrack ? 1 : 0;
       voice.audio.volume = enabled ? volume * voice.gain : 0;
@@ -94,16 +95,11 @@
       }
     },
     current: () => active,
-    bossClock(fallbackTime) {
+    bossClock() {
       if (scene !== 'boss' || active !== wanted) return null;
       const audio = voices.get(active)?.audio;
-      if (!audio || (!audio.ended && (audio.paused || (audio.readyState < 2 && audio.currentTime === 0)))) return null;
-      const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
-      // If playback only became available after the fallback clock started, join the live fight.
-      if (!audio.ended && audio.currentTime + .28 < fallbackTime) {
-        audio.currentTime = Math.min(fallbackTime, duration || fallbackTime);
-      }
-      return { time: audio.currentTime, duration, ended: audio.ended };
+      if (!audio || audio.paused || audio.readyState < 2) return null;
+      return { time: audio.currentTime, duration: Number.isFinite(audio.duration) ? audio.duration : 0 };
     },
     isEnabled: () => enabled,
     effectsEnabled: () => effectsEnabled,

@@ -1,6 +1,6 @@
-# Vulkanschnegge 7.0 — The Great Update
+# Vulkanschnegge 7.0 — Bossfight & Weapon Overhaul
 
-Entpacke die ZIP und öffne `v7-prototype/index.html`. Der Offline-Build enthält alle zehn MP3s und alle Grafiken. Alternativ im Spielordner `python -m http.server 8000` ausführen und im Browser `http://localhost:8000` öffnen. Der lokale Server gibt dem Spielstand einen festen Browser-Ursprung. Das Schneggboard liest die Online-Rangliste nur auf Knopfdruck und braucht dafür Internet.
+Entpacke die ZIP und öffne `v7-boss-overhaul/index.html`. Im Quellstand liegt das Spiel in `v7-prototype/`. Der Offline-Build enthält alle zehn MP3s und alle Grafiken. Alternativ im Spielordner `python -m http.server 8000` ausführen und im Browser `http://localhost:8000` öffnen. Der lokale Server gibt dem Spielstand einen festen Browser-Ursprung. Der Overhaul speichert Kampagne und Profil separat. Ein V7-Spielstand am selben Browser-Ursprung kann beim ersten Start übernommen werden. Das Schneggboard liest die Online-Rangliste nur auf Knopfdruck und braucht dafür Internet.
 
 ## Spielen
 
@@ -8,19 +8,19 @@ Beim Öffnen des Spiels erscheint **LAUNCH** auf schwarzem Grund. Ein Klick oder
 
 - Das Hauptmenü führt zur Weltkarte, zum Endlos-Modus und zum Schneggboard. Im Atlas folgen die illustrierten Biome der Reihenfolge des Seeds. Der Riss erscheint mit dem passenden Story-Kapitel.
 - Sieben Pixelart-Bilder erzählen Schneggs Geschichte von der Heimatbucht bis zum Abspann. Das Perk-Menü hat ein eigenes Bild.
-- Wähle eine Figur und starte eine neue Kampagne, wenn du mit dieser Figur spielen willst. Derselbe Seed erzeugt dieselbe Karte. Normale Reisen dauern zwischen 2 und 3 Minuten, beschleunigen automatisch und starten pro späterer Zone mit 42 Tempo mehr. Bossrouten starten direkt die Verfolgung.
+- Wähle eine Figur und starte eine neue Kampagne, wenn du mit dieser Figur spielen willst. Derselbe Seed erzeugt dieselbe Karte. Normale Reisen dauern zwischen 2 und 3 Minuten, beschleunigen automatisch und starten pro späterer Zone mit 42 Tempo mehr. Bossrouten starten direkt die Bossarena.
 - **A/D oder Pfeiltasten** zum Steuern, **Leertaste** zum Springen und Doppelspringen, **Shift** für den Panzer-Dash und **Esc** für die Karte. Auf Touch-Geräten stehen eigene Tasten zur Verfügung.
 - In Gegnerleveln und Bossarenen baut jede Figur beim Lenken Tempo auf. Otter beschleunigt am stärksten, danach folgen Frogo und Schnegg. Loslassen bremst.
 - Gegner, Böden und Plattformen haben eigene Biom-Sprites. Münzen tragen ein Spiralrelief. Am Ende der Gegnerlevel wechseln die Zielportale beim Öffnen von orangefarbenen Gittertoren zu türkisen Wirbeln. Boss-Geschosse haben eigene Silhouetten, und Kartenmotive markieren die Regionen.
 - Nach Kämpfen wählst du einen Perk. Der Build gilt für alle weiteren Abschnitte der Kampagne. Offene Belohnungen bleiben beim Neuladen erhalten. Der Endlos-Modus hat einen eigenen Startzustand.
-- Reisen und Gegnerlevel haben feste Musik pro Kampagnenzone. In Zone 1 läuft „Pixel Depths“, in Zone 2 und 3 „Into the Deep“ und ab Zone 4 „Vulkanschnegge Theme“. Bosse haben ihre eigenen Tracks. Im Endlos-Modus wechseln die Tracks weiterhin mit dem Tempo.
+- Normale Reisen und Gegnerlevel haben feste Musik pro Kampagnenzone. In Zone 1 läuft „Pixel Depths“, in Zone 2 und 3 „Into the Deep“ und ab Zone 4 „Vulkanschnegge Theme“. Bosse haben ihre eigenen Tracks. Im Endlos-Modus wechseln die Tracks weiterhin mit dem Tempo.
 - Der letzte der vier Götter vor dem Riss ergibt sich in dieser Fassung aus der Seed-Reihenfolge. GOD.EXE ist der letzte Kampf. Auf „I AM THE SOURCE“ beim Reveal folgt „RUN THE LOOP“ im Kampf. „Home, At Last“ startet im Abspann.
 
 ## Kampf und Perks
 
 - Gegnerlevel führen über sieben oder acht Inseln mit Aufstiegen und Abstiegen. Die Kamera folgt dir auch in der Höhe. Besiege alle Gegner und erreiche das Tor am Ende der Strecke. Ein Sturz kostet ein Herz und setzt dich auf die letzte erreichte Insel zurück.
 - Im Riff schnappen Muscheln zu, im Tresor fahren Goldstacheln aus, bei der Diva markieren Scheinwerfer ihre Trefferzone und im Wrack schleudern Wasserfontänen dich hoch. Jede Falle warnt vor dem Angriff und hat eigene Sprites für Ruhe und Aktivierung.
-- In Arenen entspricht der Dash-Schaden dem Tempo beim Start geteilt durch drei, auf ganze HP gerundet. Mehr Tempo macht denselben 144-Pixel-Dash schneller. Schneckenzorn verlängert die Strecke unabhängig vom Tempo. Gegnerkontakt oder ein Treffer kostet 35 % des aktuellen Tempos.
+- In Arenen entspricht der Panzer-Dash-Schaden dem Tempo beim Start geteilt durch drei. Das standardmäßig ausgerüstete Glutkatana multipliziert diesen Wert mit 1,75. Sein Grundschaden greift bei wenig Tempo. Mehr Tempo macht denselben 144-Pixel-Dash schneller. Schneckenzorn verlängert die Strecke unabhängig vom Tempo. Gegnerkontakt oder ein Treffer kostet 35 % des aktuellen Tempos.
 - Krabbler starten mit 100 HP, Springer mit 80 HP und gepanzerte Gegner mit 175 HP. Der Lebensbalken sitzt über jedem Gegner. In Zone vier haben sie 225 % ihrer Start-HP.
 - Krabbler stürmen in die angekündigte Richtung, Springer markieren ihre Landestelle und gepanzerte Gegner feuern eine Bodenwelle. Ein Dash-Treffer unterbricht ihren Angriff.
 - Landungen, Dash und Wind-ups verformen die Sprites kurz. Konter und Treffer zeigen Partikel. In Gegnerleveln kommt ein kurzer Trefferstopp dazu. Die Systemeinstellung für reduzierte Bewegung schaltet die zusätzlichen Verformungen, Nachbilder und Partikel ab.
@@ -30,9 +30,17 @@ Beim Öffnen des Spiels erscheint **LAUNCH** auf schwarzem Grund. Ein Klick oder
 
 Vor jedem Boss steht Schnegg in einem eigenen Pixelart-Intro seinem riesigen Gegner gegenüber. Das Bild bleibt drei Sekunden stehen. Mit **Kampf starten** kannst du es direkt überspringen.
 
-Der Boss ist ab Beginn der Route auf dem Bildschirm. Nach der Verfolgung geht es direkt in seine Plattformarena. Herzen und Musik laufen durch beide Abschnitte. Der Kampf ist gewonnen, wenn du das Ende des Boss-Songs erreichst. Der Balken zeigt die verbleibende Zeit und die aktuelle Phase. Ein Neustart beginnt die Verfolgung mit dem Song von vorn.
+Der Boss steht ab dem ersten spielbaren Frame in seiner scrollenden Plattformarena. Ohne Eingabe läuft die Figur in gemäßigtem Tempo weiter. Mit A und D wechselst du die Richtung oder holst Tempo. Springe zu fliegenden Gegnern hoch und setze den Dash so an, dass der Schwertbogen den Boss schneidet. Der Hieb dauert 120 Millisekunden und zählt pro Ziel einmal. Treffer auf die markierte Schwachstelle bringen einen Bonus. Der Boss fällt bei 0 HP und hat dann eine kurze Siegesanimation. Ein Neustart setzt HP, Phasen und Arena zurück.
 
-Warnungen und Salven orientieren sich an den gemessenen Pulsen der fünf Aufnahmen. Gegen Ende werden die Salven breiter und die Abstände kürzer. In der Arena wechseln die Bosse zwischen den Salven die Position. Blaue Pfeile am Boden kündigen die Flutwelle des Trawlers an. Ein Sprung oder eine erhöhte Plattform bringt dich über die Welle. Markierte Geschosse kannst du per Dash umdrehen, um andere Geschosse abzufangen.
+Angriffe durchlaufen Vorbereitung, Ausführung und Erholung. Die HP-Drittel verändern Salven, Bewegung und Spezialangriffe. Angriffsbeginn und Warnung berücksichtigen den gemessenen Rhythmus des Boss-Tracks. Die Musik läuft bei Bedarf in einer Schleife. Helle Geschosse lassen sich per Dash umlenken und können andere Geschosse abfangen.
+
+| Boss | Angriffe und Arena | Gelegenheit |
+| --- | --- | --- |
+| Don Moray | Stromfelder, Vorstoß, Blasen und Bogensalven. Death Spiral erzeugt Strömung, High Tide ändert die Sprungphysik. | In der Erholung nach dem Spezialangriff den markierten Bereich treffen. |
+| God of Greed | Münzregen, Goldhand, Abpraller und Truhen. Royal Decree markiert Strahlen, Gilded Flood flutet und hebt Decks. | Der leuchtende Tresor kann das Dekret unterbrechen. |
+| Diva-Schwänin | Federfächer, Lichtkegel, Spiegelbilder und Schallwellen. Curtain Call und Encore verändern Lichtzonen und Bühnenhöhe. | Die markierte Pose mit einem Hieb durchbrechen. |
+| Pumper Vortex | Schockwellen, Hanteln, Sprint und Dreierschläge. Maximum Overload und Weight Drop erschüttern Plattformen. Laufbänder ziehen am Boden. | Nach einer Überlastung auf den Kraftgürtel zielen. |
+| GOD.EXE | Fehlerwand, Paketsalve, Positions-Replay und Overwrite. Loop Reset markiert Speicherblöcke, Kernel Panic wechselt Gefahrenfelder unter Notbeleuchtung. | Den Kern während des Resets treffen. |
 
 Treffer, eigener Schaden, Blocks und Konter haben eigene Pixel-Effekte und Töne. Schadenszahlen zeigen die verlorenen HP. Bei eigenem Schaden leuchtet der Rand des Spielfelds rot. Mit **Effekte an/aus** schaltest du die Spielgeräusche unabhängig von der Musik.
 
@@ -46,13 +54,13 @@ Die maximale Höhe eines Grundsprungs ist `v₀² / (2g)`. Für ein Ziel, das um
 
 ## Testmodus
 
-Gib auf der Weltkarte im Feld **Seed** `admin` ein und drücke **Enter**. Mit **Abschnitt überspringen** kannst du Reisen, Gegnerlevel und Bossarenen sofort abschließen. In der Verfolgung bringt dich **Zur Bossarena** direkt ins Finale. Nach einem übersprungenen Kampf folgt die reguläre Perk-Auswahl. Der Testmodus startet mit einer Kopie deiner Kampagne und speichert keine Kampagnenfortschritte oder Rekorde. Erneut `admin` eingeben oder die Seite neu laden, um zum regulären Spielstand zurückzukehren.
+Gib auf der Weltkarte im Feld **Seed** `admin` ein und drücke **Enter**. Mit **Abschnitt überspringen** kannst du Reisen, Gegnerlevel und Bossarenen sofort abschließen. Nach einem übersprungenen Kampf folgt die reguläre Perk-Auswahl. Der Testmodus startet mit einer Kopie deiner Kampagne und speichert keine Kampagnenfortschritte oder Rekorde. Erneut `admin` eingeben oder die Seite neu laden, um zum regulären Spielstand zurückzukehren.
 
 ## Tests
 
 Im Spielordner `node --test tests/smoke.test.js` ausführen. Für die Prüfung des vollständigen Offline-Pakets unter Linux oder macOS `REQUIRE_OFFLINE_MEDIA=1 node --test tests/smoke.test.js` verwenden.
 
-Die Tests prüfen unter anderem Dash-Distanz, Gegner-HP, Bossangriffe bis zum Songende und die Sound- und Bewegungseffekte. Eine separate Simulation prüfte für 40 Seeds die Plattformwege mit allen drei Grundfiguren in beide Richtungen.
+Die Tests prüfen unter anderem Dash-Distanz, Gegner-HP, Boss-Schaden, Angriffsmuster und Siege und die Sound- und Bewegungseffekte. Eine separate Simulation prüfte für 40 Seeds die Plattformwege mit allen drei Grundfiguren in beide Richtungen.
 
 ## Messung des Runners vor dem Kampf-Update
 
@@ -69,4 +77,4 @@ Die Heap-Differenzen schwanken im kleinen Bereich. Aus ihnen lässt sich keine A
 
 ## GitHub
 
-Die Änderungen zum Stand von PR #9 liegen ausschließlich in `v7-prototype/`. Im GitHub-Quellstand liegen alle Grafiken. Die MP3s liegen in der Offline-ZIP. Wenn die lokalen Boss-Tracks fehlen, greift der Quellstand auf einen Runner-Loop zurück.
+Der Overhaul liegt in einem eigenen Entwicklungsbranch. Der Ausgangsstand bleibt separat verfügbar. Im GitHub-Quellstand liegen alle Grafiken. Die MP3s liegen in der Offline-ZIP. Wenn die lokalen Boss-Tracks fehlen, greift der Quellstand auf einen Runner-Loop zurück.

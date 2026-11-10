@@ -107,7 +107,11 @@
   function hitEnemy(s, enemy, damage) {
     const amount = Math.min(enemy.hp, damage);
     enemy.hp = Math.max(0, enemy.hp - damage);
-    V.rebound(s);
+    if (!s.player.swing) V.rebound(s);
+    else if (s.chainDash) {
+      s.player.dashCooldown = 0;
+      s.player.airDash = true;
+    }
     enemy.attackState = 'recover';
     enemy.attackLeft = .56;
     if (amount > 0) enemy.flash = .13;
@@ -118,7 +122,7 @@
       s.score += 75 + damage;
       V.addCoin(s, enemy.x + enemy.w / 2, enemy.y + enemy.h / 2);
     }
-    V.say(s, damage > 0 ? 'Dash · −' + damage + ' HP' : 'Mehr Anlauf!');
+    V.say(s, damage > 0 ? s.weapon.name + ' · −' + amount + ' HP' : 'Mehr Anlauf!');
   }
 
   V.updateArena = function (s, dt, actions) {
@@ -130,7 +134,7 @@
       p.invuln = 0;
       V.hurt(s);
       Object.assign(p, { x: s.checkpointX, y: s.checkpointY - p.h, vx: 0, vy: 0, grounded: true,
-        jumps: 0, airDash: true, dashBuffer: 0, jumpBuffer: 0, dashCooldown: 0, angle: 0, landTime: 0 });
+        jumps: 0, airDash: true, dashBuffer: 0, jumpBuffer: 0, dashCooldown: 0, angle: 0, landTime: 0, swing: null });
       s.cameraX = V.arenaCameraTarget(s);
       s.cameraY = s.checkpointY - 405;
       s.supportY = s.checkpointY;
@@ -145,11 +149,15 @@
     let target;
     for (const enemy of s.enemies) {
       if (enemy.hp <= 0) continue;
+      const oldX = enemy.x;
+      const oldY = enemy.y;
       updateEnemy(s, enemy, dt);
       const contact = V.movementContact(p, enemy);
-      if (p.dashTime > 0) {
-        if (contact < firstHit) {
-          firstHit = contact;
+      const strike = s.weapon.angles ? V.weaponContact(s, enemy, enemy.x - oldX, enemy.y - oldY) :
+        p.dashTime > 0 ? contact : Infinity;
+      if (strike < Infinity) {
+        if (strike < firstHit) {
+          firstHit = strike;
           target = enemy;
         }
       } else if (contact < Infinity) {
@@ -158,7 +166,10 @@
       }
       enemy.touching = V.overlap(p, enemy);
     }
-    if (target && s.outcome === null) hitEnemy(s, target, p.dashPower);
+    if (target && s.outcome === null) {
+      p.swing?.hits.add(target);
+      hitEnemy(s, target, p.dashPower);
+    }
     for (const shot of s.projectiles) {
       shot.x += shot.vx * dt;
       if (shot.x < shot.left || shot.x > shot.right) shot.dead = true;

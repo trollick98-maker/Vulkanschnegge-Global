@@ -9,9 +9,9 @@ const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
 const modules = [
   'config', 'assets', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats',
-  'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'combat', 'audio', 'online-board', 'input', 'story', 'render', 'ui', 'main'
+  'weapons', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-arena', 'combat', 'audio', 'online-board', 'input', 'story', 'render', 'ui', 'main'
 ];
-const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'combat', 'story'];
+const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats', 'weapons', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-arena', 'combat', 'story'];
 const idle = {};
 
 function logic(storage = new Map(), files = rules, extra = {}) {
@@ -269,6 +269,7 @@ test('an arena dash deals one third of launch speed and contact retains 65 perce
   const c = V.createCampaign('arena', 'snail');
   const node = V.routesFrom(c, V.generateMap(c.seed))[0].node;
   const s = V.newArena(node, 'snail', {}, c.seed);
+  s.weapon = V.weapons.shell;
   const p = s.player;
   s.enemies = [{ key: 'armored', x: 300, y: V.GROUND - 40, floorY: V.GROUND, w: 51, h: 40, hp: 175, maxHp: 175,
     attackState: 'ready', attackLeft: 10, range: 245, left: 22, right: 400 }];
@@ -342,14 +343,14 @@ test('movement feedback follows actual dashes and fast ground braking', () => {
   V.movePlayer(buffered, step, { dash: true });
   assert.deepEqual(calls, []);
   for (let i = 0; i < 6; i++) V.movePlayer(buffered, step, {});
-  assert.deepEqual(calls, ['dash']);
+  assert.deepEqual(calls, ['katana', 'dash']);
   assert.equal(buffered.effects.at(-1).kind, 'dash');
 
   const fast = setup(-520);
   V.movePlayer(fast, step, { left: true, dash: true });
   assert.equal(fast.effects.at(-1).kind, 'dash-fast');
   assert.equal(fast.effects.at(-1).direction, -1);
-  assert.equal(fast.player.dashPower, V.dashDamage(fast, 520));
+  assert.equal(fast.player.dashPower, V.weaponDamage(fast, 520));
 
   const braking = setup(520);
   V.movePlayer(braking, step, { right: true });
@@ -358,10 +359,10 @@ test('movement feedback follows actual dashes and fast ground braking', () => {
   assert.equal(braking.effects.at(-1).kind, 'skid');
   assert.equal(braking.effects.at(-1).direction, 1);
   for (let i = 0; i < 10; i++) V.movePlayer(braking, step, { left: true });
-  assert.deepEqual(calls, ['dash', 'dash-fast', 'skid']);
+  assert.deepEqual(calls, ['katana', 'dash', 'katana', 'dash-fast', 'skid']);
   V.movePlayer(setup(520), step, { left: true, jump: true });
   V.movePlayer(setup(190), step, {});
-  assert.deepEqual(calls, ['dash', 'dash-fast', 'skid']);
+  assert.deepEqual(calls, ['katana', 'dash', 'katana', 'dash-fast', 'skid']);
 });
 
 test('mobs scale with zone and travel has progressively faster starts', () => {
@@ -557,186 +558,163 @@ test('biome traps telegraph, use local elevation, and hurt only during activatio
   }
 });
 
-test('a buffered boss dash parries and intercepts projectiles without damaging the boss', () => {
+test('the katana has a shared 120ms pose and swept reach, with a 1.75 damage multiplier', () => {
   const { V } = logic();
-  const graph = V.generateMap('lunge');
-  const step = V.rules.step;
-  for (const arena of [false, true]) {
-    const s = V.newCombat(graph.byId.reef, 'snail', { turboHunter: 1, hyperMode: 1 }, 'lunge');
-    if (arena) V.enterBossArena(s);
+  const graph = V.generateMap('katana');
+  for (const character of Object.keys(V.characters)) {
+    const s = V.newCombat(graph.byId.reef, character, {}, 'katana');
     const p = s.player;
-    const x = p.x;
-    p.dashCooldown = .06;
-    V.updateCombat(s, step, { dash: true, right: true });
-    assert.equal(p.dashTime, 0);
-    for (let i = 0; i < 6; i++) V.updateCombat(s, step, idle);
-    assert.ok(p.dashTime > 0 && p.x > x + 20);
-    const q = { key: 'plasma', x: p.x + p.w + 18, y: p.y + 22, r: 16, vx: -5, vy: 0 };
-    s.projectiles.push(q);
-    V.updateCombat(s, step, idle);
-    assert.equal(q.reflected, true);
-    assert.equal(q.intercepts, 2);
-    assert.equal(p.dashCooldown, 0);
-    assert.equal(s.effects.at(-1).kind, 'parry');
-    assert.equal(s.hitStop, 0);
-    for (let i = 0; i < 2; i++) {
-      const hostile = { key: 'toxic', x: q.x + 35, y: q.y, r: 17, vx: -500, vy: 0 };
-      s.projectiles.push(hostile);
-      V.updateCombat(s, step, idle);
-      assert.ok(hostile.dead);
-      assert.equal(q.intercepts, 1 - i);
-      assert.equal(s.effects.at(-1).kind, 'guard');
-    }
-    assert.equal(s.projectiles.length, 0);
-    assert.equal(s.outcome, null);
-    assert.equal(s.hp, s.maxHp);
+    assert.equal(s.weapon, V.weapons.katana);
+    assert.equal(s.weapon.duration, .12);
+    assert.equal(V.weaponDamage(s, 300), 175);
+    assert.equal(V.weaponDamage(s, 0), 53);
+    Object.assign(p, { x: 312, previousX: 80, y: 330, previousY: 330, facing: 1 });
+    V.startWeaponSwing(s);
+    p.swing.previousTime = .03;
+    p.swing.time = .06;
+    const thin = { x: 240, y: 340, w: 4, h: 24 };
+    assert.ok(V.weaponContact(s, thin) < 1);
+    p.swing.hits.add(thin);
+    assert.equal(V.weaponContact(s, thin), Infinity);
   }
 });
 
-test('all five bosses appear on the route and enter the arena without a shield gate', () => {
-  const { V } = logic();
-  const graph = V.generateMap('boss');
-  const step = V.rules.step;
-  for (const [id, boss] of Object.entries(V.bosses)) {
-    for (const phase of boss.phases) assert.ok(phase.some(key => V.bossAttacks[key].reflect), id);
-    const s = V.newCombat(graph.byId[id], 'snail', {}, 'boss');
-    assert.ok(s.boss.x > V.W * .7 && s.boss.x < V.W);
-    assert.equal(s.boss.stage, 'chase');
-    assert.ok(s.platforms.length > 0 && s.obstacles.length > 0);
-    s.hp -= 2;
-    s.player.invuln = 100;
-    let salvos = 0;
-    while (s.boss.stage === 'chase' && s.songTime < 26) {
-      V.updateCombat(s, step, idle);
-      if (s.boss.flash === .14) salvos++;
-    }
-    assert.ok(salvos >= 2);
-    assert.equal(s.boss.stage, 'arena', id);
-    assert.ok(s.songTime > 10 && s.songTime < 26);
-    assert.ok(s.platforms.length > 2);
-    assert.equal(s.outcome, null);
-    assert.equal(s.hp, s.maxHp - 2);
-  }
-});
+function bossDash(V, s, facing = 1) {
+  const { boss: b, player: p } = s;
+  const edge = facing === 1 ? b.x - p.w - 12 : b.x + b.w + 12;
+  const y = Math.min(V.GROUND - p.h, b.y + b.h * .64 - p.h / 2);
+  Object.assign(p, { x: edge, y, vx: facing * 560, vy: 0, facing, airDash: true,
+    invuln: 1, dashTime: 0, dashCooldown: 0, dashBuffer: 0, swing: null });
+  const before = b.hp;
+  for (let i = 0; i < 14; i++) V.updateCombat(s, V.rules.step, {
+    dash: i === 0, right: facing === 1, left: facing === -1
+  });
+  return before - b.hp;
+}
 
-test('the measured beat grid drives warnings and progressively denser salvos for the whole song', () => {
+test('every boss takes one normal katana hit per dash, has a death sequence and resets', () => {
   const { V } = logic();
-  const graph = V.generateMap('beats');
-  const step = V.rules.step;
-  for (const id of Object.keys(V.bosses)) {
-    const rhythm = V.bossRhythms[id];
-    assert.ok(rhythm.beats.length > 300 && rhythm.beats.at(-1) / 1000 < rhythm.duration);
-    assert.ok(rhythm.beats.every((beat, i) => !i || beat > rhythm.beats[i - 1]));
-    const s = V.newCombat(graph.byId[id], 'snail', {}, 'beats');
-    V.enterBossArena(s);
-    s.player.invuln = 500;
-    const counts = [0, 0, 0];
-    const fans = [0, 0, 0];
-    while (s.outcome === null) {
-      const { cue, tell } = s.boss;
-      V.updateCombat(s, step, idle);
-      if (s.boss.flash !== .14) continue;
-      assert.ok(tell && cue);
-      assert.equal(rhythm.beats[cue.beat] / 1000, cue.at);
-      assert.ok(s.songTime >= cue.at - 1e-7 && s.songTime - cue.at <= step + 1e-7);
-      counts[cue.phase]++;
-      const attack = V.bossAttacks[cue.key];
-      if (!attack.zone && !attack.wind) fans[cue.phase] = Math.max(fans[cue.phase], (attack.fan || 1) + cue.phase);
-      assert.ok(s.projectiles.length < 22, id);
-    }
-    assert.ok(counts[0] < counts[1] && counts[1] < counts[2], id);
-    assert.ok(fans[0] < fans[2], id);
+  const graph = V.generateMap('death');
+  for (const [id, definition] of Object.entries(V.bosses)) {
+    const node = graph.byId[id];
+    const s = V.newCombat(node, 'otter', {}, 'death');
+    assert.ok(s.boss.x > s.player.x && s.boss.x < V.W);
+    assert.ok(s.platforms.length >= 6 && V.usesMomentum(s));
+    s.boss.readyAt = 1e5;
+    const first = bossDash(V, s);
+    assert.equal(first, 327, id);
+    assert.equal(s.outcome, null);
+    assert.ok(s.effects.some(effect => effect.kind === 'hit' && effect.amount === first));
+    let i = 0;
+    while (s.boss.hp > 0 && i++ < 20) assert.ok(bossDash(V, s, i % 2 ? -1 : 1) > 0, id);
+    assert.equal(s.boss.state, 'defeated');
+    assert.equal(s.outcome, null);
+    assert.equal(s.zones.length, 0);
+    for (let j = 0; j < 85; j++) V.updateCombat(s, V.rules.step, idle);
     assert.equal(s.outcome, true);
-    assert.equal(s.songTime, rhythm.duration);
+    const retry = V.newCombat(node, 'otter', {}, 'death');
+    assert.equal(retry.boss.hp, definition.hp + 125 * (node.tier - 1));
+    assert.equal(retry.boss.phase, 0);
+    assert.equal(retry.boss.plan, undefined);
+    assert.equal(retry.player.swing, null);
   }
 });
 
-test('a stalled boss song holds the cues, the live end wins, and a loss stays a loss', () => {
+test('the five boss AIs telegraph six distinct attacks and run all three phases', () => {
+  const { V } = logic();
+  const graph = V.generateMap('patterns');
+  for (const [id, boss] of Object.entries(V.bosses)) {
+    const s = V.newCombat(graph.byId[id], 'frog', {}, 'patterns');
+    const b = s.boss;
+    const seen = new Set();
+    const states = new Set();
+    const effects = new Set();
+    const phases = new Set();
+    s.player.invuln = 120;
+    for (let i = 0; i < 6600; i++) {
+      if (i === 2000) b.hp = Math.floor(b.maxHp * .60);
+      if (i === 4000) b.hp = Math.floor(b.maxHp * .29);
+      V.updateCombat(s, V.rules.step, { left: i % 340 > 220, right: i % 340 < 115 });
+      if (b.plan) {
+        seen.add(b.plan.attack.name);
+        assert.ok(b.plan.lead >= .62 && Number.isFinite(b.plan.strike));
+      }
+      states.add(b.state);
+      phases.add(b.phase);
+      Object.keys(s.arenaFX).forEach(fx => effects.add(fx));
+      assert.ok(s.projectiles.length < 60 && s.zones.length < 20);
+      assert.ok(s.projectiles.every(q => Number.isFinite(q.x) && Number.isFinite(q.y)));
+    }
+    assert.equal(seen.size, 6, id);
+    assert.equal(boss.attacks.filter(attack => attack.special).length, 2, id);
+    assert.equal(phases.size, 3, id);
+    assert.ok(effects.size >= 2, id);
+    for (const state of ['windup', 'active', 'recovery']) assert.ok(states.has(state), id);
+    assert.equal(s.outcome, null);
+  }
+});
+
+test('the open chest weak spot interrupts Royal Decree and amplifies the hit', () => {
+  const { V } = logic();
+  const s = V.newCombat(V.generateMap('decree').byId.greed, 'snail', {}, 'decree');
+  Object.assign(s.boss, { forceSpecial: true, readyAt: 0 });
+  V.updateCombat(s, V.rules.step, idle);
+  assert.equal(s.boss.plan.attack.name, 'Royal Decree');
+  const { boss: b, player: p } = s;
+  const weak = V.bossHitboxes(b).weak;
+  Object.assign(p, { x: weak.x - p.w - 12, y: weak.y + 8, vx: 400, facing: 1, airDash: true });
+  const hp = b.hp;
+  for (let i = 0; i < 8; i++) V.updateCombat(s, V.rules.step, { right: true, dash: i === 0 });
+  assert.equal(b.state, 'recovery');
+  assert.ok(hp - b.hp > p.dashPower);
+  assert.equal(s.zones.length, 0);
+});
+
+test('boss cues align to the recording and the song end alone cannot win', () => {
   const { V } = logic();
   const s = V.newCombat(V.generateMap('clock').byId.reef, 'snail', {}, 'clock');
-  const tick = (time, ended = false) => V.updateCombat(s, V.rules.step, idle, { time, duration: 207, ended });
-  const cue = s.boss.cue;
-  for (let i = 0; i < 160; i++) tick(cue.warningAt - .1);
-  assert.equal(s.boss.tell, null);
-  tick(cue.warningAt);
-  assert.equal(s.boss.tell.key, cue.key);
-  tick(cue.at);
-  assert.ok(s.projectiles.length);
-  tick(207);
+  const { duration, beats } = V.bossRhythms.reef;
+  s.boss.readyAt = 0;
+  const time = 12.75;
+  V.updateCombat(s, V.rules.step, idle, { time, duration });
+  const clockBeat = time + s.boss.plan.lead;
+  assert.ok(beats.some(ms => Math.abs(ms / 1000 - clockBeat) < 1e-7));
+  V.updateCombat(s, V.rules.step, idle, { time: duration, duration, ended: true });
   assert.equal(s.outcome, null);
-  tick(207, true);
-  assert.equal(s.outcome, true);
-  const losing = V.newCombat(s.node, 'snail', {}, 'clock');
-  losing.hp = 1;
-  V.hurt(losing);
-  V.updateCombat(losing, V.rules.step, idle, { time: 207, duration: 207, ended: true });
-  assert.equal(losing.outcome, false);
+  s.hp = 1;
+  V.hurt(s);
+  assert.equal(s.outcome, false);
 });
 
-test('boss arenas patrol between cues and lock the salvo direction during a warning', () => {
+test('boss arena effects change gravity and deck height while zone markers leave jumpable gaps', () => {
   const { V } = logic();
-  const graph = V.generateMap('patrol');
-  for (const id of Object.keys(V.bosses)) {
-    const s = V.newCombat(graph.byId[id], 'snail', {}, 'patrol');
-    V.enterBossArena(s);
-    const b = s.boss;
-    s.player.invuln = 100;
-    const stops = new Set();
-    let lift = 0;
-    for (let i = 0; i < 2300; i++) {
-      const lastTell = b.tell;
-      const lastX = b.x;
-      const lastY = b.y;
-      V.updateCombat(s, V.rules.step, { right: i % 140 < 70, left: i % 140 >= 70 });
-      assert.ok(b.x >= 0 && b.x + b.w <= s.worldWidth);
-      lift = Math.max(lift, V.GROUND - (b.y + b.h));
-      if (lastTell && b.tell === lastTell) {
-        assert.equal(b.x, lastX, id);
-        assert.equal(b.y, lastY, id);
-      }
-      if (b.flash === .14) stops.add(b.x);
-    }
-    assert.ok(stops.size >= 3, id);
-    if (id === 'diva' || id === 'god') assert.ok(lift > 80, id);
-    if (id === 'greed') assert.equal(lift, 0, id);
+  const graph = V.generateMap('arena-fx');
+  for (const jump of [false, true]) {
+    const s = V.newCombat(graph.byId.greed, 'snail', {}, 'arena-fx');
+    s.boss.readyAt = 1e6;
+    s.arenaFX.gilded = { start: 0, end: 5 };
+    const deck = s.platforms[1];
+    V.bossZone(s, s.player.x + 30, V.GROUND - 58, 172, 58, .50, .30, 'gold');
+    for (let i = 0; i < 49; i++) V.updateCombat(s, V.rules.step, { jump: jump && i === 19 });
+    assert.ok(deck.y < deck.homeY - 30);
+    assert.equal(s.hp, s.maxHp - Number(!jump));
   }
+  const reef = V.newCombat(graph.byId.reef, 'snail', {}, 'arena-fx');
+  reef.arenaFX.tide = { start: -1, end: 5 };
+  V.updateCombat(reef, V.rules.step, { jump: true });
+  assert.equal(reef.gravityFactor, .62);
 });
 
-test('the Trawler telegraphs its floor wave and jumping clears its damage zone', () => {
-  const { V } = logic();
-  const node = V.generateMap('flood').byId.greed;
-  const step = V.rules.step;
-  for (const arena of [false, true]) {
-    for (const jump of [false, true]) {
-      const s = V.newCombat(node, 'snail', {}, 'flood');
-      if (arena) V.enterBossArena(s);
-      s.boss.cue = { key: 'wave', warningAt: .08, at: 1.2, beat: 2, phase: 0 };
-      for (let i = 0; i < 55; i++) V.updateCombat(s, step, idle);
-      assert.equal(s.boss.tell.key, 'wave');
-      assert.equal(s.boss.tell.width, arena ? s.worldWidth : V.W);
-      assert.equal(s.hp, s.maxHp);
-      for (let i = 55; i < 87; i++) V.updateCombat(s, step, { jump: jump && i === 61 });
-      assert.equal(s.hp, s.maxHp - Number(!jump));
-    }
-  }
-});
-
-test('toxic shots hurt instead of reflecting and a spotlight has a dodgeable lane', () => {
-  const { V } = logic();
-  const map = V.generateMap('danger');
-  const eel = V.newCombat(map.byId.reef, 'snail', {}, 'danger');
-  const p = eel.player;
-  eel.projectiles.push({ key: 'toxic', x: p.x + 27, y: p.y + 22, r: 17, vx: -310, vy: 0 });
-  V.updateCombat(eel, V.rules.step, { dash: true });
-  assert.equal(eel.hp, eel.maxHp - 1);
-  assert.equal(eel.effects.at(-1).kind, 'hurt');
-  V.hurt(eel);
-  assert.equal(eel.effects.filter(effect => effect.kind === 'hurt').length, 1);
-  const diva = V.newCombat(map.byId.diva, 'snail', {}, 'danger');
-  diva.projectiles.push({ key: 'spotlight', x: diva.player.x, w: 84, zone: true, life: .3 });
-  diva.player.x = 108;
-  V.updateCombat(diva, V.rules.step, idle);
-  assert.equal(diva.hp, diva.maxHp);
+test('the overhaul imports a previous campaign and writes its own save key', () => {
+  const { V, storage } = logic();
+  const old = JSON.stringify(V.createCampaign('legacy', 'frog'));
+  storage.set('vulkanschnegge-v7-campaign-v1', old);
+  const loaded = V.loadCampaign();
+  assert.equal(loaded.seed, 'legacy');
+  loaded.build.jump = 1;
+  V.saveCampaign(loaded);
+  assert.equal(storage.get('vulkanschnegge-v7-campaign-v1'), old);
+  assert.equal(V.loadCampaign().build.jump, 1);
 });
 
 test('all supplied media are mapped to their scenes and packaged for offline playback', () => {
@@ -790,6 +768,9 @@ test('all supplied media are mapped to their scenes and packaged for offline pla
     assert.equal(sprite.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', kind);
     assert.equal(sound.toString('ascii', 8, 12), 'WAVE', kind);
   }
+  for (const effect of ['katana', 'boss-break', ...Object.values(V.bosses).map(boss => boss.sound)]) {
+    assert.equal(fs.readFileSync(path.join(root, 'assets/sfx', effect + '.wav')).toString('ascii', 8, 12), 'WAVE');
+  }
   for (const kind of ['dash', 'dash-fast', 'skid']) {
     const sprite = fs.readFileSync(path.join(root, V.imagePath('movement-' + kind)));
     const sound = fs.readFileSync(path.join(root, 'assets/sfx', kind + '.wav'));
@@ -807,10 +788,11 @@ test('the biome spritepack covers arena roles, projectiles, platforms and map la
     spriteIds.push('platform-' + biome, 'landmark-' + biome, 'ground-' + biome);
   }
   spriteIds.push('landmark-god', 'platform-god', 'coin', 'exit-closed', 'exit-open');
-  for (const [id, attack] of Object.entries(V.bossAttacks)) {
-    if (!attack.zone && !attack.wind) spriteIds.push(attack.sprite ?? id);
+  spriteIds.push('katana');
+  for (const id of Object.keys(V.bossShots)) {
+    if (id !== 'coin' && !V.imagePath(id).endsWith('/undefined')) spriteIds.push(id);
   }
-  assert.equal(new Set(spriteIds.map(id => V.imagePath(id))).size, 40);
+  assert.equal(new Set(spriteIds.map(id => V.imagePath(id))).size, spriteIds.length);
   for (const id of spriteIds) {
     const png = fs.readFileSync(path.join(root, V.imagePath(id)));
     assert.equal(png.subarray(0, 8).toString('hex'), pngHeader, id);
@@ -927,11 +909,11 @@ test('missing boss track falls back to a built-in runner loop', () => {
   assert.equal(audio.bossClock(10), null);
 });
 
-test('boss tracks play once and mute without stopping or rewinding the encounter clock', () => {
+test('boss tracks loop and mute without stopping or rewinding the rhythm clock', () => {
   const { audio, players, document, listeners } = audioFixture();
   audio.startLevel('boss', 'reef-tax');
   const track = players[0];
-  assert.equal(track.loop, false);
+  assert.equal(track.loop, true);
   assert.ok(track.volume > 0);
   track.readyState = 4;
   track.duration = 206.36;
@@ -953,10 +935,8 @@ test('boss tracks play once and mute without stopping or rewinding the encounter
   audio.tick(.1);
   assert.equal(track.muted, false);
   assert.ok(track.volume > 0);
-  assert.equal(audio.bossClock(5).time, 5, 'late audio playback joins the encounter');
-  track.currentTime = track.duration;
-  track.ended = track.paused = true;
-  assert.equal(audio.bossClock(5).ended, true);
+  track.currentTime = .12;
+  assert.equal(audio.bossClock().time, .12, 'the clock follows the loop wrap');
   audio.stop();
   assert.equal(audio.bossClock(5), null);
 });
