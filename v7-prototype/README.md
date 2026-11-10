@@ -7,7 +7,7 @@ Entpacke die ZIP und öffne `v7-boss-overhaul/index.html`. Im Quellstand liegt d
 Beim Öffnen des Spiels erscheint **LAUNCH** auf schwarzem Grund. Ein Klick oder Tipp startet „Home, At Last“ und das Titelbild. Der Pixel-Titel sinkt acht Sekunden lang vor Schnegg und den fünf Götter-Sternbildern ins Bild. Ein weiterer Klick oder Tipp beschleunigt den Flug. Sobald der Titel angekommen ist, erscheint **Start** und führt direkt zur Weltkarte. Die Musik läuft dabei an derselben Stelle weiter. Der Prolog beginnt vor der ersten Reise.
 
 - Das Hauptmenü führt zur Weltkarte, zum Endlos-Modus und zum Schneggboard. Im Atlas folgen die illustrierten Biome der Reihenfolge des Seeds. Der Riss erscheint mit dem passenden Story-Kapitel.
-- Sieben Pixelart-Bilder erzählen Schneggs Geschichte von der Heimatbucht bis zum Abspann. Das Perk-Menü hat ein eigenes Bild.
+- Pixelart-Bilder erzählen von der Entführung in der Heimatbucht bis zur Befreiung nach dem Sieg über GOD.EXE. Die beiden Schnecken kehren im Abspann gemeinsam in ihre Bucht zurück. Das Perk-Menü hat ein eigenes Bild.
 - Wähle eine Figur und starte eine neue Kampagne, wenn du mit dieser Figur spielen willst. Derselbe Seed erzeugt dieselbe Karte. Normale Reisen dauern zwischen 2 und 3 Minuten, beschleunigen automatisch und starten pro späterer Zone mit 42 Tempo mehr. Bossrouten starten direkt die Bossarena.
 - **A/D oder Pfeiltasten** zum Steuern, **Leertaste** zum Springen und Doppelspringen, **Shift** für den Panzer-Dash und **Esc** für die Karte. Auf Touch-Geräten stehen eigene Tasten zur Verfügung.
 - In Gegnerleveln und Bossarenen baut jede Figur beim Lenken Tempo auf. Otter beschleunigt am stärksten, danach folgen Frogo und Schnegg. Loslassen bremst.

@@ -147,7 +147,7 @@
     const bosses = graph.nodes.filter(node => node.kind === 'boss' && campaign.cleared.includes(node.id)).length;
     content('map-caption', V.characters[campaign.character].name + ' · ' + bosses + ' / ' +
       (campaign.story.rift ? '5' : '4') + ' Bosse bezwungen');
-    content('location-label', campaign.story.ending ? 'KAMPAGNE ABGESCHLOSSEN' : 'AKTUELLER STANDORT');
+    content('location-label', campaign.story.rescue ? 'KAMPAGNE ABGESCHLOSSEN' : 'AKTUELLER STANDORT');
 
     const choices = get('route-choices');
     choices.replaceChildren();

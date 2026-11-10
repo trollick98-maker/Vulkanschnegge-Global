@@ -69,7 +69,7 @@
       character: Object.hasOwn(V.characters, character) ? character : 'snail',
       position: START, cleared: [START], travelled: [], build: {}, arrival: null, pending: null,
       coins: 0, purchases: [], weapon: 'katana', supply: null,
-      story: { intro: false, rift: false, source: false, ending: false }
+      story: { intro: false, rift: false, source: false, rescue: false }
     };
   };
 

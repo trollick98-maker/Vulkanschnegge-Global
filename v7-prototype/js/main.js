@@ -56,7 +56,10 @@
       atlas.scrollIntoView({ block: 'start' });
       if (fromTitle) atlas.focus({ preventScroll: true });
     }
-    if (campaign.pending) {
+    if (!campaign.story.rescue &&
+      (campaign.pending?.node === graph.final || campaign.cleared.includes(graph.final))) {
+      endStory();
+    } else if (campaign.pending) {
       ui.reward(campaign, graph, id => {
         if (V.claimPerk(campaign, id)) showMap();
       });
@@ -66,8 +69,6 @@
         V.saveCampaign(campaign);
         showMap();
       });
-    } else if (!campaign.story.ending && campaign.cleared.includes(graph.final)) {
-      endStory();
     }
   }
 
@@ -91,7 +92,7 @@
   function endStory() {
     showStory('ending', () => {
       showStory('credits', () => {
-        campaign.story.ending = true;
+        campaign.story.rescue = true;
         V.saveCampaign(campaign);
         showMap();
       });

@@ -13,25 +13,25 @@
     },
     rift: {
       slides: [
-        { art: 'fade', alt: 'Schnegg erkennt sich in einem zerbrochenen Spiegel wieder.', label: 'DAS HIMMELSTOR', line: 'For an instant, her face was his own.', button: 'Weiter' },
-        { art: 'rift', alt: 'Am Rand eines violetten Abgrunds sieht Schnegg ein Licht in die Tiefe fallen.', label: 'DER RISS', line: 'The light fell into the dark. He chose to follow.', button: 'In die Tiefe' }
+        { art: 'rift', alt: 'Schnegg sieht am Rand eines violetten Abgrunds einen goldenen Lichtschein.', label: 'DER RISS', line: 'Her golden trail led into the rift. He followed it.', button: 'In die Tiefe' }
       ]
     },
     source: {
       track: 'i-am-the-source',
       slides: [
-        { art: 'source', alt: 'Ein gewaltiger Röhrenmonitor mit grünen Augen ragt vor Schnegg auf.', label: 'GOD.EXE', line: 'I AM THE SOURCE. EXPECTED OUTCOME: FAILURE.', button: 'Run the loop' }
+        { art: 'source', alt: 'Ein gewaltiger Röhrenmonitor mit grünen Augen ragt vor Schnegg auf.', label: 'GOD.EXE', line: 'I AM THE SOURCE. PRISON LOCKED. ACCESS DENIED.', button: 'Run the loop' }
       ]
     },
     ending: {
       slides: [
-        { art: 'shore', alt: 'Schnegg hält im ersten Morgenlicht am nassen Ufer inne.', label: 'LOOP TERMINATED', line: 'The ground stood still. So did he.', button: 'Weitergehen' }
+        { art: 'rescue-release', alt: 'Die goldene Schnecke kriecht durch die aufgebrochene Seite ihres türkis leuchtenden Gefängnisses auf Schnegg zu.', label: 'DIE BEFREIUNG', line: 'Schnegg broke open the cage. She crawled out to meet him.', button: 'Weiter' },
+        { art: 'rescue-reunion', alt: 'Schnegg und die goldene Schnecke berühren im Licht des Torbogens sanft ihre Fühler.', label: 'WIEDER ZUSAMMEN', line: 'Their eyestalks touched. “Let’s go home.”', button: 'Nach Hause' }
       ]
     },
     credits: {
       track: 'home-at-last',
       slides: [
-        { art: 'credits', alt: 'Schnegg zieht am Strand dem Sonnenaufgang entgegen.', label: 'ABSPANN', line: 'Home, At Last', button: 'Zur Weltkarte',
+        { art: 'rescue-home', alt: 'Die beiden Schnecken sitzen gemeinsam im Sonnenlicht auf ihrem Felsen in der Heimatbucht.', label: 'ABSPANN', line: 'Home, At Last', button: 'Zur Weltkarte',
           note: 'Vulkanschnegge · Konzept und Musik von Luca' }
       ]
     }

@@ -34,7 +34,7 @@
   }
   for (const scene of [
     'intro-harbor', 'intro-omens', 'intro-abduction', 'intro-sealed', 'intro-pursuit',
-    'fade', 'rift', 'source', 'shore', 'credits'
+    'rift', 'source', 'rescue-release', 'rescue-reunion', 'rescue-home'
   ]) {
     images['story-' + scene] = 'story/' + scene + '.webp';
   }
