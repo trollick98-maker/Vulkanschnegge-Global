@@ -9,9 +9,9 @@ const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
 const modules = [
   'config', 'assets', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats',
-  'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-arena', 'combat', 'audio', 'online-board', 'input', 'story', 'render', 'ui', 'main'
+  'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-arena', 'combat', 'boss-chase', 'audio', 'online-board', 'input', 'story', 'render', 'ui', 'main'
 ];
-const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats', 'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-arena', 'combat', 'story'];
+const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats', 'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-arena', 'combat', 'boss-chase', 'story'];
 const idle = {};
 
 function logic(storage = new Map(), files = rules, extra = {}) {
@@ -401,6 +401,48 @@ test('the timed route runs the full active duration and arcade stays endless', (
   assert.equal(arcade.duration, Infinity);
   assert.ok(arcade.dist > 200000);
   assert.ok(arcade.coins.length < 55 && arcade.obstacles.length < 12 && arcade.platforms.length < 15);
+});
+
+test('every boss pursues for exactly 30 active seconds with bounded, telegraphed volleys', () => {
+  const { V } = logic();
+  const graph = V.generateMap('pursuit');
+  const frames = Math.round(30 / V.rules.step);
+  for (const id of Object.keys(V.bosses)) {
+    const s = V.newBossChase(graph.byId[id], 'otter', {}, graph.seed);
+    const shotTypes = new Set();
+    s.player.invuln = 60;
+    for (let i = 0; i < frames; i++) {
+      assert.equal(s.outcome, null, id);
+      V.updateRunner(s, V.rules.step, { jump: i % 74 === 4 });
+      assert.ok(s.chase.x > V.W * .7 && s.chase.x + s.chase.w < V.W, id);
+      assert.ok(s.projectiles.length < 28 && s.obstacles.length === 0, id);
+      for (const shot of s.projectiles) {
+        assert.ok(Number.isFinite(shot.x) && Number.isFinite(shot.y), id);
+        shotTypes.add(shot.key);
+      }
+    }
+    assert.equal(shotTypes.size, 2, id);
+    assert.ok(s.chase.wave >= 17, id);
+    assert.equal(s.elapsed, 30, id);
+    assert.equal(s.outcome, true, id);
+  }
+});
+
+test('the chase uses swept parries and a fatal hit takes priority over reaching the arena', () => {
+  const { V } = logic();
+  const node = V.generateMap('pursuit-hit').byId.reef;
+  for (const dash of [true, false]) {
+    const s = V.newBossChase(node, 'snail', {}, 'pursuit-hit');
+    s.elapsed = s.duration - V.rules.step;
+    s.hp = 1;
+    const shot = { key: 'plasma', ...V.bossShots.plasma, x: s.player.x + s.player.w + 20,
+      y: s.player.y + s.player.h / 2, vx: -3600, vy: 0 };
+    s.projectiles.push(shot);
+    V.updateRunner(s, V.rules.step, { dash });
+    assert.equal(s.outcome, dash);
+    assert.equal(s.hp, Number(dash));
+    assert.equal(Boolean(shot.reflected), dash);
+  }
 });
 
 test('course spawns stay independent of bonus coins and pruned arrays', () => {
@@ -832,7 +874,7 @@ test('every boss takes one normal katana hit per dash, has a death sequence and 
     for (let j = 0; j < 85; j++) V.updateCombat(s, V.rules.step, idle);
     assert.equal(s.outcome, true);
     const retry = V.newCombat(node, 'otter', {}, 'death');
-    assert.equal(retry.boss.hp, definition.hp + 125 * (node.tier - 1));
+    assert.equal(retry.boss.hp, Math.round((definition.hp + 125 * (node.tier - 1)) * 1.15));
     assert.equal(retry.boss.phase, 0);
     assert.equal(retry.boss.plan, undefined);
     assert.equal(retry.player.swing, null);

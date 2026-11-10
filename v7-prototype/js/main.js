@@ -4,7 +4,7 @@
   const ui = V.ui;
   const state = V.state = { mode: 'launch', level: null, section: null, story: null, testMode: false };
   const step = V.rules.step;
-  const updates = { travel: V.updateRunner, arcade: V.updateRunner, arena: V.updateArena, boss: V.updateCombat };
+  const updates = { travel: V.updateRunner, arcade: V.updateRunner, arena: V.updateArena, 'boss-chase': V.updateRunner, boss: V.updateCombat };
   const get = id => document.getElementById(id);
   let campaign = V.loadCampaign() || V.createCampaign('', V.profile.character);
   let regularCampaign;
@@ -128,11 +128,11 @@
     } else if (section.kind === 'arena') {
       state.level = V.newArena(section.node, campaign.character, campaign.build, campaign.seed);
     } else {
-      state.level = V.newCombat(section.node, campaign.character, campaign.build, campaign.seed);
+      state.level = V.newBossChase(section.node, campaign.character, campaign.build, campaign.seed);
     }
     if (section.kind !== 'arcade') V.applyShopLoadout(state.level, campaign);
     const zone = section.route ? graph.byId[section.route.edge.b] : section.node;
-    if (!intro) V.audio.startLevel(section.kind, state.level.boss?.definition.track ?? zone?.music);
+    if (!intro) V.audio.startLevel(section.kind, state.level.chase?.definition.track ?? zone?.music);
     ui.showGame(state.level);
     V.render(state.level);
     hudAt = 0;
@@ -142,19 +142,35 @@
     }
   }
 
-  function startBossFight() {
+  function startBossChase() {
     if (state.mode !== 'boss-intro') return;
     state.mode = 'play';
     frameAt = carry = 0;
     V.input.reset();
-    V.audio.startLevel('boss', state.level.boss.definition.track);
+    V.audio.startLevel('boss', state.level.chase.definition.track);
     get('test-skip-btn').classList.toggle('hidden', !canSkip());
     ui.showGame(state.level);
+  }
+
+  function enterBossArena(chase) {
+    const s = V.newCombat(state.section.node, campaign.character, campaign.build, campaign.seed);
+    V.applyShopLoadout(s, campaign);
+    Object.assign(s, { hp: chase.hp, score: chase.score, coinsTaken: chase.coinsTaken,
+      healAtCoins: chase.healAtCoins, trackOffset: chase.elapsed });
+    state.level = s;
+    hudAt = 0;
+    // Keep playing the same audio voice and keep held inputs through the handoff.
+    ui.showGame(s);
+    V.render(s);
   }
 
   function finish() {
     const level = state.level;
     const section = state.section;
+    if (level.chase && level.outcome) {
+      enterBossArena(level);
+      return;
+    }
     transition('result');
     if (!state.testMode) V.recordRun(section.kind, level);
     if (!level.outcome) {
@@ -199,7 +215,7 @@
     V.audio.tick(dt);
     if (state.mode === 'boss-intro') {
       state.bossIntroLeft -= dt;
-      if (state.bossIntroLeft <= 0) startBossFight();
+      if (state.bossIntroLeft <= 0) startBossChase();
       return;
     }
     if (state.mode === 'outro') {
@@ -273,7 +289,7 @@
   get('shop-btn').addEventListener('click', () => {
     if (state.mode === 'map' && !campaign.pending) ui.shop(campaign, graph);
   });
-  get('boss-intro-next').addEventListener('click', startBossFight);
+  get('boss-intro-next').addEventListener('click', startBossChase);
   get('back-btn').addEventListener('click', V.backToMap);
   get('home').addEventListener('click', showMap);
   function retry() {

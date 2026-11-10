@@ -8,7 +8,7 @@ Beim Öffnen des Spiels erscheint **LAUNCH** auf schwarzem Grund. Ein Klick oder
 
 - Das Hauptmenü führt zur Weltkarte, zum Endlos-Modus und zum Schneggboard. Im Atlas folgen die illustrierten Biome der Reihenfolge des Seeds. Der Riss erscheint mit dem passenden Story-Kapitel.
 - Pixelart-Bilder erzählen von der Entführung in der Heimatbucht bis zur Befreiung nach dem Sieg über GOD.EXE. Die beiden Schnecken kehren im Abspann gemeinsam in ihre Bucht zurück. Das Perk-Menü hat ein eigenes Bild.
-- Wähle eine Figur und starte eine neue Kampagne, wenn du mit dieser Figur spielen willst. Derselbe Seed erzeugt dieselbe Karte. Normale Reisen dauern zwischen 2 und 3 Minuten, beschleunigen automatisch und starten pro späterer Zone mit 42 Tempo mehr. Bossrouten starten direkt die Bossarena.
+- Wähle eine Figur und starte eine neue Kampagne, wenn du mit dieser Figur spielen willst. Derselbe Seed erzeugt dieselbe Karte. Normale Reisen dauern zwischen 2 und 3 Minuten, beschleunigen automatisch und starten pro späterer Zone mit 42 Tempo mehr. Bossrouten beginnen mit einer kurzen Verfolgung.
 - **A/D oder Pfeiltasten** zum Steuern, **Leertaste** zum Springen und Doppelspringen, **Shift** für den Panzer-Dash und **Esc** für die Karte. Auf Touch-Geräten stehen eigene Tasten zur Verfügung.
 - In Gegnerleveln und Bossarenen baut jede Figur beim Lenken Tempo auf. Otter beschleunigt am stärksten, danach folgen Frogo und Schnegg. Loslassen bremst.
 - Gegner, Böden und Plattformen haben eigene Biom-Sprites. Münzen tragen ein Spiralrelief. Am Ende der Gegnerlevel wechseln die Zielportale beim Öffnen von orangefarbenen Gittertoren zu türkisen Wirbeln. Boss-Geschosse haben eigene Silhouetten, und Kartenmotive markieren die Regionen.
@@ -40,9 +40,9 @@ Du kannst einen Proviantplatz belegen. Er gilt im nächsten Gegnerlevel oder Bos
 
 ## Bosskämpfe
 
-Vor jedem Boss steht Schnegg in einem eigenen Pixelart-Intro seinem riesigen Gegner gegenüber. Das Bild bleibt drei Sekunden stehen. Mit **Kampf starten** kannst du es direkt überspringen.
+Vor jedem Boss steht Schnegg in einem eigenen Pixelart-Intro seinem riesigen Gegner gegenüber. Das Bild bleibt drei Sekunden stehen. Mit **Verfolgung starten** kannst du es direkt überspringen.
 
-Der Boss steht ab dem ersten spielbaren Frame in seiner scrollenden Plattformarena. Ohne Eingabe läuft die Figur in gemäßigtem Tempo weiter. Mit A und D wechselst du die Richtung oder holst Tempo. Springe zu fliegenden Gegnern hoch und setze den Dash so an, dass der Schwertbogen den Boss schneidet. Der Glutkatana-Hieb dauert 120 Millisekunden. Jeder Waffenangriff zählt pro Ziel einmal. Treffer auf die markierte Schwachstelle bringen einen Bonus. Der Boss fällt bei 0 HP und hat dann eine kurze Siegesanimation. Ein Neustart setzt HP, Phasen und Arena zurück.
+Jede Route zu einem unbesiegten Boss beginnt mit einer 30-Sekunden-Verfolgung. Der Boss bleibt rechts im Bild und wechselt zwischen Zielsalven und Sperrfeuer. Helle Geschosse kannst du per Dash zurückwerfen. Die Salven werden dichter und schneller. Danach öffnet sich direkt die scrollende Plattformarena. Musik, Herzen und gesammelte Münzen gehen mit. Ohne Eingabe läuft die Figur in gemäßigtem Tempo weiter. Mit A und D wechselst du die Richtung oder holst Tempo. Springe zu fliegenden Gegnern hoch und setze den Dash so an, dass der Schwertbogen den Boss schneidet. Der Glutkatana-Hieb dauert 120 Millisekunden. Jeder Waffenangriff zählt pro Ziel einmal. Treffer auf die markierte Schwachstelle bringen einen Bonus. Der Boss fällt bei 0 HP und hat dann eine kurze Siegesanimation. Die Arena-Bosse haben 15 Prozent mehr HP, schnellere Salven und kürzere Pausen. Ein Neustart beginnt die Verfolgung mit vollen Herzen.
 
 Angriffe durchlaufen Vorbereitung, Ausführung und Erholung. Die HP-Drittel verändern Salven, Bewegung und Spezialangriffe. Angriffsbeginn und Warnung berücksichtigen den gemessenen Rhythmus des Boss-Tracks. Die Musik läuft bei Bedarf in einer Schleife. Helle Geschosse lassen sich per Dash umlenken und können andere Geschosse abfangen.
 
@@ -72,7 +72,7 @@ Die maximale Höhe eines Grundsprungs ist `v₀² / (2g)`. Für ein Ziel, das um
 
 ## Testmodus
 
-Gib auf der Weltkarte im Feld **Seed** `admin` ein und drücke **Enter**. Mit **Abschnitt überspringen** kannst du Reisen, Gegnerlevel und Bossarenen sofort abschließen. Nach einem übersprungenen Kampf folgt die reguläre Perk-Auswahl. Der Testmodus startet mit einer Kopie deiner Kampagne und speichert keine Kampagnenfortschritte oder Rekorde. Erneut `admin` eingeben oder die Seite neu laden, um zum regulären Spielstand zurückzukehren.
+Gib auf der Weltkarte im Feld **Seed** `admin` ein und drücke **Enter**. Mit **Zur Bossarena springen** überspringst du die Verfolgung. Mit **Abschnitt überspringen** kannst du Reisen, Gegnerlevel und Bossarenen sofort abschließen. Nach einem übersprungenen Kampf folgt die reguläre Perk-Auswahl. Der Testmodus startet mit einer Kopie deiner Kampagne und speichert keine Kampagnenfortschritte oder Rekorde. Erneut `admin` eingeben oder die Seite neu laden, um zum regulären Spielstand zurückzukehren.
 
 ## Tests
 

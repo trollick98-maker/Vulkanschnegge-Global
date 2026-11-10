@@ -8,8 +8,8 @@
   V.newCombat = function (node, character, build, seed) {
     const definition = V.bosses[node.biome];
     const s = V.newSection({ kind: 'boss', character, build, biome: node.biome,
-      seed: seed + ':' + node.id, hp: 5, title: definition.name });
-    const maxHp = definition.hp + 125 * (node.tier - 1);
+      seed: seed + ':' + node.id, hp: V.rules.bossPlayerHp, title: definition.name });
+    const maxHp = Math.round((definition.hp + 125 * (node.tier - 1)) * 1.15);
     Object.assign(s, { node, wind: 0 });
     s.boss = { definition, x: 610, y: G - 133, w: 172, h: 133, hp: maxHp, maxHp,
       state: 'approach', phase: 0, readyAt: .75, hurtAt: 0, flash: 0, facing: -1, turns: 0,
@@ -22,7 +22,7 @@
   function beatDelay(s, clock, minimum) {
     const rhythm = V.bossRhythms[s.biome];
     const duration = clock?.duration || rhythm.duration;
-    const earliest = ((clock?.time ?? s.elapsed) + minimum) % duration;
+    const earliest = ((clock?.time ?? s.elapsed + (s.trackOffset ?? 0)) + minimum) % duration;
     const beat = rhythm.beats.find(ms => ms >= earliest * 1000 && ms < duration * 1000);
     const extra = beat === undefined ? duration - earliest + rhythm.beats[0] / 1000 : beat / 1000 - earliest;
     return minimum + V.clamp(extra, 0, .85);
@@ -68,7 +68,7 @@
     const { attack, zones, initialHp } = b.plan;
     if (interrupted) s.zones = s.zones.filter(zone => !zones.includes(zone));
     b.state = 'recovery';
-    b.readyAt = s.elapsed + Math.max(.52, attack.recover - b.phase * .12);
+    b.readyAt = s.elapsed + Math.max(.52, attack.recover - .12 - b.phase * .12);
     b.exposed = attack.exposed ?? (s.hp === initialHp ? 1.18 : 1);
     b.plan = null;
   }
@@ -197,7 +197,7 @@
     return V.movementContact(relative, { x: q.x - r, y: q.y - r, w: 2 * r, h: 2 * r });
   }
 
-  function updateShots(s, dt) {
+  V.updateBossShots = function (s, dt) {
     const p = s.player;
     for (const q of s.projectiles) {
       q.oldX = q.x;
@@ -248,7 +248,7 @@
       V.hurt(s, Math.sign(q.vx));
     }
     s.projectiles = s.projectiles.filter(q => !q.dead && q.x > -68 && q.x < s.worldWidth + 68 && q.y > -155 && q.y < G + 100);
-  }
+  };
 
   V.updateCombat = function (s, dt, actions, clock = null) {
     if (s.outcome !== null) return;
@@ -269,7 +269,7 @@
     strikeBoss(s, dx, dy);
     if (b.state === 'defeated') return;
     V.updateBossZones(s, dt);
-    if (s.outcome === null) updateShots(s, dt);
+    if (s.outcome === null) V.updateBossShots(s, dt);
     s.speed = Math.abs(s.player.vx);
     s.score += s.speed * .1 * dt;
   };

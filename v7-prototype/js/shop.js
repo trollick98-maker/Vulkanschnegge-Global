@@ -105,7 +105,7 @@
 
   V.applyShopLoadout = function (section, campaign) {
     section.weapon = V.weapons[campaign.weapon];
-    if (section.kind !== 'arena' && section.kind !== 'boss') return;
+    if (section.kind !== 'arena' && section.kind !== 'boss' && !section.chase) return;
     const supply = known(campaign.supply)?.item;
     if (!supply) return;
     section.maxHp += supply.health ?? 0;

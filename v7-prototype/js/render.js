@@ -429,6 +429,28 @@
     g.restore();
   }
 
+  function drawChase(s) {
+    const b = s.chase;
+    drawBossArt(b, b.x, b.y, -1);
+    if (b.warning) {
+      const lead = b.warning.at - s.elapsed;
+      g.save();
+      g.globalAlpha = V.clamp(.63 - lead * .68, .22, .63);
+      g.lineWidth = 2;
+      g.setLineDash([7, 8]);
+      for (const q of b.warning.shots) {
+        const time = (q.x - 104) / -q.vx;
+        g.strokeStyle = q.color;
+        g.beginPath();
+        g.moveTo(q.x, q.y);
+        g.lineTo(q.x + q.vx * time, q.y + q.vy * time);
+        g.stroke();
+      }
+      g.restore();
+    }
+    for (const shot of s.projectiles) drawProjectile(shot);
+  }
+
   function drawBossFloor(s) {
     const fx = s.arenaFX;
     const left = s.cameraX;
@@ -772,6 +794,7 @@
         if (shot.x + shot.r >= section.cameraX && shot.x - shot.r <= section.cameraX + W) drawProjectile(shot);
       }
     }
+    if (section.chase) drawChase(section);
     if (section.boss) {
       drawBossFloor(section);
       drawZones(section);

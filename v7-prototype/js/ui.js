@@ -8,7 +8,7 @@
   const dialogs = ['upgrade-overlay', 'leaderboard-overlay', 'result', 'story-overlay', 'boss-intro', 'shop-overlay'].map(get);
   const NS = 'http://www.w3.org/2000/svg';
   const difficultyLabels = { common: 'Häufig', rare: 'Selten', epic: 'Episch' };
-  const kinds = { travel: 'REISE', arena: 'GEGNERLEVEL', arcade: 'ENDLOS' };
+  const kinds = { travel: 'REISE', arena: 'GEGNERLEVEL', arcade: 'ENDLOS', 'boss-chase': 'VERFOLGUNG' };
 
   function content(id, value) {
     const element = get(id);
@@ -29,7 +29,7 @@
   }
 
   function routeDuration(campaign, route) {
-    return V.isBossRoute(campaign, route) ? 'Bosskampf' :
+    return V.isBossRoute(campaign, route) ? V.rules.bossChaseSeconds + ' s Verfolgung · Bosskampf' :
       'Reise · ' + duration(route.edge.seconds);
   }
 
@@ -188,11 +188,14 @@
     const p = s.player;
     const local = V.usesMomentum(s);
     const b = s.boss;
+    const chase = s.chase;
+    const timed = Boolean(chase) || s.kind === 'travel';
     const kind = b ? 'BOSS · PHASE ' + (b.phase + 1) + ' / 3' : kinds[s.kind];
     content('level-kind', s.supplyName ? kind + ' · ' + s.supplyName : kind);
     content('level-tip', b ? b.plan?.attack.hint ?? b.definition.tip :
+      chase ? 'Hellen Kugeln per Dash begegnen · über Sperrfeuer springen' :
       local ? 'Anlauf nehmen · Gegner besiegen · Ziel rechts' : 'Springen · Kisten per Dash zerlegen');
-    content('test-skip-btn', 'Abschnitt überspringen');
+    content('test-skip-btn', chase ? 'Zur Bossarena springen' : 'Abschnitt überspringen');
     const dashReady = p.dashCooldown <= 0 && (p.dashTime <= 0 || (local && p.dashLeft <= 0)) && (!local || p.airDash);
     content('hud-life', s.hp + ' / ' + s.maxHp);
     content('hud-coins', '◈ ' + s.coinsTaken);
@@ -201,11 +204,11 @@
     content('hud-score', Math.floor(s.score) + ' P · ' + Math.round(s.speed) + ' Tempo' + dash);
     const alive = s.kind === 'arena' ? s.enemies.filter(enemy => enemy.hp > 0).length : 0;
     const label = b ? b.definition.phases[b.phase].toUpperCase() + ' · BOSS-HP' :
-      s.kind === 'travel' ? 'REISEZEIT' : s.kind === 'arena' ? 'KAMPFSTRECKE' : 'DISTANZ';
-    const value = b ? b.hp + ' / ' + b.maxHp : s.kind === 'travel' ?
+      chase ? 'BIS ZUR ARENA' : timed ? 'REISEZEIT' : s.kind === 'arena' ? 'KAMPFSTRECKE' : 'DISTANZ';
+    const value = b ? b.hp + ' / ' + b.maxHp : timed ?
       duration(Math.max(0, Math.ceil(s.duration - s.elapsed))) : s.kind === 'arena' ?
         (alive ? alive + ' Gegner' : 'Zum Ziel →') : Math.floor(s.dist) + ' m';
-    const ratio = b ? b.hp / b.maxHp : s.kind === 'travel' ?
+    const ratio = b ? b.hp / b.maxHp : timed ?
       s.elapsed / s.duration : s.kind === 'arena' ? 1 - alive / s.enemies.length : 0;
     content('hud-number', value);
     content('hud-label', label);
@@ -213,7 +216,7 @@
     const width = Math.min(100, Math.round(ratio * 100)) + '%';
     if (get('hud-meter').style.width !== width) get('hud-meter').style.width = width;
     const effects = b ? Object.keys(s.arenaFX).map(key => V.bossArenaEffects[key]) : [];
-    const warning = b?.plan?.attack.name;
+    const warning = b?.plan?.attack.name ?? chase?.warning?.hint;
     content('level-message', [s.feedbackTime > 0 ? s.feedback : '', warning, ...effects].filter(Boolean).join(' · '));
   }
 
@@ -331,9 +334,10 @@
 
   function bossIntro(s) {
     const art = get('boss-intro-image');
-    art.alt = 'Der winzige Schnegg steht vor ' + s.title + '.';
+    const name = s.chase.definition.name;
+    art.alt = 'Der winzige Schnegg steht vor ' + name + '.';
     art.src = V.imagePath('boss-intro-' + s.biome);
-    content('boss-intro-name', s.title);
+    content('boss-intro-name', name);
     content('boss-intro-place', 'BOSS · ' + s.node.name.toUpperCase());
     dialog('boss-intro');
   }

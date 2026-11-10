@@ -47,7 +47,7 @@
       plan.activeUntil = Math.max(plan.activeUntil, plan.strike + at + life);
     };
     plan.attack.plan({
-      b, phase, px, py, bx, by, dir, shotSpeed: 330 + 41 * phase,
+      b, phase, px, py, bx, by, dir, shotSpeed: 360 + 45 * phase,
       nearDecks: decksByDistance.slice(0, 2 + Number(phase > 1)),
       history: s.history.length > 1 ? s.history.slice(-3) : [px - 137, px, px + 137],
       zone,
