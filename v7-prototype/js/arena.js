@@ -24,7 +24,7 @@
         const fraction = hasTrap ? (i === 0 ? .25 : .78) : (i + 1) / (count + 1);
         const x = island.worldX + island.w * fraction - type.w / 2;
         const hp = Math.round(type.baseHp * healthByTier[s.node.tier - 1]);
-        s.enemies.push({ ...type, key, x, y: island.y - type.h, floorY: island.y, facing: -1,
+        s.enemies.push({ ...type, key, variant: tunnelGuard || (index + i) % 3 !== 2, x, y: island.y - type.h, floorY: island.y, facing: -1,
           hp, maxHp: hp, touching: false, attackState: 'ready',
           left: island.worldX + 15, right: island.worldX + island.w - type.w - 15,
           attackLeft: .30 + i * .19 + random() * .20 });

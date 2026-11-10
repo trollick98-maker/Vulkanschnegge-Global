@@ -59,6 +59,7 @@
     b.plan = { attack, strike, lead, events: [], zones: [], activeUntil: strike + .24, initialHp: s.hp };
     b.facing = s.player.x + s.player.w / 2 < b.x + b.w / 2 ? -1 : 1;
     V.planBossArena(s, b.plan);
+    V.emitParticles(s, 'charge', b.x + b.w / 2, b.y + b.h * .48);
     V.audio?.effect?.(b.definition.sound);
   }
 
@@ -106,6 +107,7 @@
     if (phase > b.phase) {
       b.phase = phase;
       b.forceSpecial = true;
+      V.emitParticles(s, 'parry', b.x + b.w / 2, b.y + b.h / 2, { color: b.definition.color, heavy: true });
       V.say(s, 'Phase ' + (phase + 1) + ' · ' + b.definition.phases[phase]);
     }
     const plan = b.plan;
@@ -148,6 +150,7 @@
     s.arenaFX = {};
     s.runDirection = s.wind = 0;
     s.gravityFactor = 1;
+    V.emitParticles(s, 'defeat', b.x + b.w / 2, b.y + b.h * .45, { color: b.definition.color });
     V.say(s, b.definition.name + ' besiegt');
     V.audio?.effect?.('boss-break', true);
   };

@@ -9,9 +9,9 @@ const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
 const modules = [
   'config', 'assets', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats',
-  'weapons', 'shop', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-arena', 'combat', 'audio', 'online-board', 'input', 'story', 'render', 'ui', 'main'
+  'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-arena', 'combat', 'audio', 'online-board', 'input', 'story', 'render', 'ui', 'main'
 ];
-const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats', 'weapons', 'shop', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-arena', 'combat', 'story'];
+const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats', 'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-arena', 'combat', 'story'];
 const idle = {};
 
 function logic(storage = new Map(), files = rules, extra = {}) {
@@ -29,6 +29,44 @@ test('the lightweight HTML entry loads each separate JS module in dependency ord
   assert.deepEqual([...html.matchAll(/<script src="js\/([^"]+)\.js"><\/script>/g)].map(match => match[1]), modules);
   assert.match(html, /<link rel="stylesheet" href="styles.css">/);
   for (const file of modules) assert.doesNotThrow(() => new vm.Script(read('js/' + file + '.js'), { filename: file }));
+});
+
+test('the six surge atlases contain 50 transparent sprites with valid source frames', () => {
+  const { V } = logic(undefined, ['config', 'assets', 'surge-art']);
+  let sprites = 0;
+  for (const [key, frames] of Object.entries(V.surgeFrames)) {
+    assert.equal(frames.length, key === 'action' ? 5 : 9, key);
+    sprites += frames.length;
+    const png = fs.readFileSync(path.join(root, V.imagePath('surge-atlas-' + key)));
+    assert.equal(png.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', key);
+    assert.equal(png.readUInt32BE(16), 3 * V.surgeCell, key);
+    assert.equal(png.readUInt32BE(20), Math.ceil(frames.length / 3) * V.surgeCell, key);
+    assert.equal(png[25], 6, key); // RGBA
+    for (const [w, h] of frames) assert.ok(w > 0 && h > 0 && w <= V.surgeCell && h <= V.surgeCell, key);
+  }
+  assert.equal(sprites, 50);
+});
+
+test('particle bursts use regional frames, stay bounded and honor reduced motion', () => {
+  const preference = { matches: false };
+  const { V } = logic(undefined, rules, { matchMedia: () => preference });
+  const node = V.generateMap('particles').byId.diva;
+  const s = V.newCombat(node, 'snail', {}, 'particles');
+  const reference = V.newCombat(node, 'snail', {}, 'particles');
+  V.hitFeedback(s, 'hurt', 150, 300, { amount: 1, heavy: true });
+  assert.ok(s.particles.some(p => p.atlas === 'action' && p.frame === 4));
+  assert.ok(s.particles.some(p => p.ring));
+  for (let i = 0; i < 20; i++) V.emitParticles(s, 'defeat', 200, 300);
+  assert.equal(s.particles.length, V.particleLimit);
+  assert.deepEqual([...new Set(s.particles.filter(p => p.atlas === 'diva').map(p => p.frame))].sort(), [6, 7, 8]);
+  assert.equal(s.boss.random(), reference.boss.random(), 'cosmetic particles preserve the fight RNG');
+  V.tickParticles(s, 1.2);
+  assert.ok(s.particles.length > 0 && s.particles.every(p => p.background));
+  preference.matches = true;
+  V.tickParticles(s, .016);
+  V.hitFeedback(s, 'hit', 150, 300, { amount: 160 });
+  assert.equal(s.particles.length, 0);
+  assert.ok(s.effects.some(effect => effect.amount === 160), 'damage number remains readable');
 });
 
 test('same seed reproduces the map, directions and durations, other seeds vary them', () => {

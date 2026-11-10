@@ -91,6 +91,76 @@
     return true;
   }
 
+  function surgeSprite(atlas, index, x, y, w, h, bottom = false) {
+    const frame = V.surgeFrames[atlas]?.[index];
+    const image = V.readyImage('surge-atlas-' + atlas);
+    if (!frame || !image) return false;
+    const [sourceWidth, sourceHeight] = frame;
+    const scale = Math.min(w / sourceWidth, h / sourceHeight);
+    const width = sourceWidth * scale;
+    const height = sourceHeight * scale;
+    g.drawImage(image, index % 3 * V.surgeCell, Math.floor(index / 3) * V.surgeCell,
+      sourceWidth, sourceHeight, x + (w - width) / 2, y + (h - height) * (bottom ? 1 : .5), width, height);
+    return true;
+  }
+
+  function drawScenery(s, local) {
+    if (!V.readyImage('surge-atlas-' + s.biome)) return;
+    const spacing = 190;
+    const left = local ? s.cameraX : s.dist - V.START_X;
+    const first = Math.floor((left - 60) / spacing);
+    const last = Math.ceil((left + W + 60) / spacing);
+    const count = s.biome === 'god' ? 6 : 3;
+    const drawProp = (slot, floor) => {
+      const index = (slot % count + count) % count + 6 - count;
+      const size = 58 + (index % 3) * 11;
+      const x = V.stageX(s, slot * spacing);
+      surgeSprite(s.biome, index, x - size / 2, floor - size, size, size, true);
+    };
+    g.save();
+    g.globalAlpha = .68;
+    if (local) {
+      for (const platform of s.platforms) {
+        if (!platform.ground || platform.enabled === false ||
+          platform.y < s.cameraY || platform.y - 84 > s.cameraY + H) continue;
+        const start = Math.max(first, Math.ceil((platform.worldX + 44) / spacing));
+        const end = Math.min(last, Math.floor((platform.worldX + platform.w - 44) / spacing));
+        for (let slot = start; slot <= end; slot++) drawProp(slot, platform.y);
+      }
+    } else {
+      for (let slot = first; slot <= last; slot++) drawProp(slot, G);
+    }
+    g.restore();
+  }
+
+  function drawParticles(s, background) {
+    const left = s.cameraX ?? 0;
+    const top = s.cameraY ?? 0;
+    g.save();
+    for (const p of s.particles) {
+      if (Boolean(p.background) !== background) continue;
+      const margin = p.ring ?? p.size;
+      if (p.x + margin < left || p.x - margin > left + W ||
+        p.y + margin < top || p.y - margin > top + H) continue;
+      const remaining = p.left / p.life;
+      g.globalAlpha = remaining * (background ? .48 : .86);
+      if (p.ring) {
+        g.strokeStyle = p.tint;
+        g.lineWidth = 1 + remaining * 2;
+        g.beginPath();
+        g.arc(p.x, p.y, p.ring * (1 - .85 * remaining), 0, Math.PI * 2);
+        g.stroke();
+        continue;
+      }
+      const size = p.size * (.5 + remaining * .5);
+      if (!surgeSprite(p.atlas, p.frame, p.x - size / 2, p.y - size / 2, size, size)) {
+        g.fillStyle = p.tint;
+        g.fillRect(p.x - 1, p.y - 1, 3, 3);
+      }
+    }
+    g.restore();
+  }
+
   function drawPlayer(s) {
     const p = s.player;
     g.save();
@@ -197,6 +267,7 @@
     }
   }
 
+  const variantFrames = { crawler: 0, jumper: 1, armored: 2 };
   function drawEnemies(s) {
     for (const enemy of s.enemies) {
       if (enemy.hp <= 0) continue;
@@ -206,9 +277,12 @@
       const crouch = windingUp && !reducedMotion ? .18 * (1 - enemy.attackLeft / enemy.windup) : 0;
       g.save();
       g.translate(x + w / 2, y + h);
-      g.scale((enemy.facing > 0 ? -1 : 1) * (1 + crouch * .4), 1 - crouch);
+      const variant = enemy.variant && V.readyImage('surge-atlas-' + s.biome);
+      g.scale((variant ? enemy.facing : -enemy.facing) * (1 + crouch * .4), 1 - crouch);
       if (!reducedMotion && enemy.flash > 0) g.filter = 'brightness(1.55)';
-      const drawn = fittedSprite(s.biome + '-' + enemy.key, -w / 2, -h, w, h, true);
+      const drawn = variant
+        ? surgeSprite(s.biome, variantFrames[enemy.key], -w / 2, -h, w, h, true)
+        : fittedSprite(s.biome + '-' + enemy.key, -w / 2, -h, w, h, true);
       g.restore();
       if (!drawn) {
         g.fillStyle = '#14233d';
@@ -687,6 +761,8 @@
       g.save();
       g.translate(-Math.round(section.cameraX), -Math.round(section.cameraY));
     }
+    drawParticles(section, true);
+    drawScenery(section, local);
     drawCourse(section);
     if (arena) {
       drawExit(section);
@@ -704,6 +780,7 @@
     drawMovementEffects(section);
     drawPlayer(section);
     drawWeapon(section);
+    drawParticles(section, false);
     drawImpacts(section);
     if (local) g.restore();
     drawDamageEdge(section);

@@ -58,6 +58,9 @@
   for (const sprite of ['mira', 'rostarm', 'lumen', 'purse', 'tonic', 'oil', 'seal', 'amulet', 'pearl', 'crystal', 'spear', 'axe']) {
     images['shop-' + sprite] = 'shop/' + sprite + '.png';
   }
+  for (const atlas of ['reef', 'greed', 'diva', 'vortex', 'god', 'action']) {
+    images['surge-atlas-' + atlas] = 'surge/' + atlas + '.png';
+  }
   V.assets = {};
   V.imagePath = name => 'assets/images/' + images[name];
   V.image = function (name) {

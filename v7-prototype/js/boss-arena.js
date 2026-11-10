@@ -78,7 +78,10 @@
     const b = s.boss;
     while (plan.events.length && plan.events[0].at <= s.elapsed + 1e-7) {
       const { type, data } = plan.events.shift();
-      if (type === 'shot') s.projectiles.push(data);
+      if (type === 'shot') {
+        s.projectiles.push(data);
+        V.emitParticles(s, 'shot', data.x, data.y, { color: data.color, direction: Math.sign(data.vx) || 1 });
+      }
       else if (type === 'effect') s.arenaFX[data.key] = { start: s.elapsed, end: s.elapsed + data.life, direction: data.direction };
       else if (type === 'rush') b.rush = { ...data, x: b.x, y: b.y, start: s.elapsed };
       else if (type === 'echo') s.echoes.push({ ...data, end: s.elapsed + data.life });
@@ -124,6 +127,10 @@
     const p = s.player;
     for (const z of s.zones) {
       if (s.elapsed < z.at || z.preview) continue;
+      if (!z.flared) {
+        z.flared = true;
+        V.emitParticles(s, 'zone', z.x + z.w / 2, z.y + z.h - 11, { color: V.bossZoneColors[z.style], spread: z.w });
+      }
       const oldX = z.x;
       z.x += z.drift * dt;
       const relative = { ...p, previousX: p.previousX + z.x - oldX };

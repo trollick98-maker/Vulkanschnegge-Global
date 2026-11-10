@@ -21,6 +21,7 @@
         grounded: true, airDash: true, skidding: false, dashPower: 0, dashLeft: 0, dashVelocity: 0, dashBuffer: 0, jumpBuffer: 0,
         coyote: 0, landTime: 0, swing: null, weaponCooldown: 0 }
     };
+    V.initParticles(section);
     V.applyBuild(section, build);
     return section;
   };
@@ -38,6 +39,7 @@
 
   V.impact = function (s, x, y, color) {
     addEffect(s, { x, y, color, left: .3, life: .3 }, 0);
+    V.emitParticles(s, 'impact', x, y, { color });
   };
 
   V.hitFeedback = function (s, kind, x, y, { amount, heavy = false, direction = 1 } = {}) {
@@ -46,6 +48,7 @@
     const size = look.size * (heavy ? 1.36 : 1);
     const stop = s.kind === 'arena' ? look.stop + (heavy ? .013 : 0) : 0;
     addEffect(s, { kind, x, y, color: look.color, size, amount, direction, left: life, life }, stop);
+    V.emitParticles(s, kind, x, y, { color: look.color, heavy, direction });
     V.audio?.effect?.(kind, heavy);
   };
 
@@ -59,6 +62,7 @@
       x: p.x + p.w / 2 - direction * (skid ? p.w * .12 : p.w * .39),
       y: p.y + p.h * (skid ? 1 : .55)
     }, 0);
+    V.emitParticles(s, kind, p.x + p.w / 2, p.y + p.h * (skid ? 1 : .57), { direction: -direction });
     V.audio?.effect?.(kind);
   }
 
@@ -107,6 +111,7 @@
         s.coinsTaken++;
         s.score += 10 * s.multiplier * s.coinValue;
         s.multiplier++;
+        V.emitParticles(s, 'coin', x, coin.y, { color: '#ffe48a' });
         if (s.healAtCoins && s.coinsTaken >= s.healAtCoins && s.hp < s.maxHp) {
           s.hp++;
           s.healAtCoins = 0;
@@ -167,7 +172,10 @@
       }
     }
     if (p.y + p.h >= floor) {
-      if (!wasGrounded && p.vy > 220) p.landTime = .16;
+      if (!wasGrounded && p.vy > 220) {
+        p.landTime = .16;
+        V.emitParticles(s, 'land', p.x + p.w / 2, floor - 3, { spread: p.w });
+      }
       p.y = floor - p.h;
       p.vy = 0;
       p.jumps = 0;

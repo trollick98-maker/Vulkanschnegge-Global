@@ -182,6 +182,7 @@
 
   function outro(level, dt) {
     level.elapsed += dt;
+    V.tickParticles(level, dt);
     state.outroLeft -= dt;
     V.movePlayer(level, dt, {});
     ui.hud(level);
@@ -207,6 +208,7 @@
     if (state.mode !== 'play') return;
 
     const level = state.level;
+    V.tickParticles(level, dt);
     if (level.hitStop > 0) {
       level.hitStop = Math.max(0, level.hitStop - dt);
       V.render(level);
