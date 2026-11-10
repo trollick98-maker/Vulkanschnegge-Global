@@ -198,8 +198,7 @@
   function accelerate(s, direction, dt) {
     const p = s.player;
     if (!direction) {
-      const pace = (s.runDirection ?? 0) * 125;
-      p.vx += V.clamp(pace - p.vx, -motion.brake * dt, motion.brake * dt);
+      p.vx += V.clamp(-p.vx, -motion.brake * dt, motion.brake * dt);
     } else {
       const trait = V.characters[s.character];
       const excess = Math.max(0, p.vx * direction - motion.run - trait.speed);

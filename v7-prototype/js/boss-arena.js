@@ -17,7 +17,7 @@
   };
 
   V.initBossArena = function (s) {
-    Object.assign(s, { worldWidth: 2060, cameraX: 0, cameraY: 0, runDirection: 1,
+    Object.assign(s, { worldWidth: 2060, cameraX: 0, cameraY: 0,
       zones: [], echoes: [], chests: [], arenaFX: {}, history: [], historyAt: 0 });
     s.platforms = [{ worldX: 0, y: G, w: s.worldWidth, h: 17, ground: true },
       ...decks[s.biome].map(([worldX, y, w]) => ({ worldX, homeX: worldX, y, homeY: y, w, h: 17 }))];
@@ -123,8 +123,6 @@
         p.y += deck.y - oldY;
       }
     }
-    if (p.x <= 24) s.runDirection = 1;
-    else if (p.x + p.w >= s.worldWidth - 24) s.runDirection = -1;
     if (s.elapsed >= s.historyAt) {
       s.history.push(p.x + p.w / 2);
       if (s.history.length > 3) s.history.shift();

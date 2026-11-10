@@ -168,7 +168,7 @@
     b.plan = b.rush = null;
     s.projectiles.length = s.zones.length = s.echoes.length = s.chests.length = 0;
     s.arenaFX = {};
-    s.runDirection = s.wind = 0;
+    s.wind = 0;
     s.gravityFactor = 1;
     V.emitParticles(s, 'defeat', b.x + b.w / 2, b.y + b.h * .45, { color: b.definition.color });
     V.say(s, b.definition.name + ' besiegt');

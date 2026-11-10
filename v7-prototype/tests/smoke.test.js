@@ -922,6 +922,34 @@ test('the five boss AIs telegraph six distinct attacks and run all three phases'
   }
 });
 
+test('boss arenas start stationary and brake without adding automatic movement', () => {
+  const { V } = logic();
+  const graph = V.generateMap('boss-braking');
+  const step = V.rules.step;
+  for (const id of Object.keys(V.bosses)) {
+    const s = V.newCombat(graph.byId[id], 'snail', {}, graph.seed);
+    s.boss.readyAt = Infinity;
+    const p = s.player;
+    const start = p.x;
+    for (let i = 0; i < 30; i++) V.updateCombat(s, step, idle);
+    assert.equal(p.x, start, id);
+    assert.equal(p.vx, 0, id);
+    for (let i = 0; i < 8; i++) V.updateCombat(s, step, { left: true });
+    assert.ok(p.vx < 0, id);
+    for (let i = 0; i < 30; i++) V.updateCombat(s, step, idle);
+    assert.ok(p.x < start, id);
+    assert.equal(p.vx, 0, id);
+    p.x = s.worldWidth - p.w - 22;
+    for (let i = 0; i < 30; i++) V.updateCombat(s, step, idle);
+    assert.equal(p.x, s.worldWidth - p.w - 22, id);
+    assert.equal(p.vx, 0, id);
+  }
+  const reef = V.newCombat(graph.byId.reef, 'snail', {}, graph.seed);
+  reef.arenaFX.current = { start: 0, end: 1, direction: 1 };
+  V.updateCombat(reef, step, idle);
+  assert.ok(reef.player.vx > 0, 'explicit arena currents still push');
+});
+
 test('phase thresholds reconfigure all five arenas and telegraph the new hazards', () => {
   const { V } = logic();
   const graph = V.generateMap('arena-phase');
