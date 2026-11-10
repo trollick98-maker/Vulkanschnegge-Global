@@ -129,6 +129,7 @@
     } else {
       state.level = V.newCombat(section.node, campaign.character, campaign.build, campaign.seed);
     }
+    if (section.kind !== 'arcade') V.applyShopLoadout(state.level, campaign);
     const zone = section.route ? graph.byId[section.route.edge.b] : section.node;
     if (!intro) V.audio.startLevel(section.kind, state.level.boss?.definition.track ?? zone?.music);
     ui.showGame(state.level);
@@ -160,14 +161,15 @@
       V.render(level);
       ui.result(level);
     } else if (section.kind === 'travel') {
-      if (V.arrive(campaign, graph, section.route) && campaign.arrival) enterNode();
+      if (V.arrive(campaign, graph, section.route, V.sectionPayout(level)) && campaign.arrival) enterNode();
       else showMap();
     } else {
-      if (section.route && !V.arrive(campaign, graph, section.route)) {
+      if (!V.completeNode(campaign, graph, section.node.id, undefined, {
+        route: section.route, coins: V.sectionPayout(level)
+      })) {
         showMap();
         return;
       }
-      V.completeNode(campaign, graph, section.node.id);
       if (section.node.id === graph.final) {
         level.player.dashBuffer = level.player.jumpBuffer = 0;
         level.player.vx = level.player.dashTime = level.speed = 0;
@@ -237,7 +239,8 @@
   }
 
   V.backToMap = function () {
-    if (!get('leaderboard-overlay').classList.contains('hidden')) ui.dialog(null);
+    if (!get('shop-overlay').classList.contains('hidden')) ui.closeShop();
+    else if (!get('leaderboard-overlay').classList.contains('hidden')) ui.dialog(null);
     else if (state.mode === 'play' || state.mode === 'boss-intro' || state.mode === 'result' || state.mode === 'outro') showMap();
   };
   get('launch-screen').addEventListener('click', event => {
@@ -263,6 +266,9 @@
   });
   get('title-start').addEventListener('click', () => {
     if (state.mode === 'title') showMap();
+  });
+  get('shop-btn').addEventListener('click', () => {
+    if (state.mode === 'map' && !campaign.pending) ui.shop(campaign, graph);
   });
   get('boss-intro-next').addEventListener('click', startBossFight);
   get('back-btn').addEventListener('click', V.backToMap);

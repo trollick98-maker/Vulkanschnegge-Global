@@ -26,11 +26,23 @@ Beim Öffnen des Spiels erscheint **LAUNCH** auf schwarzem Grund. Ein Klick oder
 - Landungen, Dash und Wind-ups verformen die Sprites kurz. Konter und Treffer zeigen Partikel. In Gegnerleveln kommt ein kurzer Trefferstopp dazu. Die Systemeinstellung für reduzierte Bewegung schaltet die zusätzlichen Verformungen, Nachbilder und Partikel ab.
 - Zeitpolster verlängert den Eingabepuffer, Kettenreaktion lädt den Dash beim Treffer auf und Durchschlag erhöht den Schaden. Münzschwarm kann pro Abschnitt ein Herz heilen. Bestehende Perks und offene Perk-Auswahlen nutzen dieselben IDs und laden mit ihren überarbeiteten Effekten.
 
+## Tiefenbasar
+
+Öffne den **Tiefenbasar** neben der Weltkarte. Der Beutel sammelt gefundene Münzen und Abschlussprämien nach einem erfolgreichen Kampagnenabschnitt. Die Grundprämien betragen 20 Münzen für eine Reise, 40 für ein Gegnerlevel und 65 für einen Boss. Guthaben, Käufe und Ausrüstung gehören zu deiner Kampagne. Bei einem alten Overhaul-Spielstand wird das Startguthaben einmalig aus dem bisherigen Fortschritt berechnet.
+
+| Händler | Freischaltung | Angebot |
+| --- | --- | --- |
+| Mira Krabbe | Ab der ersten Weltkarte | Gluttrank für zwei zusätzliche Herzen oder Strömungsöl für 25 % mehr Beschleunigung |
+| Schmied Rostarm | Nach dem ersten Gegnerlevel | Riffspieß mit langer Reichweite, schweres Ankerbeil und Schmiedesiegel |
+| Lumen vom Abgrund | Nach dem ersten Boss | Basaltamulett, Magnetperle und Leichtkristall als dauerhafte Verbesserungen |
+
+Du kannst einen Proviantplatz belegen. Er gilt im nächsten Gegnerlevel oder Bosskampf, bleibt bei Fehlversuchen aktiv und wird nach dem Sieg verbraucht. In der Schmiede kannst du gekaufte Waffen jederzeit kostenlos wechseln. Das Glutkatana ist ab Start im Besitz. Der Testmodus führt Käufe und Guthaben in seiner eigenen Kopie des Spielstands.
+
 ## Bosskämpfe
 
 Vor jedem Boss steht Schnegg in einem eigenen Pixelart-Intro seinem riesigen Gegner gegenüber. Das Bild bleibt drei Sekunden stehen. Mit **Kampf starten** kannst du es direkt überspringen.
 
-Der Boss steht ab dem ersten spielbaren Frame in seiner scrollenden Plattformarena. Ohne Eingabe läuft die Figur in gemäßigtem Tempo weiter. Mit A und D wechselst du die Richtung oder holst Tempo. Springe zu fliegenden Gegnern hoch und setze den Dash so an, dass der Schwertbogen den Boss schneidet. Der Hieb dauert 120 Millisekunden und zählt pro Ziel einmal. Treffer auf die markierte Schwachstelle bringen einen Bonus. Der Boss fällt bei 0 HP und hat dann eine kurze Siegesanimation. Ein Neustart setzt HP, Phasen und Arena zurück.
+Der Boss steht ab dem ersten spielbaren Frame in seiner scrollenden Plattformarena. Ohne Eingabe läuft die Figur in gemäßigtem Tempo weiter. Mit A und D wechselst du die Richtung oder holst Tempo. Springe zu fliegenden Gegnern hoch und setze den Dash so an, dass der Schwertbogen den Boss schneidet. Der Glutkatana-Hieb dauert 120 Millisekunden. Jeder Waffenangriff zählt pro Ziel einmal. Treffer auf die markierte Schwachstelle bringen einen Bonus. Der Boss fällt bei 0 HP und hat dann eine kurze Siegesanimation. Ein Neustart setzt HP, Phasen und Arena zurück.
 
 Angriffe durchlaufen Vorbereitung, Ausführung und Erholung. Die HP-Drittel verändern Salven, Bewegung und Spezialangriffe. Angriffsbeginn und Warnung berücksichtigen den gemessenen Rhythmus des Boss-Tracks. Die Musik läuft bei Bedarf in einer Schleife. Helle Geschosse lassen sich per Dash umlenken und können andere Geschosse abfangen.
 

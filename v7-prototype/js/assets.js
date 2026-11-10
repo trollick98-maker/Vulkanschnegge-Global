@@ -55,6 +55,9 @@
     'boss-badge-reef', 'boss-badge-greed', 'boss-badge-diva', 'boss-badge-vortex', 'boss-badge-god',
     'hud-heart', 'hud-dash', 'map-compass'
   ]) images[sprite] = 'spritepack/' + sprite + '.png';
+  for (const sprite of ['mira', 'rostarm', 'lumen', 'purse', 'tonic', 'oil', 'seal', 'amulet', 'pearl', 'crystal', 'spear', 'axe']) {
+    images['shop-' + sprite] = 'shop/' + sprite + '.png';
+  }
   V.assets = {};
   V.imagePath = name => 'assets/images/' + images[name];
   V.image = function (name) {

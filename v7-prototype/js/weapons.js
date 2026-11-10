@@ -5,8 +5,14 @@
   V.weapons = {
     shell: { id: 'shell', name: 'Panzer-Dash', baseDamage: 0, multiplier: 1 },
     katana: { id: 'katana', name: 'Glutkatana', sprite: 'katana', baseDamage: 30, multiplier: 1.75,
-      reach: 63, edgeStart: 8, radius: 7, duration: .12, cooldown: 0,
-      angles: [-1.37, -.94, -.37, .29, .91, 1.23], color: '#ffe3a1', sound: 'katana' }
+      reach: 63, edgeStart: 8, radius: 7, grip: 12, duration: .12, cooldown: 0,
+      angles: [-1.37, -.94, -.37, .29, .91, 1.23], color: '#ffe3a1', sound: 'katana' },
+    'reef-spear': { id: 'reef-spear', name: 'Riffspieß', sprite: 'shop-spear', baseDamage: 25, multiplier: 1.35,
+      reach: 103, edgeStart: 49, radius: 6, grip: 21, duration: .14, cooldown: 0,
+      angles: [-.34, -.13, -.035, .03, .10], color: '#99fff2', sound: 'katana' },
+    'anchor-axe': { id: 'anchor-axe', name: 'Ankerbeil', sprite: 'shop-axe', baseDamage: 35, multiplier: 2.05,
+      reach: 53, edgeStart: 27, radius: 12, grip: 13, duration: .17, cooldown: 0,
+      angles: [-1.65, -1.18, -.49, .36, 1.07, 1.42], color: '#ff9b7c', sound: 'katana' }
   };
 
   V.equippedWeapon = character => V.weapons[V.characters[character].weapon ?? 'katana'] ?? V.weapons.shell;

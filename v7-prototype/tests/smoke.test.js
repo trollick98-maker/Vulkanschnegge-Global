@@ -9,9 +9,9 @@ const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
 const modules = [
   'config', 'assets', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats',
-  'weapons', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-arena', 'combat', 'audio', 'online-board', 'input', 'story', 'render', 'ui', 'main'
+  'weapons', 'shop', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-arena', 'combat', 'audio', 'online-board', 'input', 'story', 'render', 'ui', 'main'
 ];
-const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats', 'weapons', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-arena', 'combat', 'story'];
+const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats', 'weapons', 'shop', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-arena', 'combat', 'story'];
 const idle = {};
 
 function logic(storage = new Map(), files = rules, extra = {}) {
@@ -216,6 +216,132 @@ test('shared keyboard and touch bindings stay held until the last source release
   assert.equal(V.input.consume().jump, false);
   win.dispatchEvent(new Event('blur'));
   assert.equal(V.input.jump, false);
+});
+
+test('campaign coin rewards are banked on successful route and combat completion', () => {
+  const { V } = logic();
+  const campaign = V.createCampaign('shop-payout', 'snail');
+  const graph = V.generateMap(campaign.seed);
+  const route = V.routesFrom(campaign, graph)[0];
+  assert.equal(V.sectionPayout({ kind: 'arcade', outcome: true, coinsTaken: 150 }), 0);
+  assert.equal(V.sectionPayout({ kind: 'travel', outcome: false, coinsTaken: 150 }), 0);
+  assert.ok(V.arrive(campaign, graph, route, V.sectionPayout({ kind: 'travel', outcome: true, coinsTaken: 12 })));
+  assert.equal(campaign.coins, 32);
+  assert.ok(V.completeNode(campaign, graph, route.to, () => .2, { coins: 45 }));
+  assert.equal(V.completeNode(campaign, graph, route.to, () => .2, { coins: 45 }), false);
+  assert.equal(campaign.coins, 77);
+  assert.ok(V.claimPerk(campaign, campaign.pending.choices[0]));
+  const boss = V.routesFrom(campaign, graph).find(route => V.isBossRoute(campaign, route));
+  assert.ok(V.completeNode(campaign, graph, boss.to, () => .2, { route: boss, coins: 65 }));
+  const saved = V.loadCampaign();
+  assert.equal(saved.coins, 142);
+  assert.equal(saved.position, boss.to);
+  assert.equal(saved.pending.node, boss.to);
+  assert.equal(V.completeNode(campaign, graph, boss.to, () => .2, { route: boss, coins: 65 }), false);
+});
+
+test('three traders gate stock by progression and equipment can be switched without paying again', () => {
+  const { V } = logic();
+  const campaign = V.createCampaign('shop-weapons', 'frog');
+  const graph = V.generateMap(campaign.seed);
+  campaign.coins = 255;
+  assert.equal(V.shopStatus(campaign, graph, 'reef-spear'), 'locked');
+  assert.equal(V.shopPurchase(campaign, graph, 'reef-spear'), false);
+  assert.equal(V.shopPurchase(campaign, graph, 'basalt-amulet'), false);
+  campaign.cleared.push('reef-arena');
+  assert.ok(V.shopPurchase(campaign, graph, 'reef-spear'));
+  assert.equal(campaign.coins, 190);
+  const s = V.newCombat(graph.byId.reef, 'frog', {}, campaign.seed);
+  V.applyShopLoadout(s, V.loadCampaign());
+  assert.equal(s.weapon.name, 'Riffspieß');
+  assert.equal(V.weaponDamage(s, 300), 135);
+  assert.ok(V.shopPurchase(campaign, graph, 'anchor-axe'));
+  assert.equal(campaign.coins, 85);
+  V.applyShopLoadout(s, campaign);
+  assert.equal(V.weaponDamage(s, 300), 205);
+  assert.ok(V.shopPurchase(campaign, graph, 'katana'));
+  assert.ok(V.shopPurchase(campaign, graph, 'reef-spear'));
+  assert.equal(campaign.coins, 85);
+  assert.equal(V.shopPurchase(campaign, graph, 'reef-spear'), false);
+  assert.equal(V.shopStatus(campaign, graph, 'smith-seal'), 'poor');
+  campaign.cleared.push('reef');
+  assert.ok(V.shopPurchase(campaign, graph, 'magnet-pearl'));
+  assert.equal(campaign.coins, 9);
+  assert.equal(V.loadCampaign().build.magnet, 1);
+  assert.equal(V.shopPurchase(campaign, graph, 'magnet-pearl'), false);
+});
+
+test('the bought Riffspieß reaches a target outside katana range', () => {
+  const { V } = logic();
+  const c = V.createCampaign('shop-hit', 'otter');
+  const g = V.generateMap(c.seed);
+  c.coins = 70;
+  c.cleared.push('reef-arena');
+  const s = V.newCombat(g.byId.reef, c.character, c.build, c.seed);
+  const p = s.player;
+  Object.assign(p, { x: 100, previousX: 100, y: 300, previousY: 300, facing: 1 });
+  const target = { x: 214, y: 306, w: 15, h: 31 };
+  V.startWeaponSwing(s);
+  p.swing.time = .06;
+  assert.equal(V.weaponContact(s, target), Infinity);
+  assert.ok(V.shopPurchase(c, g, 'reef-spear'));
+  V.applyShopLoadout(s, c);
+  V.startWeaponSwing(s);
+  p.swing.time = .08;
+  assert.ok(V.weaponContact(s, target) < Infinity);
+});
+
+test('a purchased supply lasts through losses and is spent after the next combat victory', () => {
+  const { V } = logic();
+  const c = V.createCampaign('shop-supply', 'snail');
+  const g = V.generateMap(c.seed);
+  c.coins = 55;
+  assert.ok(V.shopPurchase(c, g, 'ember-tonic'));
+  assert.equal(V.shopPurchase(c, g, 'current-oil'), false);
+  assert.equal(V.loadCampaign().supply, 'ember-tonic');
+  const route = V.routesFrom(c, g)[0];
+  const runner = V.newRunner(route, c.character);
+  const runnerHp = runner.hp;
+  V.applyShopLoadout(runner, c);
+  assert.equal(runner.hp, runnerHp);
+  assert.ok(V.arrive(c, g, route, 20));
+  assert.equal(c.supply, 'ember-tonic');
+  const s = V.newArena(route.node, c.character, c.build, c.seed);
+  const hp = s.hp;
+  V.applyShopLoadout(s, c);
+  assert.equal(s.hp, hp + 2);
+  assert.equal(s.maxHp, hp + 2);
+  s.hp = 1;
+  V.hurt(s);
+  assert.equal(V.sectionPayout(s), 0);
+  assert.equal(V.loadCampaign().supply, 'ember-tonic');
+  assert.ok(V.completeNode(c, g, route.to));
+  assert.equal(V.loadCampaign().supply, null);
+  assert.equal(V.shopPurchase(c, g, 'current-oil'), false, 'claim the reward before shopping');
+  assert.ok(V.claimPerk(c, c.pending.choices[0]));
+  assert.ok(V.shopPurchase(c, g, 'current-oil'));
+  const other = V.newCombat(g.byId.reef, c.character, c.build, c.seed);
+  V.applyShopLoadout(other, c);
+  assert.equal(other.accelerationFactor, 1.25);
+});
+
+test('older saves get a one-time progress-based balance without granting unowned gear', () => {
+  const { V, storage } = logic();
+  const c = V.createCampaign('shop-legacy', 'otter');
+  const g = V.generateMap(c.seed);
+  const route = V.routesFrom(c, g)[0];
+  visit(V, c, g, route);
+  delete c.coins;
+  c.weapon = 'anchor-axe';
+  c.supply = 'katana';
+  storage.set('vulkanschnegge-v7-overhaul-campaign-v1', JSON.stringify(c));
+  const migrated = V.loadCampaign();
+  assert.equal(migrated.coins, 30);
+  assert.equal(migrated.weapon, 'katana');
+  assert.equal(migrated.supply, null);
+  migrated.coins = 0;
+  V.saveCampaign(migrated);
+  assert.equal(V.loadCampaign().coins, 0);
 });
 
 test('the timed route runs the full active duration and arcade stays endless', () => {
@@ -869,6 +995,18 @@ test('all 24 spritepack images are registered transparent PNGs', () => {
     const data = fs.readFileSync(registered);
     assert.equal(data.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
     assert.equal(data[25], 6, file);
+  }
+});
+
+test('the traders, wares and weapon sprites are available in the offline package', () => {
+  const { V } = logic(undefined, [...rules, 'assets']);
+  const art = ['shop-purse', ...Object.values(V.shops).flatMap(stall => [
+    stall.portrait, ...stall.items.map(item => item.art)
+  ])];
+  assert.equal(art.length, 13);
+  for (const id of art) {
+    const bytes = fs.readFileSync(path.join(root, V.imagePath(id)));
+    assert.equal(bytes[25], 6, id);
   }
 });
 

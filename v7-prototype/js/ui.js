@@ -5,7 +5,7 @@
   const world = get('world-ui');
   const game = get('game-panel');
   const plot = get('map-plot');
-  const dialogs = ['upgrade-overlay', 'leaderboard-overlay', 'result', 'story-overlay', 'boss-intro'].map(get);
+  const dialogs = ['upgrade-overlay', 'leaderboard-overlay', 'result', 'story-overlay', 'boss-intro', 'shop-overlay'].map(get);
   const NS = 'http://www.w3.org/2000/svg';
   const difficultyLabels = { common: 'Häufig', rare: 'Selten', epic: 'Episch' };
   const kinds = { travel: 'REISE', arena: 'GEGNERLEVEL', arcade: 'ENDLOS' };
@@ -141,6 +141,7 @@
       plot.append(marker);
     }
 
+    refreshWallet(campaign);
     content('seed-badge', 'SEED ' + campaign.seed);
     content('map-location', graph.byId[campaign.position].name);
     const bosses = graph.nodes.filter(node => node.kind === 'boss' && campaign.cleared.includes(node.id)).length;
@@ -187,7 +188,8 @@
     const p = s.player;
     const local = V.usesMomentum(s);
     const b = s.boss;
-    content('level-kind', b ? 'BOSS · PHASE ' + (b.phase + 1) + ' / 3' : kinds[s.kind]);
+    const kind = b ? 'BOSS · PHASE ' + (b.phase + 1) + ' / 3' : kinds[s.kind];
+    content('level-kind', s.supplyName ? kind + ' · ' + s.supplyName : kind);
     content('level-tip', b ? b.plan?.attack.hint ?? b.definition.tip :
       local ? 'Anlauf nehmen · Gegner besiegen · Ziel rechts' : 'Springen · Kisten per Dash zerlegen');
     content('test-skip-btn', 'Abschnitt überspringen');
@@ -213,6 +215,77 @@
     const effects = b ? Object.keys(s.arenaFX).map(key => V.bossArenaEffects[key]) : [];
     const warning = b?.plan?.attack.name;
     content('level-message', [s.feedbackTime > 0 ? s.feedback : '', warning, ...effects].filter(Boolean).join(' · '));
+  }
+
+  const shopLabels = {
+    equip: 'Ausrüsten', equipped: 'Ausgerüstet', ready: 'Bereit', 'supply-full': 'Proviantplatz belegt',
+    owned: 'Gekauft', maxed: 'Bereits ausgebaut', poor: 'Münzen fehlen'
+  };
+
+  function refreshWallet(campaign) {
+    content('wallet-coins', campaign.coins + ' Münzen');
+    content('shop-loadout', 'Ausrüstung · ' + V.shopLoadout(campaign));
+  }
+
+  function shopItem(campaign, graph, id, item) {
+    const card = document.createElement('article');
+    card.className = 'shop-item';
+    const art = document.createElement('img');
+    art.src = V.imagePath(item.art);
+    art.alt = '';
+    const title = document.createElement('h4');
+    title.textContent = item.name;
+    const detail = document.createElement('p');
+    detail.textContent = item.detail;
+    const price = document.createElement('span');
+    price.className = 'shop-price';
+    price.textContent = item.price ? item.price + ' Münzen' : 'Startausrüstung';
+    const status = V.shopStatus(campaign, graph, item.id);
+    const control = button(status === 'buy' ? 'Kaufen' : shopLabels[status] ?? 'Gesperrt', 'quiet', () => {
+      if (!V.shopPurchase(campaign, graph, item.id)) return;
+      const message = item.weapon ? item.name + ' ausgerüstet.' : item.name + ' gekauft.';
+      shop(campaign, graph, id, message, 'shop-item-' + item.id);
+    });
+    control.id = 'shop-item-' + item.id;
+    control.dataset.item = item.id;
+    control.disabled = status !== 'buy' && status !== 'equip';
+    control.setAttribute('aria-label', item.name + ' · ' + control.textContent + ' · ' + price.textContent);
+    card.append(art, title, detail, price, control);
+    return card;
+  }
+
+  function shop(campaign, graph, id = 'supplies', message = '', focus = '') {
+    const stall = V.shops[id];
+    const unlocked = V.shopOpen(stall, campaign, graph);
+    refreshWallet(campaign);
+    content('shop-wallet', campaign.coins + ' Münzen');
+    content('shop-category', stall.name.toUpperCase());
+    content('shop-keeper', stall.keeper);
+    content('shop-line', stall.line);
+    content('shop-status', unlocked ? message || V.shopLoadout(campaign) : 'Freischaltung · ' + stall.lock);
+    get('shop-portrait').src = V.imagePath(stall.portrait);
+    const tabs = get('shop-stalls');
+    tabs.replaceChildren();
+    for (const [key, option] of Object.entries(V.shops)) {
+      const suffix = V.shopOpen(option, campaign, graph) ? '' : ' · gesperrt';
+      const tab = button(option.name + suffix, 'quiet shop-stall', () => shop(campaign, graph, key, '', 'shop-tab-' + key));
+      tab.id = 'shop-tab-' + key;
+      tab.dataset.shop = key;
+      tab.setAttribute('aria-pressed', String(id === key));
+      tabs.append(tab);
+    }
+    const stock = get('shop-stock');
+    stock.replaceChildren(...stall.items.map(item => shopItem(campaign, graph, id, item)));
+    if (get('shop-overlay').classList.contains('hidden')) dialog('shop-overlay');
+    else if (focus) {
+      const target = get(focus);
+      (target && !target.disabled ? target : get('shop-tab-' + id))?.focus({ preventScroll: true });
+    }
+  }
+
+  function closeShop() {
+    dialog(null);
+    get('shop-btn').focus({ preventScroll: true });
   }
 
   function reward(campaign, graph, select) {
@@ -309,6 +382,7 @@
   });
 
   get('board-btn').addEventListener('click', showBoard);
+  get('shop-close').addEventListener('click', closeShop);
   get('board-close').addEventListener('click', () => dialog(null));
   get('fullscreen-btn').addEventListener('click', async () => {
     try {
@@ -345,5 +419,5 @@
   }
   refreshCharacters();
 
-  V.ui = { map, showGame, hud, reward, result, showSlide, bossIntro, dialog };
+  V.ui = { map, showGame, hud, shop, closeShop, reward, result, showSlide, bossIntro, dialog };
 })();

@@ -68,6 +68,7 @@
       version: 1, seed: label || Date.now().toString(36) + Math.floor(Math.random() * 46656).toString(36),
       character: Object.hasOwn(V.characters, character) ? character : 'snail',
       position: START, cleared: [START], travelled: [], build: {}, arrival: null, pending: null,
+      coins: 0, purchases: [], weapon: 'katana', supply: null,
       story: { intro: false, rift: false, source: false, ending: false }
     };
   };
@@ -92,22 +93,32 @@
     });
   };
 
-  V.arrive = function (campaign, graph, route) {
-    const valid = V.routesFrom(campaign, graph).some(next => next.edge.id === route.edge.id && next.to === route.to);
+  function followRoute(campaign, graph, route) {
+    const valid = V.routesFrom(campaign, graph).find(next => next.edge.id === route.edge.id && next.to === route.to);
     if (!valid) return false;
-    if (!campaign.travelled.includes(route.edge.id)) campaign.travelled.push(route.edge.id);
-    campaign.position = route.to;
-    campaign.arrival = campaign.cleared.includes(route.to) ? null : { from: route.from, edge: route.edge.id };
+    if (!campaign.travelled.includes(valid.edge.id)) campaign.travelled.push(valid.edge.id);
+    campaign.position = valid.to;
+    campaign.arrival = campaign.cleared.includes(valid.to) ? null : { from: valid.from, edge: valid.edge.id };
+    return true;
+  }
+
+  V.arrive = function (campaign, graph, route, coins = 0) {
+    if (!followRoute(campaign, graph, route)) return false;
+    V.depositCoins(campaign, coins);
     V.saveCampaign(campaign);
     return true;
   };
 
-  V.completeNode = function (campaign, graph, id, random = Math.random) {
-    if (campaign.pending || !campaign.arrival || campaign.position !== id || campaign.cleared.includes(id)) return false;
+  V.completeNode = function (campaign, graph, id, random = Math.random, { coins = 0, route } = {}) {
     const node = graph.byId[id];
-    if (!node || node.kind === 'start') return false;
+    if (campaign.pending || !node || node.kind === 'start' || campaign.cleared.includes(id)) return false;
+    if (route) {
+      if (node.kind !== 'boss' || route.to !== id || !followRoute(campaign, graph, route)) return false;
+    } else if (!campaign.arrival || campaign.position !== id) return false;
     const choices = V.chooseUpgrades(campaign.build, campaign.character, node.kind === 'boss', random);
     campaign.pending = { node: id, choices: choices.map(perk => perk.id) };
+    V.depositCoins(campaign, coins);
+    campaign.supply = null;
     V.saveCampaign(campaign);
     return true;
   };
@@ -158,6 +169,7 @@
           campaign.pending = { node: campaign.position, choices: choices.length ? choices : ['freehit'] };
         }
       }
+      V.loadShop(campaign, saved, graph);
       return campaign;
     } catch (_) {
       return null;

@@ -54,7 +54,13 @@
       <div class="map-head">
         <div class="map-heading"><img src="assets/images/spritepack/map-compass.png" alt=""><div>
           <p class="eyebrow">ATLAS DER TIEFSEE</p><h2 id="atlas-heading" tabindex="-1">Weltkarte</h2>
-        </div></div><span id="seed-badge" class="tag"></span>
+        </div></div>
+        <div class="map-heading-tools">
+          <button id="shop-btn" class="quiet shop-entry" type="button" aria-haspopup="dialog">
+            <img src="assets/images/shop/purse.png" alt=""> Tiefenbasar <span id="wallet-coins"></span>
+          </button>
+          <span id="seed-badge" class="tag"></span>
+        </div>
       </div>
       <div id="map-scroll" class="map-scroll" tabindex="0" aria-label="Weltkarte, horizontal scrollbar">
         <div id="map-plot" class="map-plot"></div>
@@ -77,6 +83,7 @@
         </section>
         <section class="campaign-tools">
           <div class="eyebrow">KAMPAGNE</div>
+          <p id="shop-loadout" class="caption"></p>
           <div id="build-list" class="build-list"></div>
           <form id="campaign-form" class="seed-form">
             <label class="field">Seed <input id="seed-input" maxlength="40" placeholder="zufällig"></label>
@@ -111,6 +118,25 @@
       </div>
     </section>
 
+    <section id="shop-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="shop-title">
+      <div class="overlay-card shop-card">
+        <div class="shop-top">
+          <div><p class="eyebrow">HANDEL UNTER DER OBERFLÄCHE</p><h2 id="shop-title">Tiefenbasar</h2></div>
+          <div class="shop-actions">
+            <span class="shop-balance"><img src="assets/images/shop/purse.png" alt=""><strong id="shop-wallet"></strong></span>
+            <button id="shop-close" type="button" class="quiet">Zur Karte</button>
+          </div>
+        </div>
+        <nav id="shop-stalls" class="shop-stalls" aria-label="Händler"></nav>
+        <div class="shop-keeper">
+          <img id="shop-portrait" alt="">
+          <div><p id="shop-category" class="eyebrow"></p><h3 id="shop-keeper"></h3><p id="shop-line"></p></div>
+        </div>
+        <p id="shop-status" class="shop-status" role="status"></p>
+        <div id="shop-stock" class="shop-stock"></div>
+        <p class="caption">Gefundene Münzen und Abschlussprämien landen nach einem erfolgreichen Kampagnenabschnitt im Beutel.</p>
+      </div>
+    </section>
     <section id="upgrade-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="reward-title">
       <div class="overlay-card"><img class="reward-art" src="assets/images/story/reward.webp" alt="" loading="lazy" decoding="async"><p id="reward-tag" class="eyebrow">LEVEL ABGESCHLOSSEN</p><h2 id="reward-title">Wähle einen Perk</h2><div id="upgrade-choices" class="upgrade-choices"></div></div>
     </section>
@@ -154,6 +180,7 @@
   <script src="js/boss-data.js"></script>
   <script src="js/boss-beats.js"></script>
   <script src="js/weapons.js"></script>
+  <script src="js/shop.js"></script>
   <script src="js/motion.js"></script>
   <script src="js/runner.js"></script>
   <script src="js/arena-layout.js"></script>

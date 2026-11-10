@@ -195,7 +195,7 @@
     } else {
       const trait = V.characters[s.character];
       const excess = Math.max(0, p.vx * direction - motion.run - trait.speed);
-      const acceleration = trait.acceleration / (1 + excess / 95) ** 2;
+      const acceleration = trait.acceleration * (s.accelerationFactor ?? 1) / (1 + excess / 95) ** 2;
       p.vx += direction * acceleration * dt;
       p.facing = direction;
     }

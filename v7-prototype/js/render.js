@@ -587,7 +587,12 @@
       }
     } else g.globalAlpha = .78;
     g.rotate(pose.angle);
-    sprite(weapon.sprite, -12, -5, length + 12, (length + 12) * 17 / 128);
+    const blade = V.readyImage(weapon.sprite);
+    if (blade) {
+      const width = length + weapon.grip;
+      const height = width * blade.naturalHeight / blade.naturalWidth;
+      g.drawImage(blade, -weapon.grip, -height / 2, width, height);
+    }
     if (swing) {
       g.globalAlpha = .85 * (1 - swing.time / weapon.duration);
       fittedSprite('fx-katana-cut', length - 19, -18, 34, 36);
