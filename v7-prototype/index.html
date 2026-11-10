@@ -25,9 +25,9 @@
     <header id="shell-header" class="masthead hidden">
       <div class="brand"><img data-player-art="snail" src="assets/images/snail.png" alt=""><div><div class="eyebrow">ABYSS CAMPAIGN</div><h1>Vulkanschnegge <span>7.0</span></h1></div></div>
       <div class="top-controls">
-        <button id="fullscreen-btn" class="quiet" aria-label="Vollbild">⛶ <span>Vollbild</span></button>
-        <button id="sound-btn" class="quiet" aria-pressed="true">♫ <span>Musik an</span></button>
-        <button id="effects-btn" class="quiet" aria-pressed="true">◈ <span>Effekte an</span></button>
+        <button id="fullscreen-btn" class="quiet" aria-label="Vollbild"><img class="menu-icon" src="assets/images/menu/fullscreen.png" alt=""> <span>Vollbild</span></button>
+        <button id="sound-btn" class="quiet" aria-pressed="true"><img class="menu-icon" src="assets/images/menu/music.png" alt=""> <span>Musik an</span></button>
+        <button id="effects-btn" class="quiet" aria-pressed="true"><img class="menu-icon" src="assets/images/menu/effects.png" alt=""> <span>Effekte an</span></button>
         <input id="volume" type="range" min="0" max="1" step=".05" value=".3" aria-label="Spiellautstärke">
       </div>
     </header>
@@ -36,58 +36,67 @@
       <div class="campaign-hero">
         <div class="hero-viewport" aria-hidden="true">
           <div class="hero-scene">
-            <img class="hero-art" src="assets/images/story/hero.webp" alt="" decoding="async">
-            <img class="hero-character" data-player-art="snail" src="assets/images/snail.png" alt="">
+            <img class="hero-art" src="assets/images/menu/hero.webp" alt="" decoding="async">
+            <div id="hero-figure" class="hero-figure" data-hero-character="snail">
+              <img class="hero-character" data-player-art="snail" src="assets/images/snail.png" alt="">
+              <img id="hero-weapon" class="hero-weapon" data-weapon="katana" src="assets/images/waffen/katana.png" alt="">
+            </div>
           </div>
         </div>
         <div class="hero-copy">
-          <p class="eyebrow">THE GREAT UPDATE</p>
+          <p class="eyebrow hero-kicker"><img class="menu-icon" src="assets/images/menu/helmet.png" alt=""> THE GREAT UPDATE</p>
           <h2>Unter der Oberfläche</h2>
           <p>Eine kleine Schnecke. Eine ganze Tiefsee voller Götter.</p>
+          <div class="hero-loadout"><img class="menu-icon" src="assets/images/menu/clasp.png" alt=""> <span>Ausgerüstet</span><strong id="hero-weapon-name">Glutkatana</strong></div>
           <div class="extra-actions">
-            <a class="primary" href="#atlas-heading">Zur Weltkarte ↓</a>
-            <button id="arcade-btn" class="quiet" type="button">∞ Endlos-Modus</button>
-            <button id="board-btn" class="quiet" type="button">Schneggboard</button>
+            <a class="primary icon-button" href="#atlas-heading"><img class="menu-icon" src="assets/images/menu/map.png" alt=""> Zur Weltkarte</a>
+            <button id="arcade-btn" class="quiet" type="button"><img class="menu-icon" src="assets/images/menu/endless.png" alt=""> Endlos-Modus</button>
+            <button id="board-btn" class="quiet" type="button"><img class="menu-icon" src="assets/images/menu/podium.png" alt=""> Schneggboard</button>
           </div>
         </div>
       </div>
       <div class="map-head">
-        <div class="map-heading"><img src="assets/images/spritepack/map-compass.png" alt=""><div>
+        <div class="map-heading"><img class="map-compass" src="assets/images/menu/compass.png" alt=""><div>
           <p class="eyebrow">ATLAS DER TIEFSEE</p><h2 id="atlas-heading" tabindex="-1">Weltkarte</h2>
         </div></div>
         <div class="map-heading-tools">
           <button id="shop-btn" class="quiet shop-entry" type="button" aria-haspopup="dialog">
-            <img src="assets/images/shop/purse.png" alt=""> Tiefenbasar <span id="wallet-coins"></span>
+            <img class="menu-icon" src="assets/images/menu/bazaar.png" alt=""> Tiefenbasar <span id="wallet-coins"></span>
           </button>
-          <span id="seed-badge" class="tag"></span>
+          <span class="tag"><img class="menu-icon" src="assets/images/menu/seed.png" alt=""> <span id="seed-badge"></span></span>
         </div>
       </div>
       <div id="map-scroll" class="map-scroll" tabindex="0" aria-label="Weltkarte, horizontal scrollbar">
         <div id="map-plot" class="map-plot"></div>
       </div>
       <div class="map-actions">
-        <div><p class="eyebrow" id="location-label">STANDORT</p><h3 id="map-location">Heimatbucht</h3><p id="map-caption"></p></div>
+        <div class="map-location-card">
+          <img class="map-anchor" src="assets/images/menu/anchor.png" alt="">
+          <div><p class="eyebrow" id="location-label">STANDORT</p><h3 id="map-location">Heimatbucht</h3>
+            <p class="menu-line"><img class="menu-icon" src="assets/images/menu/trophy.png" alt=""> <span id="map-caption"></span></p>
+          </div>
+        </div>
         <div id="route-choices" class="route-choices"></div>
       </div>
-      <div class="map-legend" aria-hidden="true"><span>◉ Standort</span><span>◆ Gegnerlevel</span><span>✦ Boss</span><span>┈ Tunnel</span></div>
+      <div class="map-legend" aria-label="Kartenlegende"><span><img class="menu-icon" src="assets/images/menu/current.png" alt=""> Standort</span><span><img class="menu-icon" src="assets/images/menu/arena.png" alt=""> Gegnerlevel</span><span><img class="menu-icon" src="assets/images/menu/boss.png" alt=""> Boss</span><span><img class="menu-icon" src="assets/images/menu/tunnel.png" alt=""> Tunnel</span><span><img class="menu-icon" src="assets/images/menu/locked.png" alt=""> Gesperrt</span><span><img class="menu-icon" src="assets/images/menu/cleared.png" alt=""> Abgeschlossen</span></div>
       <div class="workbench">
         <section class="map-profile">
-          <div class="eyebrow">FIGUR FÜR NEUE KAMPAGNE / ENDLOS</div>
+          <div class="eyebrow menu-line"><img class="menu-icon" src="assets/images/menu/roster.png" alt=""> FIGUR FÜR NEUE KAMPAGNE / ENDLOS</div>
           <div id="character-options" class="map-character">
             <button type="button" data-character="snail"><img alt="">Schnegg</button>
             <button type="button" data-character="otter"><img alt="">Otter</button>
             <button type="button" data-character="frog"><img alt="">Frogo</button>
           </div>
-          <p id="character-detail" class="caption"></p>
-          <label class="field">Spielername <input id="player-name" type="text" maxlength="24" placeholder="Dein Name"></label>
+          <p class="caption menu-line"><img class="menu-icon" src="assets/images/menu/heart.png" alt=""> <span id="character-detail"></span></p>
+          <label class="field"><img class="menu-icon" src="assets/images/menu/journal.png" alt=""> Spielername <input id="player-name" type="text" maxlength="24" placeholder="Dein Name"></label>
         </section>
         <section class="campaign-tools">
-          <div class="eyebrow">KAMPAGNE</div>
-          <p id="shop-loadout" class="caption"></p>
-          <div id="build-list" class="build-list"></div>
+          <div class="eyebrow menu-line"><img class="menu-icon" src="assets/images/menu/armory.png" alt=""> KAMPAGNE</div>
+          <p class="caption menu-line"><img class="menu-icon" src="assets/images/menu/satchel.png" alt=""> <span id="shop-loadout"></span></p>
+          <div class="build-line"><img class="menu-icon" src="assets/images/menu/perk.png" alt=""> <div id="build-list" class="build-list"></div></div>
           <form id="campaign-form" class="seed-form">
-            <label class="field">Seed <input id="seed-input" maxlength="40" placeholder="zufällig"></label>
-            <button class="quiet" type="submit">Neue Kampagne</button>
+            <label class="field"><img class="menu-icon" src="assets/images/menu/seed.png" alt=""> Seed <input id="seed-input" maxlength="40" placeholder="zufällig"></label>
+            <button class="quiet" type="submit"><img class="menu-icon" src="assets/images/menu/new-run.png" alt=""> Neue Kampagne</button>
           </form>
           <p id="test-mode-status" class="caption hidden" role="status">Testmodus aktiv · Gib „admin“ erneut ein, um zurückzukehren.</p>
         </section>
@@ -123,8 +132,8 @@
         <div class="shop-top">
           <div><p class="eyebrow">HANDEL UNTER DER OBERFLÄCHE</p><h2 id="shop-title">Tiefenbasar</h2></div>
           <div class="shop-actions">
-            <span class="shop-balance"><img src="assets/images/shop/purse.png" alt=""><strong id="shop-wallet"></strong></span>
-            <button id="shop-close" type="button" class="quiet">Zur Karte</button>
+            <span class="shop-balance"><img class="menu-icon" src="assets/images/menu/coin.png" alt=""><strong id="shop-wallet"></strong></span>
+            <button id="shop-close" type="button" class="quiet"><img class="menu-icon" src="assets/images/menu/close.png" alt=""> Zur Karte</button>
           </div>
         </div>
         <nav id="shop-stalls" class="shop-stalls" aria-label="Händler"></nav>
@@ -143,9 +152,9 @@
     <section id="leaderboard-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="leaderboard-title">
       <div class="overlay-card"><p class="eyebrow">REKORDE</p><h2 id="leaderboard-title">Schneggboard</h2>
         <div id="leaderboard-rows" class="record-list"></div>
-        <button id="online-board-btn" class="quiet" type="button">Online-Rangliste laden</button>
+        <button id="online-board-btn" class="quiet" type="button"><img class="menu-icon" src="assets/images/menu/online.png" alt=""> Online-Rangliste laden</button>
         <div id="online-board-rows" class="record-list"></div>
-        <button id="board-close" class="primary" type="button">Schließen</button>
+        <button id="board-close" class="primary icon-button" type="button"><img class="menu-icon" src="assets/images/menu/close.png" alt=""> Schließen</button>
       </div>
     </section>
     <section id="result" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="result-title">

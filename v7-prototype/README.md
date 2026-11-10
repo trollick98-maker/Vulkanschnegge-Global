@@ -16,6 +16,8 @@ Beim Öffnen des Spiels erscheint **LAUNCH** auf schwarzem Grund. Ein Klick oder
 - Normale Reisen und Gegnerlevel haben feste Musik pro Kampagnenzone. In Zone 1 läuft „Pixel Depths“, in Zone 2 und 3 „Into the Deep“ und ab Zone 4 „Vulkanschnegge Theme“. Bosse haben ihre eigenen Tracks. Im Endlos-Modus wechseln die Tracks weiterhin mit dem Tempo.
 - Der letzte der vier Götter vor dem Riss ergibt sich in dieser Fassung aus der Seed-Reihenfolge. GOD.EXE ist der letzte Kampf. Auf „I AM THE SOURCE“ beim Reveal folgt „RUN THE LOOP“ im Kampf. „Home, At Last“ startet im Abspann.
 
+Die Weltkarte verwendet 38 eigene Pixel-Sprites für Navigation, Kartenmarkierungen und den Basar sowie zwei neue Hintergründe. Im Menü trägt die ausgewählte Figur die aktuell ausgerüstete Kampagnenwaffe. Käufe und Ausrüsten im Basar aktualisieren Figur und Waffenname sofort.
+
 ## Kampf und Perks
 
 - Gegnerlevel führen über sieben oder acht Inseln mit Aufstiegen und Abstiegen. Die Kamera folgt dir auch in der Höhe. Besiege alle Gegner und erreiche das Tor am Ende der Strecke. Ein Sturz kostet ein Herz und setzt dich auf die letzte erreichte Insel zurück.

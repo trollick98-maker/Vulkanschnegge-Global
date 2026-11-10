@@ -61,6 +61,15 @@
   for (const atlas of ['reef', 'greed', 'diva', 'vortex', 'god', 'action']) {
     images['surge-atlas-' + atlas] = 'surge/' + atlas + '.png';
   }
+  for (const icon of ['map', 'endless', 'podium', 'bazaar', 'fullscreen', 'music', 'effects', 'new-run',
+    'harbor', 'arena', 'boss', 'tunnel', 'current', 'route', 'locked', 'cleared',
+    'roster', 'heart', 'coin', 'perk', 'journal', 'seed', 'supplies', 'forge',
+    'curios', 'online', 'close', 'armory', 'satchel', 'trophy', 'helmet', 'compass',
+    'coral', 'kelp', 'corner', 'anchor', 'divider', 'clasp']) {
+    images['menu-' + icon] = 'menu/' + icon + '.png';
+  }
+  images['menu-hero'] = 'menu/hero.webp';
+  images['menu-chart'] = 'menu/chart.webp';
   V.assets = {};
   V.imagePath = name => 'assets/images/' + images[name];
   V.image = function (name) {

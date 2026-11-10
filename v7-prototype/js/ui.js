@@ -15,11 +15,24 @@
     if (element.textContent !== value) element.textContent = value;
   }
 
-  function button(label, className, action) {
+  function menuIcon(name) {
+    const icon = document.createElement('img');
+    icon.className = 'menu-icon';
+    icon.src = V.imagePath('menu-' + name);
+    icon.alt = '';
+    return icon;
+  }
+
+  function button(label, className, action, icon) {
     const control = document.createElement('button');
     control.type = 'button';
     control.className = className;
-    control.textContent = label;
+    if (icon) {
+      const text = document.createElement('span');
+      text.textContent = label;
+      control.classList.add('icon-button');
+      control.append(menuIcon(icon), text);
+    } else control.textContent = label;
     control.addEventListener('click', action);
     return control;
   }
@@ -52,6 +65,7 @@
       art.dataset.playerArt = character;
       art.src = V.imagePath(character);
     }
+    get('hero-figure').dataset.heroCharacter = character;
     content('character-detail', V.characters[character].detail);
   }
 
@@ -105,7 +119,7 @@
       const cleared = campaign.cleared.includes(node.id);
       const route = byTarget.get(node.id);
       const canEnter = current && campaign.arrival && !campaign.pending;
-      const symbol = current ? '◉' : cleared ? '✓' : node.kind === 'boss' ? '✦' : '◆';
+      const role = node.kind === 'start' ? 'harbor' : node.optional ? 'tunnel' : node.kind;
       const marker = button('', 'map-node ' + (current ? 'current ' : '') + (route || canEnter ? 'open ' : '') +
         (cleared ? 'done ' : '') + (node.kind === 'boss' ? 'boss' : ''), () => {
         if (canEnter) handlers.enter();
@@ -121,18 +135,20 @@
       if (current) marker.setAttribute('aria-current', 'location');
       const icon = document.createElement('span');
       icon.className = 'node-symbol';
-      icon.textContent = symbol;
-      if (node.id === 'reef-side' || node.kind === 'boss') {
+      const roleIcon = menuIcon(role);
+      if (node.kind === 'boss' || node.id === 'reef-side') {
         const art = document.createElement('img');
         art.className = 'node-landmark';
         art.alt = '';
-        art.addEventListener('error', () => { icon.textContent = symbol; });
+        art.addEventListener('error', () => { icon.replaceChildren(roleIcon); }, { once: true });
         art.src = V.imagePath((node.kind === 'boss' ? 'boss-badge-' : 'landmark-') + node.biome);
-        const badge = document.createElement('span');
-        badge.className = 'node-badge';
-        badge.textContent = symbol;
-        icon.textContent = '';
-        icon.append(art, badge);
+        icon.append(art);
+      } else icon.append(roleIcon);
+      const badge = current ? 'current' : cleared ? 'cleared' : marker.disabled ? 'locked' : '';
+      if (badge) {
+        const stateIcon = menuIcon(badge);
+        stateIcon.className = 'node-badge';
+        marker.append(stateIcon);
       }
       const label = document.createElement('span');
       label.className = 'node-name';
@@ -151,10 +167,11 @@
 
     const choices = get('route-choices');
     choices.replaceChildren();
-    if (campaign.arrival && !campaign.pending) choices.append(button('Kampf starten', 'primary', handlers.enter));
+    if (campaign.arrival && !campaign.pending) choices.append(button('Kampf starten', 'primary', handlers.enter, 'arena'));
     for (const route of routes) {
       const label = (route.edge.hidden ? 'Tunnel · ' : '') + route.node.name + ' · ' + routeDuration(campaign, route);
-      const control = button(label, 'quiet', () => handlers.travel(route));
+      const control = button(label, 'quiet', () => handlers.travel(route),
+        route.edge.hidden ? 'tunnel' : V.isBossRoute(campaign, route) ? 'boss' : 'route');
       control.dataset.travel = route.to;
       choices.append(control);
     }
@@ -227,7 +244,14 @@
 
   function refreshWallet(campaign) {
     content('wallet-coins', campaign.coins + ' Münzen');
-    content('shop-loadout', 'Ausrüstung · ' + V.shopLoadout(campaign));
+    content('shop-loadout', V.shopLoadout(campaign));
+    const weapon = V.weapons[campaign.weapon];
+    const art = get('hero-weapon');
+    if (art.dataset.weapon !== weapon.id) {
+      art.dataset.weapon = weapon.id;
+      art.src = V.imagePath(weapon.sprite);
+    }
+    content('hero-weapon-name', weapon.name);
   }
 
   function shopItem(campaign, graph, id, item) {
@@ -271,7 +295,7 @@
     tabs.replaceChildren();
     for (const [key, option] of Object.entries(V.shops)) {
       const suffix = V.shopOpen(option, campaign, graph) ? '' : ' · gesperrt';
-      const tab = button(option.name + suffix, 'quiet shop-stall', () => shop(campaign, graph, key, '', 'shop-tab-' + key));
+      const tab = button(option.name + suffix, 'quiet shop-stall', () => shop(campaign, graph, key, '', 'shop-tab-' + key), key);
       tab.id = 'shop-tab-' + key;
       tab.dataset.shop = key;
       tab.setAttribute('aria-pressed', String(id === key));

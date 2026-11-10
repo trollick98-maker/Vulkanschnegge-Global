@@ -1063,6 +1063,23 @@ test('the biome spritepack covers arena roles, projectiles, platforms and map la
   assert.equal(harbor.enemies.filter(enemy => enemy.key === 'armored').length, 1);
 });
 
+test('the atlas menu packages its 38 sprites and both backgrounds offline', () => {
+  const { V } = logic(undefined, ['config', 'assets']);
+  const directory = path.join(root, 'assets/images/menu');
+  const files = fs.readdirSync(directory);
+  assert.equal(files.filter(file => file.endsWith('.png')).length, 38);
+  assert.deepEqual(files.filter(file => file.endsWith('.webp')), ['chart.webp', 'hero.webp']);
+  for (const file of files) {
+    const key = file.slice(0, file.lastIndexOf('.'));
+    assert.equal(V.imagePath('menu-' + key), 'assets/images/menu/' + file);
+    const data = fs.readFileSync(path.join(directory, file));
+    if (file.endsWith('.png')) {
+      assert.equal(data.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', file);
+      assert.equal(data[25], 6, file);
+    } else assert.equal(data.toString('ascii', 8, 12), 'WEBP', file);
+  }
+});
+
 test('all 24 spritepack images are registered transparent PNGs', () => {
   const { V } = logic(undefined, ['config', 'assets']);
   const folder = path.join(root, 'assets/images/spritepack');
