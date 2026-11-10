@@ -143,6 +143,7 @@
       }
     },
     stop() {
+      pauseEffects();
       scene = null;
       wanted = null;
       active = null;

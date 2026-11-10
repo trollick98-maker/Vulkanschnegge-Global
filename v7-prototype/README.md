@@ -46,6 +46,10 @@ Treffer, eigener Schaden, Blocks und Konter haben eigene Pixel-Effekte und Töne
 
 Der Dash zieht eine türkise Spur und hat einen eigenen Sound. Bei hohem Tempo wird die Spur lavafarben und der Dash klingt kräftiger. In Arenen hörst und siehst du ein kurzes Schlittern, wenn du auf dem Boden aus hohem Tempo abbremst oder gegenlenkst.
 
+## Sprite-Update
+
+24 Pixel-Sprites ergänzen die Boss- und HUD-Grafik. Eigene Symbole markieren Strom, Sprünge, Zielzonen und Systemfehler. Blasen, Schallwellen, Hanteln und rote Fehlerpakete haben unterschiedliche Silhouetten. Goldtruhe und Fallentruhe unterscheiden sich am Schloss. Goldhand und Bühnenvorhang erscheinen in den passenden Spezialangriffen. Boss-Abzeichen, Herz, Dash-Symbol und Kompass ergänzen Weltkarte und HUD. Glutkatana, Schwachstellen, Konter und Boss-Sieg haben eigene Effektsprites.
+
 ## Prozedurale Plattformwege
 
 Seed und Level-ID bestimmen Inselbreiten, Plattformhöhen und Abstände. Jedes Biom hat eigene Folgen aus steigenden und fallenden Plattformen. Die Strecke bleibt beim Neustart reproduzierbar, auch mit einem anderen Perk-Build.

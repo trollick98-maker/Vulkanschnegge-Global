@@ -186,6 +186,38 @@ test('the campaign build modifies runner, arena and boss consistently on every r
   assert.equal(V.newRunner(null, 'otter').magnetRange, 1.2);
 });
 
+test('shared keyboard and touch bindings stay held until the last source releases', () => {
+  const win = new EventTarget();
+  const right = new EventTarget();
+  right.dataset = { key: 'right' };
+  right.setPointerCapture = () => {};
+  const { V } = logic(undefined, ['config', 'input'], {
+    addEventListener: win.addEventListener.bind(win),
+    document: { querySelectorAll: () => [right] }
+  });
+  V.state = { mode: 'play' };
+  const key = (type, code) => win.dispatchEvent(Object.assign(new Event(type), { code }));
+  const touch = (type, pointerId) => right.dispatchEvent(Object.assign(new Event(type), { pointerId }));
+  key('keydown', 'KeyD');
+  key('keydown', 'ArrowRight');
+  key('keyup', 'KeyD');
+  assert.equal(V.input.consume().right, true);
+  touch('pointerdown', 1);
+  touch('pointerdown', 2);
+  key('keyup', 'ArrowRight');
+  touch('pointerup', 1);
+  assert.equal(V.input.consume().right, true);
+  touch('pointercancel', 2);
+  assert.equal(V.input.consume().right, false);
+  key('keydown', 'Space');
+  key('keydown', 'KeyW');
+  assert.equal(V.input.consume().jump, true);
+  key('keyup', 'Space');
+  assert.equal(V.input.consume().jump, false);
+  win.dispatchEvent(new Event('blur'));
+  assert.equal(V.input.jump, false);
+});
+
 test('the timed route runs the full active duration and arcade stays endless', () => {
   const { V } = logic();
   const c = V.createCampaign('road', 'snail');
@@ -262,6 +294,29 @@ test('coins score with multiplier and missed coins reset the streak', () => {
   V.addCoin(s, -105, 360);
   V.collectCoins(s);
   assert.equal(s.multiplier, 1);
+});
+
+test('a fatal hit prevents last-frame score and healing from a coin', () => {
+  const { V } = logic();
+  const s = V.newRunner(null, 'snail', { coinSpawnBoost: 1 });
+  s.hp = 1;
+  s.coinsTaken = 11;
+  V.addCoin(s, s.player.x - V.START_X + s.player.w / 2, s.player.y + s.player.h / 2);
+  V.hurt(s);
+  const score = s.score;
+  V.collectCoins(s);
+  assert.equal(s.outcome, false);
+  assert.equal(s.hp, 0);
+  assert.equal(s.coinsTaken, 11);
+  assert.equal(s.score, score);
+});
+
+test('a runner dash on the same frame as a turn swings in the new direction', () => {
+  const { V } = logic();
+  const s = V.newRunner(null, 'snail');
+  V.updateRunner(s, V.rules.step, { left: true, dash: true });
+  assert.equal(s.player.facing, -1);
+  assert.equal(s.player.swing.facing, -1);
 });
 
 test('an arena dash deals one third of launch speed and contact retains 65 percent of it', () => {
@@ -802,6 +857,21 @@ test('the biome spritepack covers arena roles, projectiles, platforms and map la
   assert.equal(harbor.enemies.filter(enemy => enemy.key === 'armored').length, 1);
 });
 
+test('all 24 spritepack images are registered transparent PNGs', () => {
+  const { V } = logic(undefined, ['config', 'assets']);
+  const folder = path.join(root, 'assets/images/spritepack');
+  const files = fs.readdirSync(folder);
+  assert.equal(files.length, 24);
+  for (const file of files) {
+    const id = path.basename(file, '.png');
+    const registered = path.join(root, V.imagePath(id));
+    assert.equal(registered, path.join(folder, file));
+    const data = fs.readFileSync(registered);
+    assert.equal(data.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+    assert.equal(data[25], 6, file);
+  }
+});
+
 function audioFixture() {
   const players = [];
   const listeners = {};
@@ -939,6 +1009,18 @@ test('boss tracks loop and mute without stopping or rewinding the rhythm clock',
   assert.equal(audio.bossClock().time, .12, 'the clock follows the loop wrap');
   audio.stop();
   assert.equal(audio.bossClock(5), null);
+});
+
+test('transitioning from a fight to the menu pauses every active sound effect', () => {
+  const { audio, players } = audioFixture();
+  audio.startLevel('boss', 'reef-tax');
+  audio.effect('hit');
+  audio.effect('katana');
+  const effects = players.filter(voice => voice.src.endsWith('.wav'));
+  assert.equal(effects.length, 2);
+  assert.ok(effects.every(voice => !voice.paused));
+  audio.startMenu();
+  assert.ok(effects.every(voice => voice.paused));
 });
 
 test('hit sounds use a bounded pool, play with music muted and stop when effects are muted', () => {

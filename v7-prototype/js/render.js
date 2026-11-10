@@ -176,7 +176,7 @@
     }
     for (const item of s.obstacles) {
       const x = V.scrollX(s, item.worldX);
-      if (item.dead || x < -65 || x > W || (s.boss && x > s.boss.x - 45)) continue;
+      if (item.dead || x < -65 || x > W) continue;
       if (!sprite(item.fragile ? 'crate' : 'mine', x - 3, G - item.h - 3, item.w + 6, item.h + 6)) {
         g.fillStyle = item.fragile ? '#bd7eaa' : '#ea776a';
         g.fillRect(x, G - item.h, item.w, item.h);
@@ -289,10 +289,27 @@
     }
   }
 
+  const projectileSprites = { toxic: 'shot-bubble', wave: 'shot-wave', weight: 'shot-weight', fault: 'shot-fault' };
+  const warningSprites = {
+    electric: 'warn-electric', current: 'warn-electric', rush: 'warn-jump', gold: 'warn-jump', slam: 'warn-jump',
+    light: 'warn-target', hand: 'warn-target', laser: 'warn-target', mirror: 'warn-target', weights: 'warn-target',
+    glitch: 'warn-fault', replay: 'warn-fault', reset: 'warn-fault'
+  };
+
   function drawProjectile(q) {
     const { x, y, r } = q;
     const look = V.bossShots[q.key];
-    if (!fittedSprite(q.key, x - r * 1.37, y - r * 1.37, r * 2.74, r * 2.74)) {
+    const size = r * 2.74;
+    const art = projectileSprites[q.key] ?? q.key;
+    const flip = q.vx < 0 && (q.key === 'wave' || q.key === 'fault');
+    g.save();
+    if (flip) {
+      g.translate(2 * x, 0);
+      g.scale(-1, 1);
+    }
+    const drawn = fittedSprite(art, x - size / 2, y - size / 2, size, size);
+    g.restore();
+    if (!drawn) {
       g.fillStyle = look.color;
       if (q.key === 'wave') {
         g.strokeStyle = look.color;
@@ -360,10 +377,9 @@
       g.fillRect(left, G - 13, W, 13);
     }
     if (fx.stage) {
-      g.fillStyle = '#4a103fc9';
-      for (const x of [left, left + W - 110]) {
-        for (let i = 0; i < 6; i++) g.fillRect(x + i * 19, 0, 11, G - i * 22);
-      }
+      g.globalAlpha = .57;
+      fittedSprite('prop-stage-curtain', left + W * .05, -122, W * .90, 366);
+      g.globalAlpha = 1;
       g.fillStyle = '#ffa9ce75';
       g.fillRect(left, G - 4, W, 4);
     }
@@ -408,8 +424,22 @@
       g.fillRect(z.x, z.y + z.h - 4, z.w * (active ? 1 : V.clamp(1 - wait / 1.45, 0, 1)), 4);
       g.textAlign = 'center';
       g.font = '900 23px monospace';
-      for (let i = 0, count = Math.max(1, Math.floor(z.w / 55)); i < count; i++) {
-        g.fillText(zoneSymbols[z.style], z.x + (i + .5) * z.w / count, z.y + z.h - 12);
+      const marker = warningSprites[z.style];
+      for (let i = 0, count = Math.max(1, Math.floor(z.w / 76)); i < count; i++) {
+        const x = z.x + (i + .5) * z.w / count;
+        if (!marker || !fittedSprite(marker, x - 14, z.y + z.h - 34, 28, 27)) {
+          g.fillText(zoneSymbols[z.style], x, z.y + z.h - 12);
+        }
+      }
+      const handSize = Math.min(z.w * .80, 112);
+      if (z.style === 'hand') {
+        const progress = active ? V.clamp((s.elapsed - z.at) / .11, 0, 1) : 0;
+        g.globalAlpha = active ? .97 : .36;
+        if (fittedSprite('prop-gold-gauntlet', z.x + (z.w - handSize) / 2,
+          z.y + (z.h - 180) * progress, handSize, 180, true)) {
+          g.restore();
+          continue;
+        }
       }
       if (active && z.style === 'hand') {
         g.fillRect(z.x + z.w * .30, z.y, z.w * .4, z.h * .68);
@@ -420,7 +450,9 @@
     }
     for (const chest of s.chests) {
       g.save();
-      if (!sprite('crate', chest.x, chest.y, chest.w, chest.h)) {
+      const art = chest.trap ? 'prop-trap-chest' : 'prop-gold-chest';
+      if (!fittedSprite(art, chest.x, chest.y, chest.w, chest.h, true) &&
+          !sprite('crate', chest.x, chest.y, chest.w, chest.h)) {
         g.fillStyle = '#9c5836';
         g.fillRect(chest.x, chest.y, chest.w, chest.h);
       }
@@ -476,9 +508,11 @@
     const weak = (windup && plan.attack.interrupt) || (b.state === 'recovery' && b.exposed > 1);
     if (weak) {
       const box = V.bossHitboxes(b).weak;
-      g.strokeStyle = '#fff39a';
-      g.lineWidth = 3;
-      g.strokeRect(box.x, box.y, box.w, box.h);
+      if (!fittedSprite('fx-weak-reticle', box.x, box.y, box.w, box.h)) {
+        g.strokeStyle = '#fff39a';
+        g.lineWidth = 3;
+        g.strokeRect(box.x, box.y, box.w, box.h);
+      }
       g.fillStyle = '#fff8be';
       g.fillRect(box.x + box.w / 2 - 3, box.y + box.h / 2 - 3, 6, 6);
     }
@@ -498,6 +532,13 @@
       }
       g.fillStyle = b.definition.color;
       g.fillRect(cx - 49, b.y - 12, 98 * charge, 4);
+    }
+    if (death > 0) {
+      g.save();
+      const burst = reducedMotion ? 105 : 104 + death * 109;
+      g.globalAlpha = Math.max(0, .84 - death * .88);
+      fittedSprite('fx-boss-defeat', cx - burst / 2, cy - burst / 2, burst, burst);
+      g.restore();
     }
     if (death > 0 && !reducedMotion) {
       g.fillStyle = b.definition.color;
@@ -547,6 +588,10 @@
     } else g.globalAlpha = .78;
     g.rotate(pose.angle);
     sprite(weapon.sprite, -12, -5, length + 12, (length + 12) * 17 / 128);
+    if (swing) {
+      g.globalAlpha = .85 * (1 - swing.time / weapon.duration);
+      fittedSprite('fx-katana-cut', length - 19, -18, 34, 36);
+    }
     g.restore();
   }
 
@@ -581,7 +626,8 @@
         g.translate(effect.x, effect.y);
         g.save();
         g.scale(effect.direction < 0 ? -1 : 1, 1);
-        if (!fittedSprite('impact-' + effect.kind, -size / 2, -size / 2, size, size)) {
+        const parry = effect.kind === 'parry' && fittedSprite('fx-parry', -size / 2, -size / 2, size, size);
+        if (!parry && !fittedSprite('impact-' + effect.kind, -size / 2, -size / 2, size, size)) {
           g.strokeStyle = effect.color;
           g.lineWidth = 3;
           g.strokeRect(-size * .23, -size * .23, size * .46, size * .46);

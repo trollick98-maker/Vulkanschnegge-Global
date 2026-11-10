@@ -122,12 +122,12 @@
       const icon = document.createElement('span');
       icon.className = 'node-symbol';
       icon.textContent = symbol;
-      if (node.id === 'reef-side' || (node.kind === 'boss' && node.biome !== 'reef')) {
+      if (node.id === 'reef-side' || node.kind === 'boss') {
         const art = document.createElement('img');
         art.className = 'node-landmark';
         art.alt = '';
         art.addEventListener('error', () => { icon.textContent = symbol; });
-        art.src = V.imagePath('landmark-' + node.biome);
+        art.src = V.imagePath((node.kind === 'boss' ? 'boss-badge-' : 'landmark-') + node.biome);
         const badge = document.createElement('span');
         badge.className = 'node-badge';
         badge.textContent = symbol;
@@ -192,8 +192,9 @@
       local ? 'Anlauf nehmen · Gegner besiegen · Ziel rechts' : 'Springen · Kisten per Dash zerlegen');
     content('test-skip-btn', 'Abschnitt überspringen');
     const dashReady = p.dashCooldown <= 0 && (p.dashTime <= 0 || (local && p.dashLeft <= 0)) && (!local || p.airDash);
-    content('hud-stats', '♥ ' + s.hp + ' / ' + s.maxHp + '    ◈ ' + s.coinsTaken + '    ⚡ ' +
-      (dashReady ? 'bereit' : 'lädt'));
+    content('hud-life', s.hp + ' / ' + s.maxHp);
+    content('hud-coins', '◈ ' + s.coinsTaken);
+    content('hud-dash', dashReady ? 'bereit' : 'lädt');
     const dash = local ? ' · ' + s.weapon.name + ' ' + (p.dashTime > 0 ? p.dashPower : V.weaponDamage(s, s.speed)) : '';
     content('hud-score', Math.floor(s.score) + ' P · ' + Math.round(s.speed) + ' Tempo' + dash);
     const alive = s.kind === 'arena' ? s.enemies.filter(enemy => enemy.hp > 0).length : 0;

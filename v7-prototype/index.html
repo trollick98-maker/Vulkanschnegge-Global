@@ -51,7 +51,11 @@
           </div>
         </div>
       </div>
-      <div class="map-head"><div><p class="eyebrow">ATLAS DER TIEFSEE</p><h2 id="atlas-heading" tabindex="-1">Weltkarte</h2></div><span id="seed-badge" class="tag"></span></div>
+      <div class="map-head">
+        <div class="map-heading"><img src="assets/images/spritepack/map-compass.png" alt=""><div>
+          <p class="eyebrow">ATLAS DER TIEFSEE</p><h2 id="atlas-heading" tabindex="-1">Weltkarte</h2>
+        </div></div><span id="seed-badge" class="tag"></span>
+      </div>
       <div id="map-scroll" class="map-scroll" tabindex="0" aria-label="Weltkarte, horizontal scrollbar">
         <div id="map-plot" class="map-plot"></div>
       </div>
@@ -87,7 +91,11 @@
       <div class="game-frame">
         <canvas id="game" tabindex="-1" width="960" height="540" aria-label="Spielfeld der Vulkanschnegge"></canvas>
         <div class="game-hud">
-          <div class="hud-box"><div class="eyebrow" id="level-kind"></div><strong id="level-title"></strong><div id="hud-stats"></div><div id="hud-score"></div></div>
+          <div class="hud-box"><div class="eyebrow" id="level-kind"></div><strong id="level-title"></strong><div id="hud-stats">
+            <span class="hud-stat"><img src="assets/images/spritepack/hud-heart.png" alt="Leben"><span id="hud-life"></span></span>
+            <span id="hud-coins"></span>
+            <span class="hud-stat"><img src="assets/images/spritepack/hud-dash.png" alt="Dash"><span id="hud-dash"></span></span>
+          </div><div id="hud-score"></div></div>
           <div class="game-buttons">
             <button id="back-btn" class="quiet" title="Zur Weltkarte (Escape)">↶ Karte</button>
             <button id="restart-btn" class="quiet" title="Abschnitt neu starten">⟳ Neustart</button>

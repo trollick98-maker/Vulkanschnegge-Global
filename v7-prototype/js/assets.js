@@ -47,6 +47,14 @@
   for (const effect of ['dash', 'dash-fast', 'skid']) {
     images['movement-' + effect] = 'bewegung/' + effect + '.png';
   }
+  for (const sprite of [
+    'warn-electric', 'warn-jump', 'warn-target', 'warn-fault',
+    'shot-bubble', 'shot-wave', 'shot-weight', 'shot-fault',
+    'prop-gold-chest', 'prop-trap-chest', 'prop-gold-gauntlet', 'prop-stage-curtain',
+    'fx-katana-cut', 'fx-weak-reticle', 'fx-parry', 'fx-boss-defeat',
+    'boss-badge-reef', 'boss-badge-greed', 'boss-badge-diva', 'boss-badge-vortex', 'boss-badge-god',
+    'hud-heart', 'hud-dash', 'map-compass'
+  ]) images[sprite] = 'spritepack/' + sprite + '.png';
   V.assets = {};
   V.imagePath = name => 'assets/images/' + images[name];
   V.image = function (name) {

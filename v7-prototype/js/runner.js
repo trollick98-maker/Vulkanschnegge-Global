@@ -5,7 +5,7 @@
   const padding = 530;
 
   function segment(s, index) {
-    const pool = s.kind === 'boss' ? data.boss : data.road;
+    const pool = data.road;
     return pool[Math.floor(V.randomFor(s.seed + ':segment:' + index)() * pool.length)];
   }
 

@@ -243,6 +243,8 @@ a.primary:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 .hero-copy > p:not(.eyebrow) { margin: 12px 0 18px; color: #c5d9dd; font-size: 14px; }
 #atlas-heading { scroll-margin-top: 14px; }
 .map-head, .map-actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 18px 22px; }
+.map-heading { display: flex; align-items: center; gap: clamp(7px, 1.5vw, 15px); }
+.map-heading img { width: clamp(27px, 5vw, 54px); height: auto; image-rendering: pixelated; }
 .map-head h2 { margin: 2px 0 0; font-size: clamp(24px, 4.2vw, 40px); line-height: 1.1; letter-spacing: -.06em; }
 .tag {
   padding: 6px 9px;
@@ -403,7 +405,9 @@ canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; 
   padding: 7px 10px;
 }
 .hud-box strong { display: block; font-size: clamp(12px, 2vw, 22px); }
-#hud-stats { color: #ffc1b7; font-size: clamp(10px, 1.4vw, 15px); }
+#hud-stats { display: flex; align-items: center; flex-wrap: wrap; gap: 1px 8px; color: #ffc1b7; font-size: clamp(10px, 1.4vw, 15px); }
+.hud-stat { display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; }
+.hud-stat img { width: clamp(11px, 1.7vw, 19px); height: clamp(11px, 1.7vw, 19px); object-fit: contain; image-rendering: pixelated; }
 #hud-score { color: var(--gold); font-size: clamp(9px, 1.12vw, 12px); }
 .gauge { justify-self: end; min-width: min(132px, 100%); text-align: right; }
 #hud-number { font-size: clamp(14px, 2vw, 22px); font-weight: 850; font-variant-numeric: tabular-nums; }

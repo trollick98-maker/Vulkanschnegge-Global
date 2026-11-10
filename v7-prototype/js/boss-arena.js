@@ -128,6 +128,7 @@
       z.x += z.drift * dt;
       const relative = { ...p, previousX: p.previousX + z.x - oldX };
       if (V.movementContact(relative, z) < Infinity) V.hurt(s);
+      if (s.outcome !== null) return;
     }
     s.zones = s.zones.filter(z => s.elapsed < z.at + z.life);
     s.echoes = s.echoes.filter(echo => s.elapsed < echo.end);

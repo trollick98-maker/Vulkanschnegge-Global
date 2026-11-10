@@ -96,6 +96,7 @@
   };
 
   V.collectCoins = function (s) {
+    if (s.outcome !== null) return;
     const p = s.player;
     for (const coin of s.coins) {
       if (coin.taken) continue;
@@ -253,6 +254,7 @@
     const launch = p.dashBuffer > 0 && p.dashCooldown <= 0 && p.dashTime <= 0 && (!local || p.airDash);
     updateSkid(s, local && p.dashTime <= 0 && !launch, direction);
     if (local && p.dashTime <= 0 && !launch) accelerate(s, direction, dt);
+    if (!local && direction) p.facing = direction;
     if (launch) {
       p.dashBuffer = 0;
       p.dashTime = .24 + s.dashExtension;
@@ -283,7 +285,6 @@
         p.dashLeft = 0;
       }
     } else {
-      if (direction) p.facing = direction;
       const steer = direction * 165;
       const pull = direction ? 0 : (V.START_X - p.x) * .65;
       p.x = V.clamp(p.x + (steer + pull) * dt, 104, 425);

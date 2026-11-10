@@ -138,8 +138,9 @@
     };
   };
 
-  function defeat(s) {
+  V.defeatBoss = function (s) {
     const b = s.boss;
+    b.hp = 0;
     b.state = 'defeated';
     b.defeatedAt = s.elapsed;
     b.plan = b.rush = null;
@@ -149,7 +150,7 @@
     s.gravityFactor = 1;
     V.say(s, b.definition.name + ' besiegt');
     V.audio?.effect?.('boss-break', true);
-  }
+  };
 
   function strikeBoss(s, dx, dy) {
     const b = s.boss;
@@ -180,7 +181,7 @@
     const impact = weakHit ? weak : body;
     V.hitFeedback(s, 'hit', impact.x + impact.w / 2, impact.y + impact.h / 2,
       { amount: damage, heavy: weakHit || !b.hp, direction: p.facing });
-    if (!b.hp) defeat(s);
+    if (!b.hp) V.defeatBoss(s);
     else if (weakHit && canInterrupt) {
       recover(s, true);
       V.say(s, 'Unterbrochen · −' + damage + ' HP');
@@ -265,7 +266,7 @@
     strikeBoss(s, dx, dy);
     if (b.state === 'defeated') return;
     V.updateBossZones(s, dt);
-    updateShots(s, dt);
+    if (s.outcome === null) updateShots(s, dt);
     s.speed = Math.abs(s.player.vx);
     s.score += s.speed * .1 * dt;
   };

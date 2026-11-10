@@ -1,28 +1,64 @@
-(function(){
+(function () {
   'use strict';
-  const V=window.VS7;
-  const I=V.input={left:false,right:false,jump:false,dash:false,jumpQueued:false,dashQueued:false};
-  const translate={ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',Space:'jump',ArrowUp:'jump',KeyW:'jump',ShiftLeft:'dash',ShiftRight:'dash',KeyJ:'dash'};
-  function set(key,on){
-    if(!key) return;
-    if(on&&!I[key]) { if(key==='jump')I.jumpQueued=true; if(key==='dash')I.dashQueued=true; }
-    I[key]=on;
+  const V = window.VS7;
+  const I = V.input = { left: false, right: false, jump: false, dash: false, jumpQueued: false, dashQueued: false };
+  const held = { left: new Set(), right: new Set(), jump: new Set(), dash: new Set() };
+  const translate = {
+    ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
+    Space: 'jump', ArrowUp: 'jump', KeyW: 'jump', ShiftLeft: 'dash', ShiftRight: 'dash', KeyJ: 'dash'
+  };
+
+  function set(key, source, on) {
+    const sources = held[key];
+    if (!sources) return;
+    if (on) {
+      if (!sources.size && (key === 'jump' || key === 'dash')) I[key + 'Queued'] = true;
+      sources.add(source);
+    } else sources.delete(source);
+    I[key] = sources.size > 0;
   }
-  window.addEventListener('keydown',e=>{
-    if(e.target && /^(INPUT|TEXTAREA)$/.test(e.target.tagName))return;
-    if(e.code==='Escape' && !e.repeat){ V.backToMap?.(); return; }
-    const key=translate[e.code];if(key&&V.state?.mode==='play'&&!/^(BUTTON|A)$/.test(e.target?.tagName)){e.preventDefault();set(key,true);}
+
+  window.addEventListener('keydown', event => {
+    if (/^(INPUT|TEXTAREA)$/.test(event.target?.tagName)) return;
+    if (event.code === 'Escape' && !event.repeat) {
+      V.backToMap?.();
+      return;
+    }
+    const key = translate[event.code];
+    if (!key || V.state?.mode !== 'play' || /^(BUTTON|A)$/.test(event.target?.tagName)) return;
+    event.preventDefault();
+    set(key, 'key:' + event.code, true);
   });
-  window.addEventListener('keyup',e=>{const key=translate[e.code];if(key){e.preventDefault();set(key,false);}});
-  window.addEventListener('blur',()=>I.reset());
-  I.consume=()=>{const x={left:I.left,right:I.right,jump:I.jumpQueued,dash:I.dashQueued};I.jumpQueued=false;I.dashQueued=false;return x;};
-  I.reset=()=>{for(const k of ['left','right','jump','dash','jumpQueued','dashQueued'])I[k]=false;};
-  // Pointer controls for touch screens.
-  for(const button of document.querySelectorAll('[data-key]')){
-    const key=button.dataset.key;
-    button.addEventListener('pointerdown',e=>{e.preventDefault();button.setPointerCapture(e.pointerId);set(key,true);});
-    button.addEventListener('pointerup',e=>{e.preventDefault();set(key,false);});
-    button.addEventListener('pointercancel',()=>set(key,false));
-    button.addEventListener('lostpointercapture',()=>set(key,false));
+
+  window.addEventListener('keyup', event => {
+    const key = translate[event.code];
+    if (key) set(key, 'key:' + event.code, false);
+  });
+
+  I.consume = () => {
+    const actions = { left: I.left, right: I.right, jump: I.jumpQueued, dash: I.dashQueued };
+    I.jumpQueued = I.dashQueued = false;
+    return actions;
+  };
+  I.reset = () => {
+    for (const key of Object.keys(held)) {
+      held[key].clear();
+      I[key] = false;
+    }
+    I.jumpQueued = I.dashQueued = false;
+  };
+  window.addEventListener('blur', I.reset);
+
+  for (const button of document.querySelectorAll('[data-key]')) {
+    const key = button.dataset.key;
+    button.addEventListener('pointerdown', event => {
+      if (V.state?.mode !== 'play') return;
+      event.preventDefault();
+      button.setPointerCapture(event.pointerId);
+      set(key, 'pointer:' + event.pointerId, true);
+    });
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+      button.addEventListener(type, event => set(key, 'pointer:' + event.pointerId, false));
+    }
   }
 })();

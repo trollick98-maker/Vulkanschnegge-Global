@@ -276,6 +276,7 @@
   get('test-skip-btn').addEventListener('click', () => {
     if (!canSkip()) return;
     const level = state.level;
+    if (level.boss) V.defeatBoss(level);
     level.outcome = true;
     finish();
   });
