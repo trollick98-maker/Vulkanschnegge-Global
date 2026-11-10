@@ -209,7 +209,7 @@
     const timed = Boolean(chase) || s.kind === 'travel';
     const kind = b ? 'BOSS · PHASE ' + (b.phase + 1) + ' / 3' : kinds[s.kind];
     content('level-kind', s.supplyName ? kind + ' · ' + s.supplyName : kind);
-    content('level-tip', b ? b.plan?.attack.hint ?? b.definition.tip :
+    content('level-tip', b ? b.plan?.attack.hint ?? (b.phase ? V.bossStages[s.biome].hints[b.phase - 1] : b.definition.tip) :
       chase ? 'Hellen Kugeln per Dash begegnen · über Sperrfeuer springen' :
       local ? 'Anlauf nehmen · Gegner besiegen · Ziel rechts' : 'Springen · Kisten per Dash zerlegen');
     content('test-skip-btn', chase ? 'Zur Bossarena springen' : 'Abschnitt überspringen');
@@ -234,7 +234,8 @@
     if (get('hud-meter').style.width !== width) get('hud-meter').style.width = width;
     const effects = b ? Object.keys(s.arenaFX).map(key => V.bossArenaEffects[key]) : [];
     const warning = b?.plan?.attack.name ?? chase?.warning?.hint;
-    content('level-message', [s.feedbackTime > 0 ? s.feedback : '', warning, ...effects].filter(Boolean).join(' · '));
+    const stageAlert = b && s.zones.some(z => z.stage && z.at > s.elapsed) ? 'Arena-Gefahr markiert' : '';
+    content('level-message', [s.feedbackTime > 0 ? s.feedback : '', warning, stageAlert, ...effects].filter(Boolean).join(' · '));
   }
 
   const shopLabels = {

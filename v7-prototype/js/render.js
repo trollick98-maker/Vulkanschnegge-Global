@@ -194,6 +194,43 @@
     g.restore();
   }
 
+  function drawStageBackdrop(s) {
+    const b = s.boss;
+    const left = s.cameraX;
+    g.save();
+    if (b.phase) {
+      g.fillStyle = b.definition.color;
+      g.globalAlpha = b.phase === 2 ? .13 : .07;
+      g.fillRect(left, 0, W, G);
+    }
+    g.globalAlpha = b.phase ? .56 : .40;
+    const gap = 328;
+    const start = Math.max(0, Math.floor((left - 220) / gap));
+    const end = Math.min(6, Math.ceil((left + W) / gap));
+    for (let i = start; i <= end; i++) {
+      const arch = i % 2 === 0;
+      fittedSprite(V.bossStageArt(s, arch ? 'arch' : 'pillar'),
+        75 + i * gap, G - 204, arch ? 224 : 172, 204, true);
+    }
+    g.restore();
+  }
+
+  function drawStageDeck(s, deck, x) {
+    const final = s.boss.phase === 2;
+    const art = V.readyImage(V.bossStageArt(s, final ? 'deck-final' : 'deck'));
+    if (!art) return false;
+    const height = V.clamp(deck.w * art.naturalHeight / art.naturalWidth, 30, 96);
+    const edge = s.biome === 'greed' && !final ? .73 : .11;
+    g.drawImage(art, x, deck.y - height * edge, deck.w, height);
+    if (deck.stageWarning) {
+      g.fillStyle = '#ff7c9d';
+      g.globalAlpha = .78;
+      g.fillRect(x, deck.y - 6, deck.w, 5);
+      fittedSprite(V.bossStageArt(s, 'warning'), x + deck.w / 2 - 15, deck.y - 34, 30, 24);
+    }
+    return true;
+  }
+
   function drawCourse(s) {
     const left = s.cameraX ?? 0;
     const top = s.cameraY ?? 0;
@@ -232,6 +269,8 @@
           g.fillStyle = colors.far;
           g.fillRect(x, platform.y + 9, platform.w, 5);
         }
+      } else if (s.boss && drawStageDeck(s, platform, x)) {
+        // Boss decks have their own art and walking edge.
       } else if (platformArt) {
         const scale = platform.w / platformArt.naturalWidth;
         g.drawImage(platformArt, x, platform.y - deckY[s.biome] * scale, platform.w, platformArt.naturalHeight * scale);
@@ -374,8 +413,8 @@
     const { x, y, r } = q;
     const look = V.bossShots[q.key];
     const size = r * 2.74;
-    const art = projectileSprites[q.key] ?? q.key;
-    const flip = q.vx < 0 && (q.key === 'wave' || q.key === 'fault');
+    const art = q.art ?? projectileSprites[q.key] ?? q.key;
+    const flip = q.vx < 0 && (q.art || q.key === 'wave' || q.key === 'fault');
     g.save();
     if (flip) {
       g.translate(2 * x, 0);
@@ -415,7 +454,8 @@
   function drawBossArt(b, x, y, facing, opacity = 1) {
     const clip = atlas[b.definition.sprite];
     const image = V.readyImage(clip ? 'atlas' : b.definition.sprite);
-    const mirror = clip ? facing > 0 && ['greed', 'diva'].includes(b.definition.sprite) : facing < 0;
+    const nativeLeft = b.definition.sprite === 'greed' || b.definition.sprite === 'diva';
+    const mirror = nativeLeft ? facing > 0 : facing < 0;
     g.save();
     g.globalAlpha *= opacity;
     g.translate(x + (mirror ? b.w : 0), y);
@@ -455,16 +495,17 @@
     const fx = s.arenaFX;
     const left = s.cameraX;
     g.save();
-    if (fx.tide) {
+    if (s.tideY < G) {
       g.fillStyle = '#5fdcfc22';
       g.fillRect(left, s.tideY ?? G, W, G - (s.tideY ?? G));
       g.fillStyle = '#81e5ffa6';
       g.fillRect(left, s.tideY ?? G, W, 3);
     }
-    if (fx.current) {
+    const current = fx.current?.direction ?? (s.biome === 'reef' && s.boss.phase === 2 ? Math.sign(s.wind) : 0);
+    if (current) {
       g.fillStyle = '#a3fff59b';
       for (let i = 0; i < 18; i++) {
-        const x = (i * 173 + 1000 + (fx.current.direction * s.elapsed * 255) % W) % W;
+        const x = (i * 173 + 1000 + (current * s.elapsed * 255) % W) % W;
         g.fillRect(left + x, 185 + i * 71 % 237, 29, 3);
       }
     }
@@ -479,7 +520,7 @@
       g.fillStyle = '#ffa9ce75';
       g.fillRect(left, G - 4, W, 4);
     }
-    if (fx.belt) {
+    if (fx.belt || (s.biome === 'vortex' && s.boss.phase > 0)) {
       g.font = 'bold 25px monospace';
       g.fillStyle = '#94e4fc';
       for (let x = Math.floor(left / 48) * 48; x < left + W; x += 48) {
@@ -508,7 +549,7 @@
       const wait = z.at - s.elapsed;
       if (wait > 1.65 || z.x + z.w < s.cameraX || z.x > s.cameraX + W) continue;
       const active = wait <= 0 && !z.preview;
-      const color = V.bossZoneColors[z.style];
+      const color = z.stage ? s.boss.definition.color : V.bossZoneColors[z.style];
       g.save();
       g.fillStyle = color;
       g.globalAlpha = active ? .37 : .13 + .19 * (1 - V.clamp(wait / 1.5, 0, 1));
@@ -518,6 +559,25 @@
       g.lineWidth = 2;
       g.strokeRect(z.x, z.y, z.w, z.h);
       g.fillRect(z.x, z.y + z.h - 4, z.w * (active ? 1 : V.clamp(1 - wait / 1.45, 0, 1)), 4);
+      if (z.stage) {
+        const center = z.x + z.w / 2;
+        const bottom = z.y + z.h;
+        const emitterY = s.biome === 'vortex' ? z.y : bottom - 29;
+        fittedSprite(V.bossStageArt(s, 'emitter'), center - 25, emitterY, 50, 33);
+        if (active) {
+          g.globalAlpha = .89;
+          sprite(V.bossStageArt(s, 'burst'), z.x + z.w * .12, z.y, z.w * .76, z.h);
+        } else {
+          fittedSprite(V.bossStageArt(s, 'warning'), center - 20, bottom - 57, 40, 29);
+          if (z.drift) {
+            g.textAlign = 'center';
+            g.font = 'bold 23px monospace';
+            g.fillText(z.drift > 0 ? '›' : '‹', center + Math.sign(z.drift) * 31, bottom - 35);
+          }
+        }
+        g.restore();
+        continue;
+      }
       g.textAlign = 'center';
       g.font = '900 23px monospace';
       const marker = warningSprites[z.style];
@@ -775,6 +835,32 @@
     g.restore();
   }
 
+  function drawPhaseBanner(s) {
+    const b = s.boss;
+    if (!b?.phase || b.state === 'defeated' || s.elapsed - b.phaseAt >= 1.8) return;
+    const badge = V.bossStageArt(s, b.phase === 1 ? 'phase-two' : 'phase-three');
+    const x = W / 2 - 254;
+    const y = 79;
+    g.save();
+    g.fillStyle = '#091723f5';
+    g.fillRect(x, y, 508, 81);
+    g.strokeStyle = b.definition.color;
+    g.lineWidth = 2;
+    g.strokeRect(x, y, 508, 81);
+    fittedSprite(badge, x + 12, y + 9, 63, 63);
+    g.fillStyle = b.definition.color;
+    g.font = 'bold 16px monospace';
+    g.textAlign = 'left';
+    g.fillText('PHASE ' + (b.phase === 1 ? 'II' : 'III'), x + 90, y + 22);
+    g.fillStyle = '#fff6df';
+    g.font = 'bold 24px system-ui, sans-serif';
+    g.fillText(b.definition.phases[b.phase], x + 90, y + 48, 400);
+    g.fillStyle = '#d2e5e6';
+    g.font = '14px system-ui, sans-serif';
+    g.fillText(V.bossStages[s.biome].hints[b.phase - 1], x + 90, y + 69, 400);
+    g.restore();
+  }
+
   V.render = function (section) {
     const arena = section.kind === 'arena';
     const local = V.usesMomentum(section);
@@ -784,6 +870,7 @@
       g.translate(-Math.round(section.cameraX), -Math.round(section.cameraY));
     }
     drawParticles(section, true);
+    if (section.boss) drawStageBackdrop(section);
     drawScenery(section, local);
     drawCourse(section);
     if (arena) {
@@ -807,5 +894,6 @@
     drawImpacts(section);
     if (local) g.restore();
     drawDamageEdge(section);
+    drawPhaseBanner(section);
   };
 })();

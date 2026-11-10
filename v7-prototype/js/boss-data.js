@@ -185,19 +185,19 @@
   ];
 
   V.bosses = {
-    reef: { name: 'Don Moray', sprite: 'bossEel', hp: 2100, track: 'reef-tax', sound: 'reef-charge',
+    reef: { name: 'Don Moray', sprite: 'bossEel', hp: 4500, track: 'reef-tax', sound: 'reef-charge',
       color: '#83edfa', speed: 365, lift: 34, tip: 'Nach dem Wirbel ist die Muräne erschöpft', attacks: reef,
       phases: phases('Jagd', 'Hochwasser', 'Todesstrudel') },
-    greed: { name: 'God of Greed', sprite: 'greed', hp: 2500, track: 'a-little-more', sound: 'greed-strike',
+    greed: { name: 'God of Greed', sprite: 'greed', hp: 4350, track: 'a-little-more', sound: 'greed-strike',
       color: '#ffd378', speed: 300, lift: 0, tip: 'Den leuchtenden Tresor während des Dekrets treffen', attacks: greed,
-      phases: phases('Zoll', 'Goldflut', 'Königliches Dekret') },
-    diva: { name: 'Diva-Schwänin', sprite: 'diva', hp: 2350, track: 'pretty-things', sound: 'diva-note',
+      phases: phases('Zoll', 'Fahrende Tresore', 'Goldschmelze') },
+    diva: { name: 'Diva-Schwänin', sprite: 'diva', hp: 4450, track: 'pretty-things', sound: 'diva-note',
       color: '#ffa2ec', speed: 405, lift: 86, tip: 'Eine Pose mit dem Katana unterbrechen', attacks: diva,
-      phases: phases('Auftritt', 'Spiegelbühne', 'Zugabe') },
-    vortex: { name: 'Pumper Vortex', sprite: 'vortex', hp: 2900, track: 'one-more-wreck', sound: 'vortex-slam',
+      phases: phases('Auftritt', 'Bühnenwechsel', 'Doppelspot') },
+    vortex: { name: 'Pumper Vortex', sprite: 'vortex', hp: 4550, track: 'one-more-wreck', sound: 'vortex-slam',
       color: '#86d9ff', speed: 475, lift: 13, tip: 'Nach der Überlastung öffnet sich sein Kraftgürtel', attacks: vortex,
-      phases: phases('Warm-up', 'Supersatz', 'Überlastung') },
-    god: { name: 'GOD.EXE', sprite: 'god', hp: 3500, track: 'run-the-loop', sound: 'god-fault',
+      phases: phases('Warm-up', 'Laufbänder', 'Überlastung') },
+    god: { name: 'GOD.EXE', sprite: 'god', hp: 6550, track: 'run-the-loop', sound: 'god-fault',
       color: '#a7ff82', speed: 450, lift: 102, tip: 'Die rote Reset-Sequenz mit einem Schnitt unterbrechen', attacks: god,
       phases: phases('INIT', 'OVERWRITE', 'KERNEL PANIC') }
   };

@@ -9,10 +9,10 @@
     const definition = V.bosses[node.biome];
     const s = V.newSection({ kind: 'boss', character, build, biome: node.biome,
       seed: seed + ':' + node.id, hp: V.rules.bossPlayerHp, title: definition.name });
-    const maxHp = Math.round((definition.hp + 125 * (node.tier - 1)) * 1.15);
+    const maxHp = definition.hp + 270 * (node.tier - 1);
     Object.assign(s, { node, wind: 0 });
     s.boss = { definition, x: 610, y: G - 133, w: 172, h: 133, hp: maxHp, maxHp,
-      state: 'approach', phase: 0, readyAt: .75, hurtAt: 0, flash: 0, facing: -1, turns: 0,
+      state: 'approach', phase: 0, phaseAt: 0, phaseUntil: 0, stageNext: Infinity, stageTurns: 0, readyAt: .75, hurtAt: 0, flash: 0, facing: -1, turns: 0,
       random: V.randomFor(s.seed + ':boss-ai'), bag: [] };
     V.initBossArena(s);
     V.say(s, 'Dash mit dem Glutkatana · ' + definition.tip);
@@ -57,7 +57,6 @@
     b.turns++;
     b.state = 'windup';
     b.plan = { attack, strike, lead, events: [], zones: [], activeUntil: strike + .24, initialHp: s.hp };
-    b.facing = s.player.x + s.player.w / 2 < b.x + b.w / 2 ? -1 : 1;
     V.planBossArena(s, b.plan);
     V.emitParticles(s, 'charge', b.x + b.w / 2, b.y + b.h * .48);
     V.audio?.effect?.(b.definition.sound);
@@ -68,7 +67,7 @@
     const { attack, zones, initialHp } = b.plan;
     if (interrupted) s.zones = s.zones.filter(zone => !zones.includes(zone));
     b.state = 'recovery';
-    b.readyAt = s.elapsed + Math.max(.52, attack.recover - .12 - b.phase * .12);
+    b.readyAt = s.elapsed + Math.max(.40, attack.recover - .16 - b.phase * .12 - .035 * s.node.tier);
     b.exposed = attack.exposed ?? (s.hp === initialHp ? 1.18 : 1);
     b.plan = null;
   }
@@ -88,28 +87,48 @@
       if (t === 1) b.rush = null;
       return;
     }
-    if (b.state === 'windup' || b.state === 'active') return;
+    if (b.state === 'windup' || (b.state === 'active' && b.plan.events.length)) return;
     const center = p.x + p.w / 2;
-    const toRight = center < s.worldWidth - 300;
-    const target = V.clamp(center + (toRight ? 224 : -258) - b.w / 2, 35, s.worldWidth - b.w - 35);
-    const speed = b.definition.speed * (1 + b.phase * .13) * (b.state === 'recovery' ? .48 : 1);
-    b.x += V.clamp((target - b.x) * dt * 2.1, -speed * dt, speed * dt);
-    const flight = (Math.sin(s.elapsed * (2.4 + b.phase * .26)) * .35 + .47) * b.definition.lift;
-    b.y = V.lerp(b.y, G - b.h - flight, dt * 5);
-    b.facing = center < b.x + b.w / 2 ? -1 : 1;
+    const side = center < 320 ? 1 : center > s.worldWidth - 320 ? -1 : b.turns % 4 < 2 ? 1 : -1;
+    const stride = 210 + Math.sin(s.elapsed * (2.3 + b.phase * .25)) * 38;
+    const target = V.clamp(center + side * stride - b.w / 2, 35, s.worldWidth - b.w - 35);
+    const speed = b.definition.speed * (1 + b.phase * .17) * (b.state === 'recovery' ? .62 : 1);
+    b.x += V.clamp((target - b.x) * dt * 2.65, -speed * dt, speed * dt);
+    const flight = (Math.sin(s.elapsed * (2.6 + b.phase * .35)) * .43 + .48) * b.definition.lift;
+    b.y = V.lerp(b.y, G - b.h - flight, dt * 6);
+  }
+
+  function facePlayer(s) {
+    const b = s.boss;
+    const p = s.player;
+    b.facing = Math.sign(p.x + p.w / 2 - b.x - b.w / 2) || b.facing;
+  }
+
+  function nextPhase(s) {
+    const b = s.boss;
+    const phase = b.hp <= b.maxHp / 3 ? 2 : b.hp <= b.maxHp * 2 / 3 ? 1 : 0;
+    if (phase <= b.phase) return;
+    b.phase = phase;
+    b.phaseAt = s.elapsed;
+    b.phaseUntil = s.elapsed + 1.18;
+    b.readyAt = b.phaseUntil;
+    b.stageNext = s.elapsed + 1.62;
+    b.forceSpecial = true;
+    b.state = 'shift';
+    b.plan = b.rush = null;
+    b.exposed = 1;
+    s.zones.length = s.projectiles.length = s.echoes.length = s.chests.length = 0;
+    s.arenaFX = {};
+    V.emitParticles(s, 'parry', b.x + b.w / 2, b.y + b.h / 2, { color: b.definition.color, heavy: true });
+    V.audio?.effect?.(b.definition.sound, true);
+    V.say(s, 'PHASE ' + (phase + 1) + ' · ' + b.definition.phases[phase]);
   }
 
   function updateBoss(s, dt, clock) {
     const b = s.boss;
     const oldX = b.x;
     const oldY = b.y;
-    const phase = b.hp <= b.maxHp / 3 ? 2 : b.hp <= b.maxHp * 2 / 3 ? 1 : 0;
-    if (phase > b.phase) {
-      b.phase = phase;
-      b.forceSpecial = true;
-      V.emitParticles(s, 'parry', b.x + b.w / 2, b.y + b.h / 2, { color: b.definition.color, heavy: true });
-      V.say(s, 'Phase ' + (phase + 1) + ' · ' + b.definition.phases[phase]);
-    }
+    facePlayer(s);
     const plan = b.plan;
     if (plan && s.elapsed >= plan.strike - 1e-7) {
       if (b.state === 'windup') {
@@ -124,6 +143,7 @@
     }
     const rushing = Boolean(b.rush);
     positionBoss(s, dt);
+    facePlayer(s);
     const relative = { ...s.player, previousX: s.player.previousX + b.x - oldX, previousY: s.player.previousY + b.y - oldY };
     if (rushing && V.movementContact(relative, { x: b.x + 22, y: b.y + b.h * .40, w: b.w - 44, h: b.h * .58 }) < Infinity) {
       V.hurt(s, Math.sign(b.x - oldX));
@@ -158,7 +178,7 @@
   function strikeBoss(s, dx, dy) {
     const b = s.boss;
     const p = s.player;
-    if (s.elapsed < b.hurtAt) return;
+    if (s.elapsed < Math.max(b.hurtAt, b.phaseUntil)) return;
     const { body, weak } = V.bossHitboxes(b);
     const canInterrupt = b.state === 'windup' && b.plan.attack.interrupt;
     const mark = b.state === 'recovery' && b.exposed > 1;
@@ -170,7 +190,8 @@
     if (p.swing) p.swing.hits.add(b);
     else p.dashTarget = b;
     const bonus = weakHit ? (canInterrupt ? b.plan.attack.exposed : b.exposed) : 1;
-    const damage = Math.min(b.hp, Math.round(p.dashPower * bonus));
+    const floor = Math.floor(b.maxHp * (2 - b.phase) / 3);
+    const damage = Math.min(b.hp - floor, Math.round(p.dashPower * bonus));
     if (damage <= 0) return;
     b.hp -= damage;
     b.hurtAt = s.elapsed + .12;
@@ -260,6 +281,7 @@
       if (s.elapsed - b.defeatedAt >= deathLength) s.outcome = true;
       return;
     }
+    nextPhase(s);
     V.moveBossDecks(s, dt);
     V.movePlayer(s, dt, actions);
     if (s.snaredUntil > s.elapsed) s.player.vx *= .90;

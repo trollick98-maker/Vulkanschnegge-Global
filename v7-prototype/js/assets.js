@@ -70,6 +70,11 @@
   }
   images['menu-hero'] = 'menu/hero.webp';
   images['menu-chart'] = 'menu/chart.webp';
+  for (const boss of ['reef', 'greed', 'diva', 'vortex', 'god']) {
+    for (const part of ['arch', 'pillar', 'deck', 'deck-final', 'phase-two', 'phase-three', 'emitter', 'warning', 'burst', 'shot']) {
+      images['boss-stage-' + boss + '-' + part] = 'boss-stage/' + boss + '-' + part + '.png';
+    }
+  }
   V.assets = {};
   V.imagePath = name => 'assets/images/' + images[name];
   V.image = function (name) {

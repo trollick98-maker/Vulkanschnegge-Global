@@ -9,9 +9,9 @@ const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
 const modules = [
   'config', 'assets', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats',
-  'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-arena', 'combat', 'boss-chase', 'audio', 'online-board', 'input', 'story', 'render', 'ui', 'main'
+  'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-stage', 'boss-arena', 'combat', 'boss-chase', 'audio', 'online-board', 'input', 'story', 'render', 'ui', 'main'
 ];
-const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats', 'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-arena', 'combat', 'boss-chase', 'story'];
+const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats', 'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-stage', 'boss-arena', 'combat', 'boss-chase', 'story'];
 const idle = {};
 
 function logic(storage = new Map(), files = rules, extra = {}) {
@@ -867,14 +867,21 @@ test('every boss takes one normal katana hit per dash, has a death sequence and 
     assert.equal(s.outcome, null);
     assert.ok(s.effects.some(effect => effect.kind === 'hit' && effect.amount === first));
     let i = 0;
-    while (s.boss.hp > 0 && i++ < 20) assert.ok(bossDash(V, s, i % 2 ? -1 : 1) > 0, id);
+    while (s.boss.hp > 0 && i++ < 40) {
+      V.updateCombat(s, V.rules.step, idle);
+      if (s.boss.state === 'shift') {
+        s.boss.readyAt = 1e5;
+        while (s.elapsed < s.boss.phaseUntil) V.updateCombat(s, V.rules.step, idle);
+      }
+      assert.ok(bossDash(V, s, i % 2 ? -1 : 1) > 0, id);
+    }
     assert.equal(s.boss.state, 'defeated');
     assert.equal(s.outcome, null);
     assert.equal(s.zones.length, 0);
     for (let j = 0; j < 85; j++) V.updateCombat(s, V.rules.step, idle);
     assert.equal(s.outcome, true);
     const retry = V.newCombat(node, 'otter', {}, 'death');
-    assert.equal(retry.boss.hp, Math.round((definition.hp + 125 * (node.tier - 1)) * 1.15));
+    assert.equal(retry.boss.hp, definition.hp + 270 * (node.tier - 1));
     assert.equal(retry.boss.phase, 0);
     assert.equal(retry.boss.plan, undefined);
     assert.equal(retry.player.swing, null);
@@ -912,6 +919,61 @@ test('the five boss AIs telegraph six distinct attacks and run all three phases'
     assert.ok(effects.size >= 2, id);
     for (const state of ['windup', 'active', 'recovery']) assert.ok(states.has(state), id);
     assert.equal(s.outcome, null);
+  }
+});
+
+test('phase thresholds reconfigure all five arenas and telegraph the new hazards', () => {
+  const { V } = logic();
+  const graph = V.generateMap('arena-phase');
+  for (const id of Object.keys(V.bosses)) {
+    const s = V.newCombat(graph.byId[id], 'snail', {}, graph.seed);
+    const b = s.boss;
+    s.player.invuln = 60;
+    const deck = s.platforms[1];
+    const layouts = [];
+    for (const phase of [1, 2]) {
+      b.hp = Math.floor(b.maxHp * (3 - phase) / 3);
+      V.updateCombat(s, V.rules.step, idle);
+      assert.equal(b.state, 'shift', id);
+      assert.equal(b.phase, phase, id);
+      assert.equal(s.zones.length, 0, id);
+      assert.equal(s.projectiles.length, 0, id);
+      assert.ok(b.phaseUntil > s.elapsed + 1, id);
+      let hazards = [];
+      let warning = false;
+      let ghost = false;
+      for (let step = 0; step < 210; step++) {
+        V.updateCombat(s, V.rules.step, { right: step < 92, left: step > 125 });
+        assert.equal(b.facing, Math.sign(s.player.x + s.player.w / 2 - b.x - b.w / 2), id);
+        const marked = s.zones.filter(z => z.stage && z.at > s.elapsed);
+        if (marked.length > hazards.length) hazards = marked;
+        warning ||= s.platforms.some(p => p.stageWarning);
+        ghost ||= s.platforms.some(p => p.enabled === false);
+      }
+      assert.equal(hazards.length, phase === 1 ? 1 : id === 'god' ? 3 : 2, id);
+      layouts.push([deck.worldX, deck.y]);
+      if (id === 'god') assert.ok(warning && ghost);
+      if (id === 'reef') assert.ok(s.tideY < V.GROUND - 75);
+    }
+    assert.notDeepEqual(layouts[0], layouts[1], id);
+    assert.ok(b.maxHp >= 4500, id);
+  }
+  assert.ok(V.newCombat(graph.byId.god, 'snail', {}, graph.seed).boss.maxHp >= 7000);
+});
+
+test('the boss stages pack ten transparent sprites for every boss', () => {
+  const { V } = logic(undefined, ['config', 'assets', 'boss-stage']);
+  const directory = path.join(root, 'assets/images/boss-stage');
+  const files = fs.readdirSync(directory);
+  assert.equal(files.length, 50);
+  for (const biome of Object.keys(V.bossStages)) {
+    assert.equal(files.filter(file => file.startsWith(biome + '-')).length, 10);
+  }
+  for (const file of files) {
+    assert.equal(V.imagePath('boss-stage-' + file.slice(0, -4)), 'assets/images/boss-stage/' + file);
+    const data = fs.readFileSync(path.join(directory, file));
+    assert.equal(data.subarray(0, 8).toString('hex'), '89504e470d0a1a0a', file);
+    assert.equal(data[25], 6, file);
   }
 });
 

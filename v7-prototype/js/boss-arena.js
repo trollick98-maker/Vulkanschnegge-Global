@@ -20,7 +20,7 @@
     Object.assign(s, { worldWidth: 2060, cameraX: 0, cameraY: 0, runDirection: 1,
       zones: [], echoes: [], chests: [], arenaFX: {}, history: [], historyAt: 0 });
     s.platforms = [{ worldX: 0, y: G, w: s.worldWidth, h: 17, ground: true },
-      ...decks[s.biome].map(([worldX, y, w]) => ({ worldX, y, homeY: y, w, h: 17 }))];
+      ...decks[s.biome].map(([worldX, y, w]) => ({ worldX, homeX: worldX, y, homeY: y, w, h: 17 }))];
   };
 
   V.bossZone = function (s, x, y, w, h, at, life, style, drift = 0, preview = false) {
@@ -47,12 +47,13 @@
       plan.activeUntil = Math.max(plan.activeUntil, plan.strike + at + life);
     };
     plan.attack.plan({
-      b, phase, px, py, bx, by, dir, shotSpeed: 360 + 45 * phase,
+      b, phase, px, py, bx, by, dir, shotSpeed: 401 + 42 * phase + 17 * (s.node.tier - 1),
       nearDecks: decksByDistance.slice(0, 2 + Number(phase > 1)),
       history: s.history.length > 1 ? s.history.slice(-3) : [px - 137, px, px + 137],
       zone,
       shot: (key, x, y, vx, vy, at, extra = {}) => {
-        queue(at, 'shot', { key, x: V.clamp(x, 22, s.worldWidth - 22), y, vx, vy, ...V.bossShots[key], ...extra });
+        const art = phase && key === V.bossStages[s.biome].shot ? V.bossStageArt(s, 'shot') : undefined;
+        queue(at, 'shot', { key, art, x: V.clamp(x, 22, s.worldWidth - 22), y, vx, vy, ...V.bossShots[key], ...extra });
         plan.activeUntil = Math.max(plan.activeUntil, plan.strike + at + .12);
       },
       rush: (x, y, life, style, lift = 0) => {
@@ -102,17 +103,25 @@
     const tide = fx.tide;
     s.tideY = tide ? G - 234 * Math.min(1, (s.elapsed - tide.start) / 1.15, tide.end - s.elapsed) : G;
     s.gravityFactor = tide && p.y + p.h / 2 >= s.tideY ? .62 : 1;
+    V.updateBossStage(s);
     for (let i = 1; i < s.platforms.length; i++) {
       const deck = s.platforms[i];
       const lift = fx.gilded ? 38 : fx.stage ? (i % 2 ? 42 : -33) :
         fx.quake ? Math.sin(s.elapsed * 7 + i * 1.6) * 27 : fx.patch ? (i % 2 ? -23 : 23) : 0;
+      const stage = V.bossStageDeck(s, i);
+      const oldX = deck.worldX;
       const oldY = deck.y;
       const wasEnabled = deck.enabled !== false;
       const ghost = fx.patch && (i + Math.floor((s.elapsed - fx.patch.start) * 1.3)) % 4 === 0;
-      deck.enabled = !ghost;
-      deck.y = V.lerp(oldY, deck.homeY - lift, Math.min(1, dt * 6));
+      deck.enabled = !ghost && !stage.ghost;
+      deck.stageWarning = stage.warn;
+      deck.worldX = V.lerp(oldX, deck.homeX + stage.shift, Math.min(1, dt * 6));
+      deck.y = V.lerp(oldY, deck.homeY - lift - stage.lift, Math.min(1, dt * 6));
       if (wasEnabled && deck.enabled && p.grounded && Math.abs(p.y + p.h - oldY) < 2 &&
-        p.x + p.w > deck.worldX + 4 && p.x < deck.worldX + deck.w - 4) p.y += deck.y - oldY;
+        p.x + p.w > oldX + 4 && p.x < oldX + deck.w - 4) {
+        p.x = V.clamp(p.x + deck.worldX - oldX, 22, s.worldWidth - p.w - 22);
+        p.y += deck.y - oldY;
+      }
     }
     if (p.x <= 24) s.runDirection = 1;
     else if (p.x + p.w >= s.worldWidth - 24) s.runDirection = -1;
@@ -129,7 +138,7 @@
       if (s.elapsed < z.at || z.preview) continue;
       if (!z.flared) {
         z.flared = true;
-        V.emitParticles(s, 'zone', z.x + z.w / 2, z.y + z.h - 11, { color: V.bossZoneColors[z.style], spread: z.w });
+        V.emitParticles(s, 'zone', z.x + z.w / 2, z.y + z.h - 11, { color: z.stage ? s.boss.definition.color : V.bossZoneColors[z.style], spread: z.w });
       }
       const oldX = z.x;
       z.x += z.drift * dt;
