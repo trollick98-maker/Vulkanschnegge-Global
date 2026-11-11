@@ -3,6 +3,45 @@
   'use strict';
   const V = window.VS7;
   const G = V.GROUND;
+  V.arenaGlitchThemes = {
+    garden: { title: 'Zuckerwiese', top: '#ecd4f0', bottom: '#b8dcd1', ground: '#6f607c', far: '#c4a1cc',
+      accent: '#a13c7d', danger: '#821337', light: '#fff1fa' },
+    inferno: { title: 'Glutarena', top: '#1e141b', bottom: '#683025', ground: '#312027', far: '#472326',
+      accent: '#ffaa65', danger: '#ff975b', light: '#fff1b3' },
+    race: { title: 'Neon-Grand-Prix', top: '#161b37', bottom: '#33365f', ground: '#252944', far: '#292b4d',
+      accent: '#89e7fa', danger: '#ff9cdf', light: '#bff5ff' }
+  };
+
+  V.initArenaGlitch = function (s) {
+    if (s.biome !== 'god') return;
+    const random = V.randomFor(s.seed + ':arena-glitch');
+    const order = random() < .5 ? ['garden', 'inferno', 'race'] : ['garden', 'race', 'inferno'];
+    s.arenaGlitch = { random, order, index: 0, active: null, nextAt: null, endsAt: 0, changedAt: -Infinity };
+  };
+
+  V.updateArenaGlitch = function (s) {
+    const glitch = s.arenaGlitch;
+    if (!glitch || !s.boss.phase || s.boss.state === 'defeated') return;
+    if (glitch.active) {
+      if (s.elapsed < glitch.endsAt) return;
+      V.restoreArenaGlitch(s);
+      glitch.nextAt = s.elapsed + 7 + glitch.random() * 7;
+    } else {
+      glitch.nextAt ??= s.boss.phaseAt + 3.4;
+      if (s.elapsed < glitch.nextAt) return;
+      glitch.active = glitch.order[glitch.index++ % glitch.order.length];
+      glitch.changedAt = s.elapsed;
+      glitch.endsAt = s.elapsed + 10 + glitch.random() * 20;
+    }
+    V.audio?.effect?.('god-arena-glitch');
+  };
+
+  V.restoreArenaGlitch = function (s) {
+    if (!s.arenaGlitch?.active) return;
+    s.arenaGlitch.active = null;
+    s.arenaGlitch.changedAt = s.elapsed;
+  };
+
   V.bossStages = {
     reef: { shot: 'plasma', width: 94, height: 190, interval: 4.25,
       hints: ['Das Wasser steigt · längere Sprünge unter Wasser', 'Die Strömung dreht · zwischen den Fontänen bleiben'] },

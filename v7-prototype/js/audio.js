@@ -6,7 +6,7 @@
   const failed = new Set();
   const effects = new Map();
   const effectNames = ['hit', 'hurt', 'guard', 'parry', 'dash', 'dash-fast', 'skid', 'katana',
-    'reef-charge', 'greed-strike', 'diva-note', 'vortex-slam', 'god-fault', 'god-morph', 'god-collapse', 'boss-break',
+    'reef-charge', 'greed-strike', 'diva-note', 'vortex-slam', 'god-fault', 'god-morph', 'god-collapse', 'god-arena-glitch', 'boss-break',
     'clear-travel', 'clear-arena', 'clear-boss', 'clear-finale'];
   let scene = null;
   let wanted = null;

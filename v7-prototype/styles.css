@@ -773,6 +773,14 @@ kbd { padding: 2px 5px; background: #132439; border: 1px solid #3f596e; border-r
 
 .boss-hp { position: relative; background: #2b1424; }
 .boss-hp #hud-meter { background: linear-gradient(90deg, #e13e67, #ff9d71); }
+#game-panel[data-arena-glitch="garden"] { --glitch-ui: #f3a6db; --glitch-meter: #e75eae; }
+#game-panel[data-arena-glitch="inferno"] { --glitch-ui: #ffb27c; --glitch-meter: #df5d42; }
+#game-panel[data-arena-glitch="race"] { --glitch-ui: #94efff; --glitch-meter: #7778ff; }
+#game-panel[data-arena-glitch]:not([data-arena-glitch=""]) .hud-box { border-color: var(--glitch-ui); }
+#game-panel[data-arena-glitch]:not([data-arena-glitch=""]) #level-kind { color: var(--glitch-ui); }
+#game-panel[data-arena-glitch]:not([data-arena-glitch=""]) .boss-hp #hud-meter {
+  background: linear-gradient(90deg, var(--glitch-meter), var(--glitch-ui));
+}
 .boss-hp::after {
   content: "";
   position: absolute;

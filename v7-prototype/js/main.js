@@ -134,6 +134,9 @@
     if (section.kind !== 'arcade') V.image('clear-' + V.clearArt(state.level));
     if (state.level.chase?.definition.sprite === 'god') {
       for (const form of V.godForms) V.image(form);
+      for (const theme of Object.keys(V.arenaGlitchThemes)) {
+        for (const part of V.arenaGlitchArt) V.image('glitch-' + theme + '-' + part);
+      }
     }
     const zone = section.route ? graph.byId[section.route.edge.b] : section.node;
     if (!intro && !skipIntro) V.startCameraCue(state.level);

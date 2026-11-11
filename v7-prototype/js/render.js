@@ -7,6 +7,23 @@
   const backdrops = new Map();
   const motionPreference = window.matchMedia?.('(prefers-reduced-motion: reduce)');
   let reducedMotion = motionPreference?.matches;
+  let skinKey;
+  let skin;
+  const skinRoles = {
+    'platform-god': 'deck', 'boss-stage-god-deck': 'deck', 'boss-stage-god-deck-final': 'deck',
+    'boss-stage-god-arch': 'prop-a', 'boss-stage-god-pillar': 'prop-b', 'boss-stage-god-emitter': 'prop-b',
+    'scenery-split-terminal': 'prop-a', 'scenery-fractured-column': 'prop-b',
+    'boss-stage-god-warning': 'warning', 'warn-fault': 'warning', 'warn-target': 'warning',
+    'fx-weak-reticle': 'warning', 'boss-stage-god-phase-two': 'prop-a', 'boss-stage-god-phase-three': 'prop-b',
+    'fx-katana-cut': 'burst', 'fx-parry': 'burst', coin: 'shot'
+  };
+  const glitchArt = part => 'glitch-' + skinKey + '-' + part;
+  function imageFor(name) {
+    if (!skin) return V.readyImage(name);
+    const role = skinRoles[name] ??
+      (/^(impact-|movement-|ambient-fx-)/.test(name) ? 'burst' : null);
+    return V.readyImage(role ? glitchArt(role) : name);
+  }
   // Y coordinate of each walkable deck in its source PNG.
   const deckY = { reef: 17, greed: 2, diva: 2, vortex: 2, god: 0 };
   const atlas = {
@@ -16,8 +33,8 @@
   g.imageSmoothingEnabled = false;
 
   function background(key, time, dist, arena, cameraY, worldWidth) {
-    const colors = V.biomes[key];
-    const cacheKey = arena ? key + ':arena' : key;
+    const colors = skin ?? V.biomes[key];
+    const cacheKey = skinKey ?? (arena ? key + ':arena' : key);
     if (!backdrops.has(cacheKey)) {
       const plate = document.createElement('canvas');
       plate.width = W;
@@ -40,7 +57,7 @@
       backdrops.set(cacheKey, plate);
     }
     g.drawImage(backdrops.get(cacheKey), 0, 0);
-    const panorama = V.readyImage('panorama-' + key);
+    const panorama = V.readyImage(skin ? glitchArt('panorama') : 'panorama-' + key);
     if (panorama) {
       const height = H * 1.18;
       const width = Math.max(W, height * panorama.naturalWidth / panorama.naturalHeight);
@@ -92,14 +109,14 @@
   }
 
   function sprite(name, x, y, w, h) {
-    const image = V.readyImage(name);
+    const image = imageFor(name);
     if (!image) return false;
     g.drawImage(image, x, y, w, h);
     return true;
   }
 
   function fittedSprite(name, x, y, w, h, bottom = false) {
-    const image = V.readyImage(name);
+    const image = imageFor(name);
     if (!image) return false;
     const scale = Math.min(w / image.naturalWidth, h / image.naturalHeight);
     const width = image.naturalWidth * scale;
@@ -109,6 +126,7 @@
   }
 
   function surgeSprite(atlas, index, x, y, w, h, bottom = false) {
+    if (skin) return fittedSprite(glitchArt(index % 2 ? 'shot' : 'burst'), x, y, w, h, bottom);
     const frame = V.surgeFrames[atlas]?.[index];
     const image = V.readyImage('surge-atlas-' + atlas);
     if (!frame || !image) return false;
@@ -164,7 +182,7 @@
       const remaining = p.left / p.life;
       g.globalAlpha = remaining * (background ? .48 : .86);
       if (p.ring) {
-        g.strokeStyle = p.tint;
+        g.strokeStyle = skin?.accent ?? p.tint;
         g.lineWidth = 1 + remaining * 2;
         g.beginPath();
         g.arc(p.x, p.y, p.ring * (1 - .85 * remaining), 0, Math.PI * 2);
@@ -225,7 +243,7 @@
     const left = s.cameraX;
     g.save();
     if (b.phase) {
-      g.fillStyle = b.definition.color;
+      g.fillStyle = skin?.accent ?? b.definition.color;
       g.globalAlpha = b.phase === 2 ? .13 : .07;
       g.fillRect(left, 0, W, G);
     }
@@ -243,13 +261,13 @@
 
   function drawStageDeck(s, deck, x) {
     const final = s.boss.phase === 2;
-    const art = V.readyImage(V.bossStageArt(s, final ? 'deck-final' : 'deck'));
+    const art = imageFor(V.bossStageArt(s, final ? 'deck-final' : 'deck'));
     if (!art) return false;
     const height = V.clamp(deck.w * art.naturalHeight / art.naturalWidth, 30, 96);
-    const edge = s.biome === 'god' ? .36 : s.biome === 'greed' && !final ? .73 : .11;
+    const edge = skin ? .08 : s.biome === 'god' ? .36 : s.biome === 'greed' && !final ? .73 : .11;
     g.drawImage(art, x, deck.y - height * edge, deck.w, height);
     if (deck.stageWarning) {
-      g.fillStyle = '#ff7c9d';
+      g.fillStyle = skin?.danger ?? '#ff7c9d';
       g.globalAlpha = .78;
       g.fillRect(x, deck.y - 6, deck.w, 5);
       fittedSprite(V.bossStageArt(s, 'warning'), x + deck.w / 2 - 15, deck.y - 34, 30, 24);
@@ -260,9 +278,9 @@
   function drawCourse(s) {
     const left = s.cameraX ?? 0;
     const top = s.cameraY ?? 0;
-    const colors = V.biomes[s.biome];
-    const platformArt = V.readyImage('platform-' + s.biome);
-    const groundArt = s.biome === 'god' ? platformArt : V.readyImage('ground-' + s.biome);
+    const colors = skin ?? V.biomes[s.biome];
+    const platformArt = imageFor('platform-' + s.biome);
+    const groundArt = skin ? V.readyImage(glitchArt('ground')) : s.biome === 'god' ? platformArt : V.readyImage('ground-' + s.biome);
     const tileSize = 150;
     if (groundArt && !V.usesMomentum(s)) {
       const height = tileSize * groundArt.naturalHeight / groundArt.naturalWidth;
@@ -439,7 +457,7 @@
     const { x, y, r } = q;
     const look = V.bossShots[q.key];
     const size = r * 2.74;
-    const art = q.art ?? projectileSprites[q.key] ?? q.key;
+    const art = skin ? glitchArt(look.reflect ? 'shot' : 'hazard') : q.art ?? projectileSprites[q.key] ?? q.key;
     const flip = q.vx < 0 && (q.art || q.key === 'wave' || q.key === 'fault');
     g.save();
     if (flip) {
@@ -470,6 +488,11 @@
       }
     }
     if (look.reflect) {
+      if (skin) {
+        g.strokeStyle = '#232039';
+        g.lineWidth = 4;
+        g.strokeRect(x - r - 4, y - r - 4, (r + 4) * 2, (r + 4) * 2);
+      }
       g.strokeStyle = q.reflected ? '#fff1a8' : '#fbffec';
       g.lineWidth = q.reflected ? 3 : 1.5;
       const halo = r + (q.reflected ? 7 : 4);
@@ -483,7 +506,7 @@
     const age = elapsed - b.phaseAt;
     const shifting = !death && b.phaseFrom !== undefined && elapsed < b.phaseUntil;
     const progress = shifting ? V.clamp(age / (b.phaseUntil - b.phaseAt), 0, 1) : 1;
-    const previous = shifting && !reducedMotion ? V.readyImage(V.godForms[b.phaseFrom]) : null;
+    const previous = shifting && !reducedMotion ? skin ? image : V.readyImage(V.godForms[b.phaseFrom]) : null;
     const frame = Math.floor(elapsed * 11);
     const period = 17 - 4 * (b.phase ?? 0);
     const tearing = frame % period < 2;
@@ -504,7 +527,7 @@
       const offset = previous || death || (i + frame) % 4 === 0
         ? Math.round(tear * Math.sin((rank + 1) * 2.1 + frame * .9)) : 0;
       if (offset && (i + frame) % 3 === 0) {
-        g.fillStyle = i % 2 ? '#96333e' : '#c56467';
+        g.fillStyle = skin?.accent ?? (i % 2 ? '#96333e' : '#c56467');
         g.fillRect(offset > 0 ? -Math.abs(offset) : b.w - Math.abs(offset) / 2, dy + 2, Math.abs(offset) + 7, 2);
       }
       g.drawImage(from, 0, y1, from.naturalWidth, y2 - y1, offset, dy, b.w, height);
@@ -514,7 +537,7 @@
   function drawBossArt(b, x, y, facing, opacity = 1, elapsed = 0, death = 0) {
     const shadow = b.definition.sprite === 'god';
     const clip = atlas[b.definition.sprite];
-    const image = V.readyImage(shadow ? V.godForms[b.phase ?? 0] : clip ? 'atlas' : b.definition.sprite);
+    const image = V.readyImage(shadow ? skin ? glitchArt('boss') : V.godForms[b.phase ?? 0] : clip ? 'atlas' : b.definition.sprite);
     const nativeLeft = shadow || b.definition.sprite === 'greed' || b.definition.sprite === 'diva';
     const mirror = nativeLeft ? facing > 0 : facing < 0;
     g.save();
@@ -597,7 +620,7 @@
     if (fx.blackout) {
       g.fillStyle = '#060e1d9c';
       g.fillRect(left, 0, W, G);
-      g.fillStyle = '#db676f60';
+      g.fillStyle = skin ? skin.accent + '60' : '#db676f60';
       for (let i = 0; i < 12; i++) g.fillRect(left + i * 88, i * 73 % 329, 23, 3);
     }
     g.restore();
@@ -611,7 +634,7 @@
       const wait = z.at - s.elapsed;
       if (wait > 1.65 || z.x + z.w < s.cameraX || z.x > s.cameraX + W) continue;
       const active = wait <= 0 && !z.preview;
-      const color = z.stage ? s.boss.definition.color : V.bossZoneColors[z.style];
+      const color = skin?.danger ?? (z.stage ? s.boss.definition.color : V.bossZoneColors[z.style]);
       g.save();
       g.fillStyle = color;
       g.globalAlpha = active ? .37 : .13 + .19 * (1 - V.clamp(wait / 1.5, 0, 1));
@@ -628,7 +651,12 @@
         fittedSprite(V.bossStageArt(s, 'emitter'), center - 25, emitterY, 50, 33);
         if (active) {
           g.globalAlpha = .89;
-          sprite(V.bossStageArt(s, 'burst'), z.x + z.w * .12, z.y, z.w * .76, z.h);
+          if (skin) {
+            const count = Math.max(1, Math.ceil(z.h / 65));
+            for (let i = 0; i < count; i++) {
+              fittedSprite(glitchArt('burst'), z.x, z.y + i * z.h / count, z.w, z.h / count);
+            }
+          } else sprite(V.bossStageArt(s, 'burst'), z.x + z.w * .12, z.y, z.w * .76, z.h);
         } else {
           fittedSprite(V.bossStageArt(s, 'warning'), center - 20, bottom - 57, 40, 29);
           if (z.drift) {
@@ -701,7 +729,7 @@
     g.ellipse(cx, G + 2, 64, 7, 0, 0, Math.PI * 2);
     g.fill();
     g.globalAlpha = shadow ? (.08 + charge * .13) * (1 - death) : .14 + charge * .25;
-    g.fillStyle = b.definition.color;
+    g.fillStyle = skin?.accent ?? b.definition.color;
     g.beginPath();
     g.ellipse(cx, cy, 90 + 14 * b.phase, 67 + charge * 18, 0, 0, Math.PI * 2);
     g.fill();
@@ -731,8 +759,8 @@
     const weak = (windup && plan.attack.interrupt) || (b.state === 'recovery' && b.exposed > 1);
     if (weak) {
       const box = V.bossHitboxes(b).weak;
-      if (!fittedSprite('fx-weak-reticle', box.x, box.y, box.w, box.h)) {
-        g.strokeStyle = '#fff39a';
+      if (!fittedSprite('fx-weak-reticle', box.x, box.y, box.w, box.h) || skin) {
+        g.strokeStyle = skin?.danger ?? '#fff39a';
         g.lineWidth = 3;
         g.strokeRect(box.x, box.y, box.w, box.h);
       }
@@ -745,7 +773,7 @@
         const q = shot.data;
         g.save();
         g.globalAlpha = .23 + charge * .44;
-        g.strokeStyle = b.definition.color;
+        g.strokeStyle = skin?.danger ?? b.definition.color;
         g.lineWidth = 3;
         g.beginPath();
         g.moveTo(q.x, q.y);
@@ -753,7 +781,7 @@
         g.stroke();
         g.restore();
       }
-      g.fillStyle = b.definition.color;
+      g.fillStyle = skin?.danger ?? b.definition.color;
       g.fillRect(cx - 49, b.y - 12, 98 * charge, 4);
     }
     if (death > 0 && !shadow) {
@@ -789,7 +817,7 @@
       const from = V.weaponPose(s, Math.max(0, swing.time - .054)).angle;
       const span = Math.max(.16, pose.angle - from);
       const start = pose.angle - span;
-      g.strokeStyle = weapon.color;
+      g.strokeStyle = skin?.accent ?? weapon.color;
       g.globalAlpha = .37;
       g.lineWidth = 10;
       g.beginPath();
@@ -802,7 +830,7 @@
       g.arc(0, 0, length, start, pose.angle);
       g.stroke();
       if (!reducedMotion) {
-        g.fillStyle = weapon.color;
+        g.fillStyle = skin?.accent ?? weapon.color;
         for (let i = 0; i < 5; i++) {
           const angle = start + span * i / 5;
           g.fillRect(Math.cos(angle) * (length + i * 2), Math.sin(angle) * (length + i * 2), 3, 3);
@@ -810,8 +838,14 @@
       }
     } else g.globalAlpha = .78;
     g.rotate(pose.angle);
-    const blade = V.readyImage(weapon.sprite);
-    if (blade) {
+    const blade = skin ? null : V.readyImage(weapon.sprite);
+    if (skin) {
+      g.fillStyle = '#232039';
+      g.fillRect(-weapon.grip, -4, length + weapon.grip, 8);
+      g.fillStyle = skin.accent;
+      g.fillRect(-weapon.grip + 2, -2, length + weapon.grip - 3, 4);
+      fittedSprite(glitchArt('warning'), length - 15, -9, 18, 18);
+    } else if (blade) {
       const width = length + weapon.grip;
       const height = width * blade.naturalHeight / blade.naturalWidth;
       g.drawImage(blade, -weapon.grip, -height / 2, width, height);
@@ -951,8 +985,32 @@
     g.restore();
   }
 
+  function drawGlitchCut(s) {
+    if (reducedMotion || !s.arenaGlitch) return;
+    const age = s.elapsed - s.arenaGlitch.changedAt;
+    if (age < 0 || age >= .52) return;
+    const power = (1 - age / .52) ** 2;
+    const tick = Math.floor(age * 18);
+    g.save();
+    for (let i = 0; i < 8; i++) {
+      const y = (i * 67 + 27) % H;
+      const height = 5 + i % 3 * 4;
+      const offset = Math.round(Math.sin(i * 2.7 + tick * .7) * (15 + i * 2) * power);
+      const width = W - Math.abs(offset);
+      g.globalAlpha = .72 * power;
+      if (offset) g.drawImage(canvas, Math.max(0, -offset), y, width, height,
+        Math.max(0, offset), y, width, height);
+      g.globalAlpha = .56 * power;
+      g.fillStyle = i % 2 ? skin?.accent ?? '#a73d52' : skin?.light ?? '#e99197';
+      g.fillRect((i * 119 + tick * 43) % (W - 140), y, 90 + (i % 3) * 38, 2);
+    }
+    g.restore();
+  }
+
   V.render = function (section) {
     reducedMotion = motionPreference?.matches;
+    skinKey = section.arenaGlitch?.active;
+    skin = V.arenaGlitchThemes[skinKey];
     const arena = section.kind === 'arena';
     const local = V.usesMomentum(section);
     const view = V.cameraView(section);
@@ -995,6 +1053,7 @@
       g.restore();
       drawCameraCue(section, view);
     }
+    drawGlitchCut(section);
     drawDamageEdge(section);
     drawPhaseBanner(section);
   };

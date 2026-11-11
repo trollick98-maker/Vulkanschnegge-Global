@@ -115,6 +115,57 @@ test('GOD.EXE ships three aligned transparent forms and two phase cues', () => {
   }
 });
 
+test('GOD.EXE cycles through three temporary arena looks from phase two and restores on defeat', () => {
+  const { V } = logic();
+  const graph = V.generateMap('arena-glitch');
+  const s = V.newCombat(graph.byId.god, 'snail', {}, graph.seed);
+  const glitch = s.arenaGlitch;
+  const events = [];
+  V.audio = { effect: key => events.push(key) };
+  s.elapsed = 60;
+  V.updateArenaGlitch(s);
+  assert.equal(glitch.active, null);
+  s.boss.phase = 1;
+  s.boss.phaseAt = 60;
+  V.updateArenaGlitch(s);
+  assert.equal(glitch.nextAt, 63.4);
+  const chosen = new Set();
+  for (let cycle = 0; cycle < 3; cycle++) {
+    s.elapsed = glitch.nextAt;
+    V.updateArenaGlitch(s);
+    chosen.add(glitch.active);
+    assert.ok(glitch.endsAt - s.elapsed >= 10 && glitch.endsAt - s.elapsed <= 30);
+    const active = glitch.active;
+    s.boss.phase = 2;
+    s.elapsed = glitch.endsAt - .01;
+    V.updateArenaGlitch(s);
+    assert.equal(glitch.active, active);
+    s.elapsed = glitch.endsAt;
+    V.updateArenaGlitch(s);
+    assert.equal(glitch.active, null);
+    assert.ok(glitch.nextAt - s.elapsed >= 7 && glitch.nextAt - s.elapsed <= 14);
+  }
+  assert.deepEqual([...chosen].sort(), ['garden', 'inferno', 'race']);
+  assert.equal(events.filter(key => key === 'god-arena-glitch').length, 6);
+  s.elapsed = glitch.nextAt;
+  V.updateArenaGlitch(s);
+  V.defeatBoss(s);
+  assert.equal(glitch.active, null);
+  assert.equal(glitch.changedAt, s.elapsed);
+  assert.equal(V.newCombat(graph.byId.reef, 'snail', {}, graph.seed).arenaGlitch, undefined);
+});
+
+test('all three glitch worlds have a complete local render kit', () => {
+  const { V } = logic(undefined, ['config', 'assets', 'boss-stage']);
+  for (const theme of Object.keys(V.arenaGlitchThemes)) {
+    for (const part of V.arenaGlitchArt) {
+      const file = fs.readFileSync(path.join(root, V.imagePath('glitch-' + theme + '-' + part)));
+      if (part === 'panorama') assert.equal(file.toString('ascii', 8, 12), 'WEBP');
+      else assert.equal(file[25], 6, theme + ' ' + part);
+    }
+  }
+});
+
 test('the six surge atlases contain 50 transparent sprites with valid source frames', () => {
   const { V } = logic(undefined, ['config', 'assets', 'surge-art']);
   let sprites = 0;

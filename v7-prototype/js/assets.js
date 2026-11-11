@@ -46,6 +46,12 @@
   }
   V.godForms = ['god-echo', 'god-overwrite', 'god-panic'];
   for (const form of V.godForms) images[form] = 'god-exe/' + form.slice(4) + '.png';
+  V.arenaGlitchArt = ['panorama', 'boss', 'deck', 'ground', 'prop-a', 'prop-b', 'shot', 'hazard', 'warning', 'burst'];
+  for (const theme of ['garden', 'inferno', 'race']) {
+    for (const part of V.arenaGlitchArt) {
+      images['glitch-' + theme + '-' + part] = 'arena-glitch/' + theme + '/' + part + (part === 'panorama' ? '.webp' : '.png');
+    }
+  }
   V.sceneryProps = {
     reef: ['fan-coral', 'dive-lantern', 'porthole', 'reef-eel'],
     greed: ['brass-bollard', 'doubloons', 'anchor-chain', 'brass-urn'],

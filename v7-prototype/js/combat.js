@@ -15,6 +15,7 @@
       state: 'approach', phase: 0, phaseAt: 0, phaseUntil: 0, stageNext: Infinity, stageTurns: 0, readyAt: .75, hurtAt: 0, flash: 0, facing: -1, side: 1, turns: 0,
       random: V.randomFor(s.seed + ':boss-ai'), bag: [] };
     V.initBossArena(s);
+    V.initArenaGlitch(s);
     V.say(s, 'Dash mit dem Glutkatana · ' + definition.tip);
     return s;
   };
@@ -196,6 +197,7 @@
     b.hp = 0;
     b.state = 'defeated';
     b.defeatedAt = s.elapsed;
+    V.restoreArenaGlitch(s);
     b.plan = b.rush = b.flank = null;
     s.projectiles.length = s.zones.length = s.echoes.length = s.chests.length = 0;
     s.arenaFX = {};
@@ -313,6 +315,7 @@
       return;
     }
     nextPhase(s);
+    V.updateArenaGlitch(s);
     V.moveBossDecks(s, dt);
     V.movePlayer(s, dt, actions);
     if (s.snaredUntil > s.elapsed) s.player.vx *= .90;
