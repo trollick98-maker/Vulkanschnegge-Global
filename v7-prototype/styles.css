@@ -489,6 +489,18 @@ a.primary:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 .perk-chip.rare { border-color: #708fce; }
 .perk-chip.epic { border-color: #c387e1; }
 .game-frame { aspect-ratio: 16 / 9; position: relative; }
+#dimension-glitch {
+  position: fixed;
+  z-index: 12;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, #180b2d 0 3px, transparent 3px 11px),
+    linear-gradient(118deg, #2ac8db52, #160e34 48%, #d135615c);
+  opacity: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  #dimension-glitch { display: none; }
+}
 canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
 .game-hud {
   position: absolute;

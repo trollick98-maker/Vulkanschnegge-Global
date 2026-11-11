@@ -212,7 +212,8 @@
     game.dataset.arenaGlitch = glitch ?? '';
     const timed = Boolean(chase) || s.kind === 'travel';
     const kind = b ? 'BOSS · PHASE ' + (b.phase + 1) + ' / 3' : kinds[s.kind];
-    content('level-kind', [kind, glitch && V.arenaGlitchThemes[glitch].title, s.supplyName].filter(Boolean).join(' · '));
+    const dimension = glitch ? V.arenaGlitchThemes[glitch].title : s.arenaGlitch?.endsAt ? 'Turbinenhalle' : '';
+    content('level-kind', [kind, dimension, s.supplyName].filter(Boolean).join(' · '));
     content('level-tip', glitch === 'race' ? 'Über den Wagen springen · markierte Plattformen verlassen' :
       glitch === 'inferno' ? 'Speer ausweichen · beim Aufladen die Dash-Linie räumen' :
       b ? b.plan?.attack.hint ?? (b.phase ? V.bossStages[s.biome].hints[b.phase - 1] : b.definition.tip) :

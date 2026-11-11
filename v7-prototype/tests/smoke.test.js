@@ -9,7 +9,7 @@ const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
 const modules = [
   'config', 'assets', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats',
-  'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-stage', 'boss-arena', 'combat', 'boss-chase', 'audio', 'online-board', 'input', 'story', 'camera', 'render', 'ui', 'main'
+  'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-stage', 'boss-arena', 'combat', 'boss-chase', 'audio', 'online-board', 'input', 'story', 'camera', 'boss-animation', 'render', 'ui', 'main'
 ];
 const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats', 'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-stage', 'boss-arena', 'combat', 'boss-chase', 'story'];
 const idle = {};
@@ -115,44 +115,64 @@ test('GOD.EXE ships three aligned transparent forms and two phase cues', () => {
   }
 });
 
-test('GOD.EXE cycles through three temporary arena looks from phase two and restores on defeat', () => {
+test('GOD.EXE draws a different dimension every ten seconds from phase two and restores on defeat', () => {
   const { V } = logic();
   const graph = V.generateMap('arena-glitch');
   const s = V.newCombat(graph.byId.god, 'snail', {}, graph.seed);
   const glitch = s.arenaGlitch;
   const events = [];
   V.audio = { effect: key => events.push(key) };
+  const rolls = [0, 0, .4, .95, .95];
+  glitch.random = () => rolls.shift();
   s.elapsed = 60;
   V.updateArenaGlitch(s);
   assert.equal(glitch.active, null);
   s.boss.phase = 1;
   s.boss.phaseAt = 60;
+  s.boss.phaseUntil = 61;
   V.updateArenaGlitch(s);
-  assert.equal(glitch.nextAt, 63.4);
-  const chosen = new Set();
-  for (let cycle = 0; cycle < 3; cycle++) {
-    s.elapsed = glitch.nextAt;
+  assert.equal(glitch.active, null);
+  s.elapsed = 61;
+  for (const expected of ['garden', 'inferno', 'race', null, 'race']) {
     V.updateArenaGlitch(s);
-    chosen.add(glitch.active);
-    assert.ok(glitch.endsAt - s.elapsed >= 10 && glitch.endsAt - s.elapsed <= 30);
-    const active = glitch.active;
+    assert.equal(glitch.active, expected);
+    assert.equal(glitch.endsAt - s.elapsed, 10);
     s.boss.phase = 2;
     s.elapsed = glitch.endsAt - .01;
     V.updateArenaGlitch(s);
-    assert.equal(glitch.active, active);
+    assert.equal(glitch.active, expected);
     s.elapsed = glitch.endsAt;
-    V.updateArenaGlitch(s);
-    assert.equal(glitch.active, null);
-    assert.ok(glitch.nextAt - s.elapsed >= 7 && glitch.nextAt - s.elapsed <= 14);
   }
-  assert.deepEqual([...chosen].sort(), ['garden', 'inferno', 'race']);
-  assert.equal(events.filter(key => key === 'god-arena-glitch').length, 6);
-  s.elapsed = glitch.nextAt;
-  V.updateArenaGlitch(s);
+  assert.equal(events.filter(key => key === 'god-arena-glitch').length, 5);
   V.defeatBoss(s);
   assert.equal(glitch.active, null);
   assert.equal(glitch.changedAt, s.elapsed);
   assert.equal(V.newCombat(graph.byId.reef, 'snail', {}, graph.seed).arenaGlitch, undefined);
+});
+
+test('all bosses have distinct animated poses for attacks and GOD.EXE varies across forms', () => {
+  const { V } = logic(undefined, [...rules, 'boss-animation']);
+  const graph = V.generateMap('boss-animation');
+  const rates = new Set();
+  for (const node of graph.nodes.filter(n => n.kind === 'boss')) {
+    const b = V.newCombat(node, 'snail', {}, graph.seed).boss;
+    const idlePose = V.bossPose(b, 3.2);
+    rates.add(idlePose.rig.rate);
+    assert.notEqual(idlePose.roll, V.bossPose(b, 3.45).roll);
+    b.state = 'windup';
+    b.plan = { strike: 3.3, lead: .8 };
+    assert.notEqual(V.bossPose(b, 3.2).roll, idlePose.roll);
+    b.state = 'active';
+    const attack = V.bossPose(b, 3.3);
+    assert.notEqual(attack.roll, V.bossPose(b, 3.9).roll);
+    if (node.biome !== 'god') assert.ok(attack.rig.part && Math.abs(attack.limb) > 0);
+  }
+  assert.equal(rates.size, 5);
+  const b = V.newCombat(graph.byId.god, 'snail', {}, graph.seed).boss;
+  const phaseRates = [0, 1, 2].map(phase => V.bossPose({ ...b, phase }, 1).rig.rate);
+  assert.equal(new Set(phaseRates).size, 3);
+  const themes = Object.keys(V.arenaGlitchThemes);
+  assert.equal(new Set(themes.map(theme => V.bossPose(b, 1, theme).rig.rate)).size, 3);
 });
 
 test('all three glitch worlds have a complete local render kit', () => {
@@ -176,10 +196,29 @@ function raceFixture() {
   b.phaseAt = 5;
   b.hp = Math.floor(b.maxHp * .55);
   Object.assign(s.arenaGlitch, { active: 'race', endsAt: 40 });
+  s.arenaGlitch.random = () => .99;
   return { V, s, b, tick: (count, actions = idle) => {
     for (let i = 0; i < count; i++) V.updateCombat(s, V.rules.step, actions);
   } };
 }
+
+test('direct dimension changes discard the previous form attack and initialize the new one', () => {
+  const { s, b, tick } = raceFixture();
+  tick(1);
+  assert.ok(b.racer);
+  s.arenaGlitch.random = () => .5;
+  s.arenaGlitch.endsAt = s.elapsed;
+  tick(1);
+  assert.equal(s.arenaGlitch.active, 'inferno');
+  assert.equal(b.racer, null);
+  assert.ok(b.gladiator);
+  s.arenaGlitch.random = () => .5;
+  s.arenaGlitch.endsAt = s.elapsed;
+  tick(1);
+  assert.equal(s.arenaGlitch.active, 'race');
+  assert.equal(b.gladiator, null);
+  assert.ok(b.racer);
+});
 
 test('the racer accelerates, skids through a reversal, then yields to normal boss movement', () => {
   const { V, s, b, tick } = raceFixture();
@@ -1177,6 +1216,7 @@ test('the five boss AIs telegraph six distinct attacks and run all three phases'
   const graph = V.generateMap('patterns');
   for (const [id, boss] of Object.entries(V.bosses)) {
     const s = V.newCombat(graph.byId[id], 'frog', {}, 'patterns');
+    if (id === 'god') s.arenaGlitch = null;
     const b = s.boss;
     const seen = new Set();
     const states = new Set();
@@ -1252,6 +1292,7 @@ test('phase thresholds reconfigure all five arenas and telegraph the new hazards
   const graph = V.generateMap('arena-phase');
   for (const id of Object.keys(V.bosses)) {
     const s = V.newCombat(graph.byId[id], 'snail', {}, graph.seed);
+    if (id === 'god') s.arenaGlitch = null;
     const b = s.boss;
     s.player.invuln = 60;
     const deck = s.platforms[1];

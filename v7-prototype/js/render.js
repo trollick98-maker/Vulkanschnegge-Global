@@ -2,6 +2,7 @@
   'use strict';
   const V = window.VS7;
   const canvas = document.getElementById('game');
+  const glitchOverlay = document.getElementById('dimension-glitch');
   const g = canvas.getContext('2d', { alpha: false });
   const { W, H, GROUND: G } = V;
   const backdrops = new Map();
@@ -9,6 +10,7 @@
   let reducedMotion = motionPreference?.matches;
   let skinKey;
   let skin;
+  let glitchBuffer;
   const skinRoles = {
     'platform-god': 'deck', 'boss-stage-god-deck': 'deck', 'boss-stage-god-deck-final': 'deck',
     'boss-stage-god-arch': 'prop-a', 'boss-stage-god-pillar': 'prop-b', 'boss-stage-god-emitter': 'prop-b',
@@ -501,16 +503,18 @@
   }
 
   const shadowBandOrder = [4, 1, 8, 2, 7, 0, 9, 5, 3, 6];
+  const shadowRhythms = [[10, 19, 2, 4], [14, 12, 5, 9], [18, 8, 5, 13]];
 
   function drawShadow(b, image, elapsed, death) {
     const age = elapsed - b.phaseAt;
     const shifting = !death && b.phaseFrom !== undefined && elapsed < b.phaseUntil;
     const progress = shifting ? V.clamp(age / (b.phaseUntil - b.phaseAt), 0, 1) : 1;
     const previous = shifting && !reducedMotion ? skin ? image : V.readyImage(V.godForms[b.phaseFrom]) : null;
-    const frame = Math.floor(elapsed * 11);
-    const period = 17 - 4 * (b.phase ?? 0);
-    const tearing = frame % period < 2;
-    const tear = reducedMotion ? 0 : death ? 8 + death * 29 : previous ? Math.sin(Math.PI * progress) * 32 : tearing ? 5 : 0;
+    const [rate, period, beats, amplitude] = shadowRhythms[b.phase ?? 0];
+    const frame = Math.floor(elapsed * rate);
+    const tearing = frame % period < beats;
+    const tear = reducedMotion ? 0 : death ? 8 + death * 29 :
+      previous ? Math.sin(Math.PI * progress) * 32 : tearing ? amplitude : 0;
     if (!tear && !previous) {
       g.drawImage(image, 0, 0, b.w, b.h);
       return;
@@ -534,6 +538,55 @@
     }
   }
 
+  function rigPath(part, w, h) {
+    g.moveTo(part[0][0] * w, part[0][1] * h);
+    for (let i = 1; i < part.length; i++) g.lineTo(part[i][0] * w, part[i][1] * h);
+    g.closePath();
+  }
+
+  function drawRig(image, clip, b, pose) {
+    const { w, h } = b;
+    const source = clip ?? [0, 0, image.naturalWidth, image.naturalHeight];
+    const part = pose?.rig.part;
+    if (!part) {
+      g.drawImage(image, ...source, 0, 0, w, h);
+      return;
+    }
+    g.save();
+    g.beginPath();
+    g.rect(0, 0, w, h);
+    rigPath(part, w, h);
+    g.clip('evenodd');
+    g.drawImage(image, ...source, 0, 0, w, h);
+    g.restore();
+    g.save();
+    const [px, py] = pose.rig.pivot;
+    g.translate(px * w, py * h);
+    g.rotate(pose.limb);
+    g.translate(-px * w, -py * h);
+    g.beginPath();
+    rigPath(part, w, h);
+    g.clip();
+    g.drawImage(image, ...source, 0, 0, w, h);
+    g.restore();
+  }
+
+  function drawPanicCore(b, elapsed) {
+    const x = b.w * .62;
+    const y = b.h * .52;
+    const pulse = .5 + .5 * Math.sin(elapsed * 12);
+    const radius = 14 + pulse * 8;
+    const light = g.createRadialGradient(x, y, 0, x, y, radius);
+    light.addColorStop(0, '#ff755c');
+    light.addColorStop(1, '#ff1c1600');
+    g.save();
+    g.globalCompositeOperation = 'screen';
+    g.globalAlpha *= .30 + pulse * .26;
+    g.fillStyle = light;
+    g.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+    g.restore();
+  }
+
   function drawBossArt(b, x, y, facing, opacity = 1, elapsed = 0, death = 0) {
     const shadow = b.definition.sprite === 'god';
     const clip = atlas[b.definition.sprite];
@@ -544,9 +597,17 @@
     g.globalAlpha *= opacity;
     g.translate(x + (mirror ? b.w : 0), y);
     if (mirror) g.scale(-1, 1);
-    if (image && shadow) drawShadow(b, image, elapsed, death);
-    else if (image && clip) g.drawImage(image, ...clip, 0, 0, b.w, b.h);
-    else if (image) g.drawImage(image, 0, 0, b.w, b.h);
+    const pose = reducedMotion ? null : V.bossPose(b, elapsed, skinKey);
+    if (pose) {
+      g.translate(b.w / 2 + pose.x, b.h + pose.y);
+      g.rotate(pose.roll);
+      g.scale(pose.sx, pose.sy);
+      g.translate(-b.w / 2, -b.h);
+    }
+    if (image && shadow && (!skin || elapsed < b.phaseUntil || death)) {
+      drawShadow(b, image, elapsed, death);
+      if (!skin && b.phase === 2 && opacity === 1 && !death && !reducedMotion) drawPanicCore(b, elapsed);
+    } else if (image) drawRig(image, clip, b, pose);
     else {
       g.fillStyle = b.definition.color;
       g.fillRect(b.w * .08, b.h * .17, b.w * .84, b.h * .78);
@@ -849,10 +910,9 @@
     if ((!shadow || !reducedMotion) && (b.flash > .05 || windup && charge > .72 && !reducedMotion)) {
       g.filter = shadow ? 'brightness(1.23)' : 'brightness(1.48)';
     }
-    const tilt = windup ? [ .12, .045, -.08, .12, -.045 ][['reef', 'greed', 'diva', 'vortex', 'god'].indexOf(s.biome)] * charge : 0;
-    if (!reducedMotion) {
+    if (death && !reducedMotion) {
       g.translate(cx, cy);
-      g.rotate(tilt * b.facing + (shadow ? 0 : death * .62));
+      g.rotate(shadow ? 0 : death * .62);
       g.translate(-cx, -cy + death * (shadow ? -9 : 47));
     }
     const recoil = reducedMotion ? 0 : (b.hitSide ?? 0) * b.flash * 39;
@@ -1091,23 +1151,35 @@
   }
 
   function drawGlitchCut(s) {
-    if (reducedMotion || !s.arenaGlitch) return;
-    const age = s.elapsed - s.arenaGlitch.changedAt;
-    if (age < 0 || age >= .52) return;
-    const power = (1 - age / .52) ** 2;
-    const tick = Math.floor(age * 18);
+    const age = s.elapsed - (s.arenaGlitch?.changedAt ?? -Infinity);
+    const active = !reducedMotion && s.outcome === null && age >= 0 && age < .64;
+    const power = active ? (1 - age / .64) ** 1.6 : 0;
+    if (glitchOverlay?.style) {
+      glitchOverlay.classList.toggle('hidden', !active);
+      if (active) glitchOverlay.style.opacity = (power * .63).toFixed(3);
+    }
+    if (!active) return;
+    if (!glitchBuffer) {
+      glitchBuffer = document.createElement('canvas');
+      glitchBuffer.width = W;
+      glitchBuffer.height = H;
+    }
+    glitchBuffer.getContext('2d').drawImage(canvas, 0, 0);
+    const tick = Math.floor(age * 21);
     g.save();
-    for (let i = 0; i < 8; i++) {
-      const y = (i * 67 + 27) % H;
-      const height = 5 + i % 3 * 4;
-      const offset = Math.round(Math.sin(i * 2.7 + tick * .7) * (15 + i * 2) * power);
-      const width = W - Math.abs(offset);
-      g.globalAlpha = .72 * power;
-      if (offset) g.drawImage(canvas, Math.max(0, -offset), y, width, height,
-        Math.max(0, offset), y, width, height);
-      g.globalAlpha = .56 * power;
-      g.fillStyle = i % 2 ? skin?.accent ?? '#a73d52' : skin?.light ?? '#e99197';
-      g.fillRect((i * 119 + tick * 43) % (W - 140), y, 90 + (i % 3) * 38, 2);
+    g.globalAlpha = .92 * power;
+    for (let i = 0; i < 18; i++) {
+      const y = i * 30;
+      const offset = Math.round(Math.sin(i * 2.7 + tick * .82) * (36 + (i % 5) * 11) * power);
+      g.drawImage(glitchBuffer, 0, y, W, 30, offset, y, W, 30);
+      if (offset) g.drawImage(glitchBuffer, 0, y, W, 30, offset - Math.sign(offset) * W, y, W, 30);
+    }
+    g.globalAlpha = .28 * power;
+    g.fillStyle = '#1d173d';
+    g.fillRect(0, 0, W, H);
+    for (let i = 0; i < 13; i++) {
+      g.fillStyle = i % 2 ? skin?.accent ?? '#d5487c' : skin?.light ?? '#6fcddd';
+      g.fillRect((i * 119 + tick * 43) % W - 40, (i * 47 + tick * 13) % H, 135 + (i % 3) * 68, 3 + i % 5);
     }
     g.restore();
   }
@@ -1158,8 +1230,8 @@
       g.restore();
       drawCameraCue(section, view);
     }
-    drawGlitchCut(section);
     drawDamageEdge(section);
     drawPhaseBanner(section);
+    drawGlitchCut(section);
   };
 })();

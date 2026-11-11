@@ -14,32 +14,28 @@
 
   V.initArenaGlitch = function (s) {
     if (s.biome !== 'god') return;
-    const random = V.randomFor(s.seed + ':arena-glitch');
-    const order = random() < .5 ? ['garden', 'inferno', 'race'] : ['garden', 'race', 'inferno'];
-    s.arenaGlitch = { random, order, index: 0, active: null, nextAt: null, endsAt: 0, changedAt: -Infinity };
+    s.arenaGlitch = { random: Math.random, active: null, endsAt: 0, changedAt: -Infinity };
   };
 
   V.updateArenaGlitch = function (s) {
     const glitch = s.arenaGlitch;
-    if (!glitch || !s.boss.phase || s.boss.state === 'defeated') return;
-    if (glitch.active) {
-      if (s.elapsed < glitch.endsAt) return;
-      V.restoreArenaGlitch(s);
-      glitch.nextAt = s.elapsed + 7 + glitch.random() * 7;
-    } else {
-      glitch.nextAt ??= s.boss.phaseAt + 3.4;
-      if (s.elapsed < glitch.nextAt) return;
-      glitch.active = glitch.order[glitch.index++ % glitch.order.length];
-      glitch.changedAt = s.elapsed;
-      glitch.endsAt = s.elapsed + 10 + glitch.random() * 20;
-    }
+    if (!glitch || !s.boss.phase || s.boss.state === 'defeated' ||
+        s.elapsed < (glitch.endsAt || s.boss.phaseUntil)) return;
+    const alternatives = [...Object.keys(V.arenaGlitchThemes), null].filter(theme => theme !== glitch.active);
+    glitch.active = alternatives[Math.floor(glitch.random() * alternatives.length)];
+    glitch.changedAt = s.elapsed;
+    glitch.endsAt = (glitch.endsAt || s.elapsed) + 10;
     V.audio?.effect?.('god-arena-glitch');
   };
 
   V.restoreArenaGlitch = function (s) {
-    if (!s.arenaGlitch?.active) return;
-    s.arenaGlitch.active = null;
-    s.arenaGlitch.changedAt = s.elapsed;
+    const glitch = s.arenaGlitch;
+    if (!glitch) return;
+    if (glitch.active) {
+      glitch.active = null;
+      glitch.changedAt = s.elapsed;
+    }
+    glitch.endsAt = 0;
   };
 
   V.raceBody = b => ({ x: b.x + b.w * .10, y: b.y + b.h * .23, w: b.w * .80, h: b.h * .75 });

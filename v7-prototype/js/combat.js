@@ -158,18 +158,19 @@
     const b = s.boss;
     const oldX = b.x;
     const oldY = b.y;
-    if (s.arenaGlitch?.active === 'race') {
-      V.updateRaceBoss(s, dt);
-      return [b.x - oldX, b.y - oldY];
-    }
-    if (s.arenaGlitch?.active === 'inferno') {
-      V.updateGladiator(s, dt);
-      return [b.x - oldX, b.y - oldY];
-    }
-    if (b.racer || b.gladiator) {
+    const dimension = s.arenaGlitch?.active;
+    if ((b.racer && dimension !== 'race') || (b.gladiator && dimension !== 'inferno')) {
       b.racer = b.gladiator = null;
       b.state = 'approach';
       b.readyAt = Math.max(s.elapsed + .42, b.phaseUntil);
+    }
+    if (dimension === 'race') {
+      V.updateRaceBoss(s, dt);
+      return [b.x - oldX, b.y - oldY];
+    }
+    if (dimension === 'inferno') {
+      V.updateGladiator(s, dt);
+      return [b.x - oldX, b.y - oldY];
     }
     facePlayer(s);
     const plan = b.plan;
