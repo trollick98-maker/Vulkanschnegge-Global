@@ -61,6 +61,8 @@ GOD.EXE erscheint als Schneggs verzerrtes Spiegelbild. In ECHO bleibt die Silhou
 
 Ab Phase II kippt die Arena gelegentlich für 10 bis 30 Sekunden in eine Zuckerwiese, eine Glutarena oder einen Neon-Grand-Prix. GOD.EXE erscheint dort als Biene, Gladiator oder Rennwagen. Hintergrund, Plattformen, Deko, Warnungen und Geschosse wechseln ihren Look. Beim Grand Prix jagt dich der Wagen am Boden. Beim Gegenlenken driftet er erst in die alte Richtung. Spring darüber oder weich auf Plattformen aus. Die Ziellinie zeigt an, wo der nächste Turboschuss einschlägt. Bei reduzierter Bewegung wechselt das Motiv ohne verzerrte Bildstreifen.
 
+In der Glutarena wirft der Gladiator seinen Speer im Bogen. Trifft der Speer dich im Flug, kostet das ein Herz. Sobald er im Boden oder auf einer Plattform steckt, lädt der Gladiator kurz auf und das Spiel markiert seine Bahn. Dann schießt er auf gerader Linie zum Speer. Ein Treffer durch den Dash kostet zwei Herzen.
+
 Treffer, eigener Schaden, Blocks und Konter haben eigene Pixel-Effekte und Töne. Schadenszahlen zeigen die verlorenen HP. Bei eigenem Schaden leuchtet der Rand des Spielfelds rot. Mit **Effekte an/aus** schaltest du die Spielgeräusche unabhängig von der Musik.
 
 Der Dash zieht eine türkise Spur und hat einen eigenen Sound. Bei hohem Tempo wird die Spur lavafarben und der Dash klingt kräftiger. In Arenen hörst und siehst du ein kurzes Schlittern, wenn du auf dem Boden aus hohem Tempo abbremst oder gegenlenkst.

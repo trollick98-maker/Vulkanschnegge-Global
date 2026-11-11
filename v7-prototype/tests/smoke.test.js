@@ -234,6 +234,78 @@ test('the racer telegraphs a reflectable shot at an elevated target', () => {
   assert.ok(Math.abs(shot.x + shot.vx * t - target.x) < .01);
 });
 
+function gladiatorFixture() {
+  const { V, s, b, tick } = raceFixture();
+  s.arenaGlitch.active = 'inferno';
+  V.bossStageDeck = () => ({ lift: 0, shift: 0, ghost: false, warn: false });
+  return { V, s, b, tick };
+}
+
+test('the gladiator throws an arc onto a platform, charges, then dashes straight to the spear', () => {
+  const { V, s, b, tick } = gladiatorFixture();
+  const deck = s.platforms[4];
+  const p = s.player;
+  Object.assign(p, { x: deck.worldX + deck.w / 2 - p.w / 2, y: deck.y - p.h, invuln: 10 });
+  tick(Math.ceil(1 / V.rules.step));
+  const attack = b.gladiator;
+  assert.equal(b.state, 'spear-flight');
+  const spear = attack.spear;
+  assert.ok(spear.vy < 0);
+  const launchY = spear.y;
+  tick(Math.ceil(.24 / V.rules.step));
+  assert.ok(spear.y < launchY - 30);
+  for (let i = 0; i < 150 && !spear.deck; i++) tick(1);
+  assert.equal(spear.deck, deck);
+  assert.equal(spear.y, deck.y);
+  assert.equal(b.state, 'spear-charge');
+  assert.ok(spear.chargeUntil - s.elapsed > .6);
+  const before = b.x;
+  tick(Math.ceil(.3 / V.rules.step));
+  assert.equal(b.x, before);
+  for (let i = 0; i < 150 && !attack.dash; i++) tick(1);
+  const dash = attack.dash;
+  assert.equal(dash.x + b.w / 2, spear.x);
+  assert.equal(dash.y + b.h, spear.y);
+  tick(Math.floor(dash.duration / V.rules.step / 2));
+  assert.ok(Math.abs((b.x - dash.fromX) / (dash.x - dash.fromX) - (b.y - dash.fromY) / (dash.y - dash.fromY)) < 1e-8);
+  tick(Math.ceil(dash.duration / V.rules.step));
+  assert.equal(b.x, dash.x);
+  assert.equal(b.y, dash.y);
+  assert.equal(attack.spear, null);
+  s.arenaGlitch.endsAt = s.elapsed;
+  tick(1);
+  assert.equal(b.gladiator, null);
+  assert.equal(b.state, 'approach');
+});
+
+test('the gladiator spear deals one heart and can still land after a hit', () => {
+  const { V, s, b, tick } = gladiatorFixture();
+  const p = s.player;
+  tick(1);
+  const hp = s.hp;
+  const spear = b.gladiator.spear = { x: p.x - 24, y: p.y + p.h / 2, vx: 1150, vy: 90, angle: 0 };
+  tick(6);
+  assert.equal(s.hp, hp - 1);
+  assert.ok(spear.hit);
+  tick(Math.ceil(.22 / V.rules.step));
+  assert.ok(spear.deck);
+  assert.equal(s.hp, hp - 1);
+});
+
+test('the gladiator dash deals two hearts once and lethal damage bottoms out at zero', () => {
+  for (const hp of [4, 1]) {
+    const { V, s, b, tick } = gladiatorFixture();
+    Object.assign(s.player, { x: 650, y: V.GROUND - s.player.h });
+    Object.assign(b, { x: 385, y: V.GROUND - b.h });
+    s.hp = hp;
+    tick(1);
+    b.gladiator.spear = { x: 1000, y: V.GROUND, deck: s.platforms[0], offset: 1000, chargeUntil: s.elapsed };
+    tick(Math.ceil(.45 / V.rules.step));
+    assert.equal(s.hp, Math.max(0, hp - 2));
+    assert.equal(s.outcome, hp === 1 ? false : null);
+  }
+});
+
 test('the six surge atlases contain 50 transparent sprites with valid source frames', () => {
   const { V } = logic(undefined, ['config', 'assets', 'surge-art']);
   let sprites = 0;

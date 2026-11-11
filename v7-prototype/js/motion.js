@@ -123,17 +123,18 @@
     }
   };
 
-  V.hurt = function (s, direction = -1) {
+  V.hurt = function (s, direction = -1, damage = 1) {
     const p = s.player;
     if (p.invuln > 0 || s.outcome !== null) return;
-    s.hp--;
+    const amount = Math.min(s.hp, damage);
+    s.hp -= amount;
     p.invuln = 1.18;
     p.vy = -245;
     if (V.usesMomentum(s)) V.slowOnImpact(s);
     else p.vx = direction * 220;
     p.dashTime = 0;
     p.swing = null;
-    V.hitFeedback(s, 'hurt', p.x + p.w / 2, p.y + p.h / 2, { amount: 1, direction });
+    V.hitFeedback(s, 'hurt', p.x + p.w / 2, p.y + p.h / 2, { amount, direction });
     V.say(s, 'Treffer!');
     if (s.hp <= 0) s.outcome = false;
   };

@@ -755,6 +755,59 @@
     g.restore();
   }
 
+  function drawSpear(x, y, angle) {
+    g.save();
+    g.translate(x, y);
+    g.rotate(angle);
+    g.fillStyle = '#281d26';
+    g.fillRect(-65, -4, 52, 8);
+    g.fillStyle = '#c7804c';
+    g.fillRect(-62, -2, 50, 4);
+    g.fillStyle = '#ffb966';
+    g.fillRect(-56, -2, 42, 1);
+    g.fillStyle = '#80454a';
+    g.fillRect(-18, -6, 10, 12);
+    g.fillStyle = '#ffe0a0';
+    g.fillRect(-16, -4, 8, 8);
+    g.fillRect(-8, -2, 8, 4);
+    g.restore();
+  }
+
+  function drawGladiatorCues(s) {
+    const b = s.boss;
+    const attack = b.gladiator;
+    if (skinKey !== 'inferno' || !attack) return;
+    if (attack.aim) {
+      const hand = V.gladiatorHand(b);
+      drawSpear(hand.x + b.facing * 35, hand.y - 29, b.facing > 0 ? -.62 : Math.PI + .62);
+    }
+    const spear = attack.spear;
+    if (!spear) return;
+    if (spear.deck && !attack.dash) {
+      const charge = V.clamp((s.elapsed - spear.chargeAt) / (spear.chargeUntil - spear.chargeAt), 0, 1);
+      const centerY = spear.y - b.h * .45;
+      g.save();
+      g.strokeStyle = '#401f28';
+      g.globalAlpha = .80;
+      g.lineWidth = 8;
+      g.beginPath();
+      g.moveTo(b.x + b.w / 2, b.y + b.h * .55);
+      g.lineTo(spear.x, centerY);
+      g.stroke();
+      g.strokeStyle = skin.light;
+      g.lineWidth = 3;
+      g.setLineDash([10, 7]);
+      g.stroke();
+      g.setLineDash([]);
+      g.globalAlpha = .86;
+      g.strokeRect(spear.x - 17, spear.y - 12, 34, 12);
+      g.fillStyle = skin.accent;
+      g.fillRect(spear.x - 17, spear.y - 3, 34 * charge, 3);
+      g.restore();
+    }
+    drawSpear(spear.x, spear.y, spear.angle);
+  }
+
   function drawBoss(s) {
     const b = s.boss;
     const shadow = b.definition.sprite === 'god';
@@ -783,6 +836,14 @@
       const direction = Math.sign(movement.toX - movement.x);
       for (let i = 1; i < 4; i++) drawBossArt(b, b.x - direction * i * 34, b.y + i * 3, b.facing, .22 / i, s.elapsed);
     }
+    const dash = b.gladiator?.dash;
+    if (dash && !reducedMotion) {
+      for (let i = 3; i > 0; i--) {
+        const time = V.clamp((s.elapsed - dash.start - i * .024) / dash.duration, 0, 1);
+        drawBossArt(b, V.lerp(dash.fromX, dash.x, time), V.lerp(dash.fromY, dash.y, time),
+          b.facing, .30 / i, s.elapsed);
+      }
+    }
     g.save();
     g.globalAlpha = windup && plan.attack.hide && charge > .43 ? .28 : 1 - death;
     if ((!shadow || !reducedMotion) && (b.flash > .05 || windup && charge > .72 && !reducedMotion)) {
@@ -798,6 +859,7 @@
     drawBossArt(b, b.x + recoil, b.y, b.facing, 1, s.elapsed, death);
     g.restore();
     drawRaceCues(s);
+    drawGladiatorCues(s);
 
     const weak = (windup && plan.attack.interrupt) || (b.state === 'recovery' && b.exposed > 1);
     if (weak) {

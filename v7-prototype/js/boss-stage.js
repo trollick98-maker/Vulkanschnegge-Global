@@ -129,6 +129,152 @@
     if (s.outcome === null) raceVolley(s, racer);
   };
 
+  const spearGravity = 1150;
+  const spearCharge = .68;
+  const gladiatorDashSpeed = 1850;
+
+  V.gladiatorHand = b => ({ x: b.x + b.w * (b.facing < 0 ? .35 : .65), y: b.y + b.h * .39 });
+
+  function aimSpear(s) {
+    const p = s.player;
+    const edge = 35 + s.boss.w / 2;
+    const x = V.clamp(p.x + p.w / 2 + p.vx * .12, edge, s.worldWidth - edge);
+    const feet = p.y + p.h;
+    const deck = s.platforms.find(d => !d.ground && d.enabled !== false &&
+      x >= d.worldX && x <= d.worldX + d.w && Math.abs(d.y - feet) < 46);
+    return { x, y: deck?.y ?? G, at: s.elapsed + .48 };
+  }
+
+  function flySpear(s, spear, dt) {
+    const oldX = spear.x;
+    const oldY = spear.y;
+    const edge = 35 + s.boss.w / 2;
+    const x = V.clamp(oldX + spear.vx * dt, edge, s.worldWidth - edge);
+    const y = oldY + spear.vy * dt + spearGravity * dt * dt / 2;
+    let first = Infinity;
+    let landed;
+    if (y > oldY) {
+      for (const deck of s.platforms) {
+        if (deck.enabled === false || oldY > deck.y || y < deck.y) continue;
+        const time = (deck.y - oldY) / (y - oldY);
+        const contactX = V.lerp(oldX, x, time);
+        if (time < first && contactX >= deck.worldX && contactX <= deck.worldX + deck.w) {
+          first = time;
+          landed = deck;
+        }
+      }
+    }
+    if (!spear.hit) {
+      const p = s.player;
+      const relative = { ...p, previousX: p.previousX + x - oldX, previousY: p.previousY + y - oldY };
+      const hit = V.movementContact(relative, { x: x - 8, y: y - 8, w: 16, h: 16 });
+      if (hit < Infinity && hit <= first) {
+        spear.hit = true;
+        V.hurt(s, Math.sign(spear.vx));
+      }
+    }
+    spear.x = x;
+    spear.y = y;
+    spear.vy += spearGravity * dt;
+    spear.angle = Math.atan2(spear.vy, spear.vx);
+    if (landed) {
+      spear.x = V.lerp(oldX, x, first);
+      spear.y = landed.y;
+      spear.deck = landed;
+      spear.offset = spear.x - landed.worldX;
+      spear.chargeAt = s.elapsed;
+      spear.chargeUntil = s.elapsed + spearCharge;
+      s.boss.state = 'spear-charge';
+      V.emitParticles(s, 'charge', spear.x, spear.y - 12, { color: '#ffab66' });
+      V.audio?.effect?.(s.boss.definition.sound);
+    } else if (x === edge || x === s.worldWidth - edge) spear.vx = 0;
+  }
+
+  function startGladiatorDash(s, attack) {
+    const b = s.boss;
+    const spear = attack.spear;
+    const x = spear.x - b.w / 2;
+    const y = spear.y - b.h;
+    attack.dash = { fromX: b.x, fromY: b.y, x, y, start: s.elapsed, hit: false,
+      duration: Math.max(V.rules.step, Math.hypot(x - b.x, y - b.y) / gladiatorDashSpeed) };
+    b.facing = Math.sign(x - b.x) || b.facing;
+    b.state = 'spear-dash';
+    V.audio?.effect?.(b.definition.sound, true);
+  }
+
+  function dashToSpear(s, attack) {
+    const b = s.boss;
+    const dash = attack.dash;
+    const p = s.player;
+    const oldX = b.x;
+    const oldY = b.y;
+    const time = V.clamp((s.elapsed - dash.start) / dash.duration, 0, 1);
+    b.x = V.lerp(dash.fromX, dash.x, time);
+    b.y = V.lerp(dash.fromY, dash.y, time);
+    if (!dash.hit) {
+      const relative = { ...p, previousX: p.previousX + b.x - oldX, previousY: p.previousY + b.y - oldY };
+      if (V.movementContact(relative, V.bossHitboxes(b).body) < Infinity) {
+        dash.hit = true;
+        V.hurt(s, b.facing, 2);
+      }
+    }
+    if (time < 1) return;
+    const deck = attack.spear.deck;
+    attack.support = deck.enabled === false ? null : deck;
+    attack.supportX = b.x - deck.worldX;
+    attack.spear = attack.dash = null;
+    attack.nextAt = s.elapsed + .98;
+    b.state = 'spear-recover';
+  }
+
+  V.updateGladiator = function (s, dt) {
+    const b = s.boss;
+    if (!b.gladiator) {
+      b.gladiator = { nextAt: Math.max(s.elapsed + .46, b.phaseUntil + .25), fallSpeed: 0 };
+      b.plan = b.rush = b.flank = null;
+      b.exposed = 1;
+      if (s.elapsed >= b.phaseUntil) b.state = 'spear-recover';
+    }
+    if (s.elapsed < b.phaseUntil) return;
+    const attack = b.gladiator;
+    if (attack.dash) {
+      dashToSpear(s, attack);
+      return;
+    }
+    if (attack.support && attack.support.enabled !== false) {
+      b.x = V.clamp(attack.support.worldX + attack.supportX, 35, s.worldWidth - b.w - 35);
+      b.y = attack.support.y - b.h;
+    } else {
+      attack.support = null;
+      attack.fallSpeed += V.arenaMotion.gravity * dt;
+      b.y = Math.min(G - b.h, b.y + attack.fallSpeed * dt);
+      if (b.y === G - b.h) attack.fallSpeed = 0;
+    }
+    if (attack.spear) {
+      const spear = attack.spear;
+      if (!spear.deck) flySpear(s, spear, dt);
+      else {
+        spear.x = spear.deck.worldX + spear.offset;
+        spear.y = spear.deck.y;
+        if (s.elapsed >= spear.chargeUntil) startGladiatorDash(s, attack);
+      }
+    } else if (attack.aim && s.elapsed >= attack.aim.at) {
+      const start = V.gladiatorHand(b);
+      const aim = attack.aim;
+      const time = .90 + Math.min(.32, Math.abs(aim.x - start.x) / 3000);
+      const vx = (aim.x - start.x) / time;
+      const vy = (aim.y - start.y) / time - spearGravity * time / 2;
+      attack.spear = { ...start, vx, vy, angle: Math.atan2(vy, vx), hit: false };
+      attack.aim = null;
+      b.state = 'spear-flight';
+      V.audio?.effect?.(b.definition.sound);
+    } else if (!attack.aim && s.elapsed >= attack.nextAt) {
+      attack.aim = aimSpear(s);
+      b.facing = Math.sign(attack.aim.x - b.x - b.w / 2) || b.facing;
+      b.state = 'spear-windup';
+    }
+  };
+
   V.bossStages = {
     reef: { shot: 'plasma', width: 94, height: 190, interval: 4.25,
       hints: ['Das Wasser steigt · längere Sprünge unter Wasser', 'Die Strömung dreht · zwischen den Fontänen bleiben'] },

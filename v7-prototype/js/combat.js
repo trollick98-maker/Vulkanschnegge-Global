@@ -144,6 +144,7 @@
     b.forceSpecial = true;
     b.state = 'shift';
     b.plan = b.rush = b.flank = null;
+    if (b.gladiator) b.gladiator = null;
     b.exposed = 1;
     s.zones.length = s.projectiles.length = s.echoes.length = s.chests.length = 0;
     s.arenaFX = {};
@@ -161,8 +162,12 @@
       V.updateRaceBoss(s, dt);
       return [b.x - oldX, b.y - oldY];
     }
-    if (b.racer) {
-      b.racer = null;
+    if (s.arenaGlitch?.active === 'inferno') {
+      V.updateGladiator(s, dt);
+      return [b.x - oldX, b.y - oldY];
+    }
+    if (b.racer || b.gladiator) {
+      b.racer = b.gladiator = null;
       b.state = 'approach';
       b.readyAt = Math.max(s.elapsed + .42, b.phaseUntil);
     }
@@ -209,6 +214,7 @@
     b.defeatedAt = s.elapsed;
     V.restoreArenaGlitch(s);
     if (b.racer) b.racer = null;
+    if (b.gladiator) b.gladiator = null;
     b.plan = b.rush = b.flank = null;
     s.projectiles.length = s.zones.length = s.echoes.length = s.chests.length = 0;
     s.arenaFX = {};
