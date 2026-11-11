@@ -254,6 +254,15 @@ test('shared keyboard and touch bindings stay held until the last source release
   assert.equal(V.input.consume().jump, false);
   win.dispatchEvent(new Event('blur'));
   assert.equal(V.input.jump, false);
+  for (const code of ['KeyJ', 'KeyX']) {
+    key('keydown', code);
+    assert.equal(V.input.consume().dash, true, code);
+    assert.equal(V.input.consume().dash, false, code);
+    key('keyup', code);
+  }
+  key('keydown', 'ShiftLeft');
+  key('keydown', 'ShiftRight');
+  assert.equal(V.input.consume().dash, false);
 });
 
 test('campaign coin rewards are banked on successful route and combat completion', () => {
@@ -898,11 +907,23 @@ test('the five boss AIs telegraph six distinct attacks and run all three phases'
     const states = new Set();
     const effects = new Set();
     const phases = new Set();
+    const followUps = new Set();
+    let flanked = false;
+    let movedDuringWarning = false;
     s.player.invuln = 120;
     for (let i = 0; i < 6600; i++) {
       if (i === 2000) b.hp = Math.floor(b.maxHp * .60);
       if (i === 4000) b.hp = Math.floor(b.maxHp * .29);
+      const oldX = b.x;
+      const previousPlan = b.plan;
       V.updateCombat(s, V.rules.step, { left: i % 340 > 220, right: i % 340 < 115 });
+      flanked ||= Boolean(b.flank);
+      movedDuringWarning ||= b.state === 'windup' && b.plan === previousPlan && Math.abs(b.x - oldX) > .5;
+      if (b.plan?.followUp) {
+        followUps.add(b.plan.attack.name);
+        assert.equal(b.plan.nextAttack, undefined, id);
+        assert.ok(boss.combos.some(([, attack]) => attack === b.plan.attack), id);
+      }
       if (b.plan) {
         seen.add(b.plan.attack.name);
         assert.ok(b.plan.lead >= .62 && Number.isFinite(b.plan.strike));
@@ -914,6 +935,7 @@ test('the five boss AIs telegraph six distinct attacks and run all three phases'
       assert.ok(s.projectiles.every(q => Number.isFinite(q.x) && Number.isFinite(q.y)));
     }
     assert.equal(seen.size, 6, id);
+    assert.ok(followUps.size > 0 && flanked && movedDuringWarning, id);
     assert.equal(boss.attacks.filter(attack => attack.special).length, 2, id);
     assert.equal(phases.size, 3, id);
     assert.ok(effects.size >= 2, id);

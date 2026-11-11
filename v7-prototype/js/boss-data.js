@@ -186,19 +186,24 @@
 
   V.bosses = {
     reef: { name: 'Don Moray', sprite: 'bossEel', hp: 4500, track: 'reef-tax', sound: 'reef-charge',
-      color: '#83edfa', speed: 365, lift: 34, tip: 'Nach dem Wirbel ist die Muräne erschöpft', attacks: reef,
+      color: '#83edfa', speed: 365, lift: 34, tip: 'Nach dem Wirbel ist die Muräne erschöpft', attacks: reef, sidestepLift: 76,
+      combos: [[reef[0], reef[3]], [reef[2], reef[1]]],
       phases: phases('Jagd', 'Hochwasser', 'Todesstrudel') },
     greed: { name: 'God of Greed', sprite: 'greed', hp: 4350, track: 'a-little-more', sound: 'greed-strike',
-      color: '#ffd378', speed: 300, lift: 0, tip: 'Den leuchtenden Tresor während des Dekrets treffen', attacks: greed,
+      color: '#ffd378', speed: 300, lift: 0, tip: 'Den leuchtenden Tresor während des Dekrets treffen', attacks: greed, sidestepLift: 0,
+      combos: [[greed[0], greed[2]], [greed[3], greed[1]]],
       phases: phases('Zoll', 'Fahrende Tresore', 'Goldschmelze') },
     diva: { name: 'Diva-Schwänin', sprite: 'diva', hp: 4450, track: 'pretty-things', sound: 'diva-note',
-      color: '#ffa2ec', speed: 405, lift: 86, tip: 'Eine Pose mit dem Katana unterbrechen', attacks: diva,
+      color: '#ffa2ec', speed: 405, lift: 86, tip: 'Eine Pose mit dem Katana unterbrechen', attacks: diva, sidestepLift: 104,
+      combos: [[diva[2], diva[1]], [diva[3], diva[0]]],
       phases: phases('Auftritt', 'Bühnenwechsel', 'Doppelspot') },
     vortex: { name: 'Pumper Vortex', sprite: 'vortex', hp: 4550, track: 'one-more-wreck', sound: 'vortex-slam',
-      color: '#86d9ff', speed: 475, lift: 13, tip: 'Nach der Überlastung öffnet sich sein Kraftgürtel', attacks: vortex,
+      color: '#86d9ff', speed: 475, lift: 13, tip: 'Nach der Überlastung öffnet sich sein Kraftgürtel', attacks: vortex, sidestepLift: 30,
+      combos: [[vortex[1], vortex[2]], [vortex[0], vortex[3]]],
       phases: phases('Warm-up', 'Laufbänder', 'Überlastung') },
     god: { name: 'GOD.EXE', sprite: 'god', hp: 6550, track: 'run-the-loop', sound: 'god-fault',
-      color: '#a7ff82', speed: 450, lift: 102, tip: 'Die rote Reset-Sequenz mit einem Schnitt unterbrechen', attacks: god,
+      color: '#a7ff82', speed: 450, lift: 102, tip: 'Die rote Reset-Sequenz mit einem Schnitt unterbrechen', attacks: god, sidestepLift: 64,
+      combos: [[god[2], god[1]], [god[3], god[0]]],
       phases: phases('INIT', 'OVERWRITE', 'KERNEL PANIC') }
   };
 })();

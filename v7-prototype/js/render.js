@@ -645,8 +645,10 @@
     g.restore();
 
     for (const echo of s.echoes) drawBossArt(b, echo.x - b.w / 2, echo.y - 30, b.facing, .42);
-    if (b.rush && !reducedMotion) {
-      for (let i = 1; i < 4; i++) drawBossArt(b, b.x - Math.sign(b.rush.toX - b.rush.x) * i * 34, b.y + i * 3, b.facing, .22 / i);
+    const movement = b.rush ?? b.flank;
+    if (movement && !reducedMotion) {
+      const direction = Math.sign(movement.toX - movement.x);
+      for (let i = 1; i < 4; i++) drawBossArt(b, b.x - direction * i * 34, b.y + i * 3, b.facing, .22 / i);
     }
     g.save();
     g.globalAlpha = windup && plan.attack.hide && charge > .43 ? .28 : 1 - death;

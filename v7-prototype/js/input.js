@@ -5,7 +5,7 @@
   const held = { left: new Set(), right: new Set(), jump: new Set(), dash: new Set() };
   const translate = {
     ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
-    Space: 'jump', ArrowUp: 'jump', KeyW: 'jump', ShiftLeft: 'dash', ShiftRight: 'dash', KeyJ: 'dash'
+    Space: 'jump', ArrowUp: 'jump', KeyW: 'jump', KeyJ: 'dash', KeyX: 'dash'
   };
 
   function set(key, source, on) {

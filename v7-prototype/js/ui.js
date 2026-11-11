@@ -233,7 +233,7 @@
     const width = Math.min(100, Math.round(ratio * 100)) + '%';
     if (get('hud-meter').style.width !== width) get('hud-meter').style.width = width;
     const effects = b ? Object.keys(s.arenaFX).map(key => V.bossArenaEffects[key]) : [];
-    const warning = b?.plan?.attack.name ?? chase?.warning?.hint;
+    const warning = b?.plan?.followUp ? 'KOMBO · ' + b.plan.attack.name : b?.plan?.attack.name ?? chase?.warning?.hint;
     const stageAlert = b && s.zones.some(z => z.stage && z.at > s.elapsed) ? 'Arena-Gefahr markiert' : '';
     content('level-message', [s.feedbackTime > 0 ? s.feedback : '', warning, stageAlert, ...effects].filter(Boolean).join(' · '));
   }

@@ -12,7 +12,7 @@
     const maxHp = definition.hp + 270 * (node.tier - 1);
     Object.assign(s, { node, wind: 0 });
     s.boss = { definition, x: 610, y: G - 133, w: 172, h: 133, hp: maxHp, maxHp,
-      state: 'approach', phase: 0, phaseAt: 0, phaseUntil: 0, stageNext: Infinity, stageTurns: 0, readyAt: .75, hurtAt: 0, flash: 0, facing: -1, turns: 0,
+      state: 'approach', phase: 0, phaseAt: 0, phaseUntil: 0, stageNext: Infinity, stageTurns: 0, readyAt: .75, hurtAt: 0, flash: 0, facing: -1, side: 1, turns: 0,
       random: V.randomFor(s.seed + ':boss-ai'), bag: [] };
     V.initBossArena(s);
     V.say(s, 'Dash mit dem Glutkatana · ' + definition.tip);
@@ -48,15 +48,18 @@
     return attack;
   }
 
-  function prepare(s, clock) {
+  function prepare(s, clock, followUp) {
     const b = s.boss;
-    const attack = choose(s);
-    const lead = beatDelay(s, clock, Math.max(.62, attack.tell - b.phase * .07));
+    const attack = followUp ?? choose(s);
+    if (followUp) b.bag = b.bag.filter(item => item !== attack);
+    const lead = beatDelay(s, clock, Math.max(.62, attack.tell - b.phase * .07 - (followUp ? .18 : 0)));
+    const combo = followUp ? undefined : b.definition.combos.find(([opener], index) => index < b.phase && opener === attack);
     const strike = s.elapsed + lead;
     b.last = attack;
     b.turns++;
     b.state = 'windup';
-    b.plan = { attack, strike, lead, events: [], zones: [], activeUntil: strike + .24, initialHp: s.hp };
+    b.plan = { attack, strike, lead, events: [], zones: [], activeUntil: strike + .24, initialHp: s.hp,
+      nextAttack: combo?.[1], followUp: Boolean(followUp) };
     V.planBossArena(s, b.plan);
     V.emitParticles(s, 'charge', b.x + b.w / 2, b.y + b.h * .48);
     V.audio?.effect?.(b.definition.sound);
@@ -70,26 +73,49 @@
     b.readyAt = s.elapsed + Math.max(.40, attack.recover - .16 - b.phase * .12 - .035 * s.node.tier);
     b.exposed = attack.exposed ?? (s.hp === initialHp ? 1.18 : 1);
     b.plan = null;
+    if (!interrupted && !b.rush && b.turns % 2 === 0) reposition(s);
+  }
+
+  function reposition(s) {
+    const b = s.boss;
+    const p = s.player;
+    const center = p.x + p.w / 2;
+    const currentSide = b.x + b.w / 2 < center ? -1 : 1;
+    const canCross = center > 320 && center < s.worldWidth - 320;
+    const side = center <= 320 ? 1 : center >= s.worldWidth - 320 ? -1 : -currentSide;
+    const distance = canCross ? 165 : Math.abs(b.x + b.w / 2 - center) < 190 ? 275 : 120;
+    const toX = V.clamp(center + side * distance - b.w / 2, 35, s.worldWidth - b.w - 35);
+    if (Math.abs(toX - b.x) < 60) return;
+    const life = .62 - b.phase * .055;
+    b.flank = { x: b.x, y: b.y, toX, toY: b.y, start: s.elapsed, life, lift: b.definition.sidestepLift };
+    b.side = side;
+    b.readyAt = Math.max(b.readyAt, s.elapsed + life + V.rules.step);
+    V.emitParticles(s, 'trail', b.x + b.w / 2, b.y + b.h * .7, { direction: Math.sign(b.x - toX) });
   }
 
   function positionBoss(s, dt) {
     const b = s.boss;
     const p = s.player;
-    if (b.rush) {
-      const m = b.rush;
+    const move = b.rush ?? b.flank;
+    if (move) {
+      const m = move;
       const t = V.clamp((s.elapsed - m.start) / m.life, 0, 1);
       const envelope = Math.sin(Math.PI * t);
       const spin = t * 4 * Math.PI;
       const swirl = m.spiral ? Math.sin(spin) * envelope * m.lift * .72 : 0;
       const lift = envelope * m.lift * (m.spiral ? .68 + .32 * Math.cos(spin) : 1);
-      b.x = V.clamp(V.lerp(m.x, m.toX, t) + swirl, 35, s.worldWidth - b.w - 35);
-      b.y = V.lerp(m.y, m.toY, t) - lift;
-      if (t === 1) b.rush = null;
+      const progress = b.rush ? t : t * t * (3 - 2 * t);
+      b.x = V.clamp(V.lerp(m.x, m.toX, progress) + swirl, 35, s.worldWidth - b.w - 35);
+      b.y = V.lerp(m.y, m.toY, progress) - lift;
+      if (t === 1) {
+        if (b.rush) b.rush = null;
+        else b.flank = null;
+      }
       return;
     }
-    if (b.state === 'windup' || (b.state === 'active' && b.plan.events.length)) return;
+    if (b.plan?.events.some(event => event.type === 'shot' || event.type === 'rush')) return;
     const center = p.x + p.w / 2;
-    const side = center < 320 ? 1 : center > s.worldWidth - 320 ? -1 : b.turns % 4 < 2 ? 1 : -1;
+    const side = center < 320 ? 1 : center > s.worldWidth - 320 ? -1 : b.side;
     const stride = 210 + Math.sin(s.elapsed * (2.3 + b.phase * .25)) * 38;
     const target = V.clamp(center + side * stride - b.w / 2, 35, s.worldWidth - b.w - 35);
     const speed = b.definition.speed * (1 + b.phase * .17) * (b.state === 'recovery' ? .62 : 1);
@@ -115,7 +141,7 @@
     b.stageNext = s.elapsed + 1.62;
     b.forceSpecial = true;
     b.state = 'shift';
-    b.plan = b.rush = null;
+    b.plan = b.rush = b.flank = null;
     b.exposed = 1;
     s.zones.length = s.projectiles.length = s.echoes.length = s.chests.length = 0;
     s.arenaFX = {};
@@ -136,7 +162,10 @@
         V.audio?.effect?.(b.definition.sound, true);
       }
       V.triggerBossEvents(s, plan);
-      if (s.elapsed >= plan.activeUntil) recover(s);
+      if (s.elapsed >= plan.activeUntil) {
+        if (plan.nextAttack) prepare(s, clock, plan.nextAttack);
+        else recover(s);
+      }
     } else if (!plan && s.elapsed >= b.readyAt) {
       b.exposed = 1;
       prepare(s, clock);
@@ -165,7 +194,7 @@
     b.hp = 0;
     b.state = 'defeated';
     b.defeatedAt = s.elapsed;
-    b.plan = b.rush = null;
+    b.plan = b.rush = b.flank = null;
     s.projectiles.length = s.zones.length = s.echoes.length = s.chests.length = 0;
     s.arenaFX = {};
     s.wind = 0;
