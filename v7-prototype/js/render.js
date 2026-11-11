@@ -8,10 +8,10 @@
   const motionPreference = window.matchMedia?.('(prefers-reduced-motion: reduce)');
   let reducedMotion = motionPreference?.matches;
   // Y coordinate of each walkable deck in its source PNG.
-  const deckY = { reef: 17, greed: 2, diva: 2, vortex: 2, god: 1 };
+  const deckY = { reef: 17, greed: 2, diva: 2, vortex: 2, god: 0 };
   const atlas = {
     greed: [26, 0, 335, 239], diva: [418, 0, 311, 247],
-    vortex: [47, 239, 279, 273], god: [394, 260, 328, 236]
+    vortex: [47, 239, 279, 273]
   };
   g.imageSmoothingEnabled = false;
 
@@ -134,7 +134,7 @@
       const x = V.stageX(s, slot * spacing);
       const prop = props[(slot % props.length + props.length) % props.length];
       const painted = slot % 5 !== 4 && fittedSprite('scenery-' + prop, x - size / 2, floor - size, size, size, true);
-      if (!painted) surgeSprite(s.biome, index, x - size / 2, floor - size, size, size, true);
+      if (!painted && s.biome !== 'god') surgeSprite(s.biome, index, x - size / 2, floor - size, size, size, true);
     };
     g.save();
     g.globalAlpha = .68;
@@ -246,7 +246,7 @@
     const art = V.readyImage(V.bossStageArt(s, final ? 'deck-final' : 'deck'));
     if (!art) return false;
     const height = V.clamp(deck.w * art.naturalHeight / art.naturalWidth, 30, 96);
-    const edge = s.biome === 'greed' && !final ? .73 : .11;
+    const edge = s.biome === 'god' ? .36 : s.biome === 'greed' && !final ? .73 : .11;
     g.drawImage(art, x, deck.y - height * edge, deck.w, height);
     if (deck.stageWarning) {
       g.fillStyle = '#ff7c9d';
@@ -477,16 +477,52 @@
     }
   }
 
-  function drawBossArt(b, x, y, facing, opacity = 1) {
+  const shadowBandOrder = [4, 1, 8, 2, 7, 0, 9, 5, 3, 6];
+
+  function drawShadow(b, image, elapsed, death) {
+    const age = elapsed - b.phaseAt;
+    const shifting = !death && b.phaseFrom !== undefined && elapsed < b.phaseUntil;
+    const progress = shifting ? V.clamp(age / (b.phaseUntil - b.phaseAt), 0, 1) : 1;
+    const previous = shifting && !reducedMotion ? V.readyImage(V.godForms[b.phaseFrom]) : null;
+    const frame = Math.floor(elapsed * 11);
+    const period = 17 - 4 * (b.phase ?? 0);
+    const tearing = frame % period < 2;
+    const tear = reducedMotion ? 0 : death ? 8 + death * 29 : previous ? Math.sin(Math.PI * progress) * 32 : tearing ? 5 : 0;
+    if (!tear && !previous) {
+      g.drawImage(image, 0, 0, b.w, b.h);
+      return;
+    }
+    const bands = shadowBandOrder.length;
+    for (let i = 0; i < bands; i++) {
+      const rank = shadowBandOrder[i];
+      if (death && !reducedMotion && death * bands > rank + 1) continue;
+      const from = previous && progress < .10 + rank * .078 ? previous : image;
+      const y1 = Math.round(i * from.naturalHeight / bands);
+      const y2 = Math.round((i + 1) * from.naturalHeight / bands);
+      const dy = Math.round(i * b.h / bands);
+      const height = Math.round((i + 1) * b.h / bands) - dy;
+      const offset = previous || death || (i + frame) % 4 === 0
+        ? Math.round(tear * Math.sin((rank + 1) * 2.1 + frame * .9)) : 0;
+      if (offset && (i + frame) % 3 === 0) {
+        g.fillStyle = i % 2 ? '#96333e' : '#c56467';
+        g.fillRect(offset > 0 ? -Math.abs(offset) : b.w - Math.abs(offset) / 2, dy + 2, Math.abs(offset) + 7, 2);
+      }
+      g.drawImage(from, 0, y1, from.naturalWidth, y2 - y1, offset, dy, b.w, height);
+    }
+  }
+
+  function drawBossArt(b, x, y, facing, opacity = 1, elapsed = 0, death = 0) {
+    const shadow = b.definition.sprite === 'god';
     const clip = atlas[b.definition.sprite];
-    const image = V.readyImage(clip ? 'atlas' : b.definition.sprite);
-    const nativeLeft = b.definition.sprite === 'greed' || b.definition.sprite === 'diva';
+    const image = V.readyImage(shadow ? V.godForms[b.phase ?? 0] : clip ? 'atlas' : b.definition.sprite);
+    const nativeLeft = shadow || b.definition.sprite === 'greed' || b.definition.sprite === 'diva';
     const mirror = nativeLeft ? facing > 0 : facing < 0;
     g.save();
     g.globalAlpha *= opacity;
     g.translate(x + (mirror ? b.w : 0), y);
     if (mirror) g.scale(-1, 1);
-    if (image && clip) g.drawImage(image, ...clip, 0, 0, b.w, b.h);
+    if (image && shadow) drawShadow(b, image, elapsed, death);
+    else if (image && clip) g.drawImage(image, ...clip, 0, 0, b.w, b.h);
     else if (image) g.drawImage(image, 0, 0, b.w, b.h);
     else {
       g.fillStyle = b.definition.color;
@@ -497,7 +533,7 @@
 
   function drawChase(s) {
     const b = s.chase;
-    drawBossArt(b, b.x, b.y, -1);
+    drawBossArt(b, b.x, b.y, -1, 1, s.elapsed);
     if (b.warning) {
       const lead = b.warning.at - s.elapsed;
       g.save();
@@ -561,7 +597,7 @@
     if (fx.blackout) {
       g.fillStyle = '#060e1d9c';
       g.fillRect(left, 0, W, G);
-      g.fillStyle = '#b7ff914f';
+      g.fillStyle = '#db676f60';
       for (let i = 0; i < 12; i++) g.fillRect(left + i * 88, i * 73 % 329, 23, 3);
     }
     g.restore();
@@ -651,6 +687,7 @@
 
   function drawBoss(s) {
     const b = s.boss;
+    const shadow = b.definition.sprite === 'god';
     const plan = b.plan;
     const windup = b.state === 'windup';
     const death = b.state === 'defeated' ? V.clamp((s.elapsed - b.defeatedAt) / 1.25, 0, 1) : 0;
@@ -663,30 +700,32 @@
     g.beginPath();
     g.ellipse(cx, G + 2, 64, 7, 0, 0, Math.PI * 2);
     g.fill();
-    g.globalAlpha = .14 + charge * .25;
+    g.globalAlpha = shadow ? (.08 + charge * .13) * (1 - death) : .14 + charge * .25;
     g.fillStyle = b.definition.color;
     g.beginPath();
     g.ellipse(cx, cy, 90 + 14 * b.phase, 67 + charge * 18, 0, 0, Math.PI * 2);
     g.fill();
     g.restore();
 
-    for (const echo of s.echoes) drawBossArt(b, echo.x - b.w / 2, echo.y - 30, b.facing, .42);
+    for (const echo of s.echoes) drawBossArt(b, echo.x - b.w / 2, echo.y - 30, b.facing, .42, s.elapsed);
     const movement = b.rush ?? b.flank;
     if (movement && !reducedMotion) {
       const direction = Math.sign(movement.toX - movement.x);
-      for (let i = 1; i < 4; i++) drawBossArt(b, b.x - direction * i * 34, b.y + i * 3, b.facing, .22 / i);
+      for (let i = 1; i < 4; i++) drawBossArt(b, b.x - direction * i * 34, b.y + i * 3, b.facing, .22 / i, s.elapsed);
     }
     g.save();
     g.globalAlpha = windup && plan.attack.hide && charge > .43 ? .28 : 1 - death;
-    if (b.flash > .05 || windup && charge > .72 && !reducedMotion) g.filter = 'brightness(1.48)';
+    if ((!shadow || !reducedMotion) && (b.flash > .05 || windup && charge > .72 && !reducedMotion)) {
+      g.filter = shadow ? 'brightness(1.23)' : 'brightness(1.48)';
+    }
     const tilt = windup ? [ .12, .045, -.08, .12, -.045 ][['reef', 'greed', 'diva', 'vortex', 'god'].indexOf(s.biome)] * charge : 0;
     if (!reducedMotion) {
       g.translate(cx, cy);
-      g.rotate(tilt * b.facing + death * .62);
-      g.translate(-cx, -cy + death * 47);
+      g.rotate(tilt * b.facing + (shadow ? 0 : death * .62));
+      g.translate(-cx, -cy + death * (shadow ? -9 : 47));
     }
     const recoil = reducedMotion ? 0 : (b.hitSide ?? 0) * b.flash * 39;
-    drawBossArt(b, b.x + recoil, b.y, b.facing);
+    drawBossArt(b, b.x + recoil, b.y, b.facing, 1, s.elapsed, death);
     g.restore();
 
     const weak = (windup && plan.attack.interrupt) || (b.state === 'recovery' && b.exposed > 1);
@@ -717,14 +756,14 @@
       g.fillStyle = b.definition.color;
       g.fillRect(cx - 49, b.y - 12, 98 * charge, 4);
     }
-    if (death > 0) {
+    if (death > 0 && !shadow) {
       g.save();
       const burst = reducedMotion ? 105 : 104 + death * 109;
       g.globalAlpha = Math.max(0, .84 - death * .88);
       fittedSprite('fx-boss-defeat', cx - burst / 2, cy - burst / 2, burst, burst);
       g.restore();
     }
-    if (death > 0 && !reducedMotion) {
+    if (death > 0 && !reducedMotion && !shadow) {
       g.fillStyle = b.definition.color;
       g.globalAlpha = 1 - death;
       for (let i = 0; i < 18; i++) {

@@ -202,8 +202,8 @@
       combos: [[vortex[1], vortex[2]], [vortex[0], vortex[3]]],
       phases: phases('Warm-up', 'Laufbänder', 'Überlastung') },
     god: { name: 'GOD.EXE', sprite: 'god', hp: 6550, track: 'run-the-loop', sound: 'god-fault',
-      color: '#a7ff82', speed: 450, lift: 102, tip: 'Die rote Reset-Sequenz mit einem Schnitt unterbrechen', attacks: god, sidestepLift: 64,
+      color: '#e27778', speed: 450, lift: 102, tip: 'Die rote Reset-Sequenz mit einem Schnitt unterbrechen', attacks: god, sidestepLift: 64,
       combos: [[god[2], god[1]], [god[3], god[0]]],
-      phases: phases('INIT', 'OVERWRITE', 'KERNEL PANIC') }
+      phases: phases('ECHO', 'OVERWRITE', 'KERNEL PANIC') }
   };
 })();

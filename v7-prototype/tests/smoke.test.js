@@ -103,6 +103,18 @@ test('level clear uses the regional art, with a separate image for each boss and
   }
 });
 
+test('GOD.EXE ships three aligned transparent forms and two phase cues', () => {
+  const { V } = logic(undefined, ['config', 'assets']);
+  assert.deepEqual(plain(V.godForms), ['god-echo', 'god-overwrite', 'god-panic']);
+  const frames = V.godForms.map(name => fs.readFileSync(path.join(root, V.imagePath(name))));
+  assert.ok(frames.every(png => png.readUInt32BE(16) === 192 && png.readUInt32BE(20) === 144 && png[25] === 6));
+  assert.equal(new Set(frames.map(png => png.toString('base64'))).size, 3);
+  for (const cue of ['god-morph', 'god-collapse']) {
+    const wave = fs.readFileSync(path.join(root, 'assets/sfx/' + cue + '.wav'));
+    assert.equal(wave.toString('ascii', 8, 12), 'WAVE');
+  }
+});
+
 test('the six surge atlases contain 50 transparent sprites with valid source frames', () => {
   const { V } = logic(undefined, ['config', 'assets', 'surge-art']);
   let sprites = 0;
@@ -1058,6 +1070,7 @@ test('phase thresholds reconfigure all five arenas and telegraph the new hazards
       V.updateCombat(s, V.rules.step, idle);
       assert.equal(b.state, 'shift', id);
       assert.equal(b.phase, phase, id);
+      assert.equal(b.phaseFrom, phase - 1, id);
       assert.equal(s.zones.length, 0, id);
       assert.equal(s.projectiles.length, 0, id);
       assert.ok(b.phaseUntil > s.elapsed + 1, id);

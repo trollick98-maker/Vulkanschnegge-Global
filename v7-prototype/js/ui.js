@@ -405,7 +405,7 @@
     const art = get('boss-intro-image');
     const name = s.chase.definition.name;
     art.alt = 'Der winzige Schnegg steht vor ' + name + '.';
-    const tone = { reef: 'cyan', greed: 'gold', diva: 'violet', vortex: 'cyan', god: 'green' }[s.biome];
+    const tone = { reef: 'cyan', greed: 'gold', diva: 'violet', vortex: 'cyan', god: 'scarlet' }[s.biome];
     frameArt(art, V.imagePath('boss-intro-' + s.biome), [tone, '57% 65%', 4, -1, 1.17, 1.09], 2850);
     content('boss-intro-name', name);
     content('boss-intro-place', 'BOSS · ' + s.node.name.toUpperCase());

@@ -44,12 +44,14 @@
     images['clear-boss-' + biome] = 'clear/boss-' + biome + '.webp';
     if (biome !== 'god') images['clear-' + biome] = 'clear/' + biome + '.webp';
   }
+  V.godForms = ['god-echo', 'god-overwrite', 'god-panic'];
+  for (const form of V.godForms) images[form] = 'god-exe/' + form.slice(4) + '.png';
   V.sceneryProps = {
     reef: ['fan-coral', 'dive-lantern', 'porthole', 'reef-eel'],
     greed: ['brass-bollard', 'doubloons', 'anchor-chain', 'brass-urn'],
     diva: ['pearl-shell', 'opera-mask', 'footlight', 'velvet'],
     vortex: ['frozen-dumbbell', 'ice-gauge'],
-    god: ['broken-crt', 'cable-coil']
+    god: ['split-terminal', 'fractured-column']
   };
   for (const name of Object.values(V.sceneryProps).flat()) images['scenery-' + name] = 'cinematic/' + name + '.png';
   V.regionalEffects = {

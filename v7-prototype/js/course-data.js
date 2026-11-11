@@ -6,7 +6,7 @@
     greed:  { top: '#241c37', bottom: '#7a533b', ground: '#634333', accent: '#ffd183', far: '#4b3541' },
     diva:   { top: '#291941', bottom: '#6c3878', ground: '#543357', accent: '#ffa0d2', far: '#482552' },
     vortex: { top: '#101c3c', bottom: '#305f8a', ground: '#30475e', accent: '#8cbdff', far: '#233b63' },
-    god:    { top: '#0a151a', bottom: '#234633', ground: '#1d3533', accent: '#b0ff87', far: '#163331' }
+    god:    { top: '#0a141e', bottom: '#233641', ground: '#192630', accent: '#c96a6d', far: '#192933' }
   };
   // Obstacles are [offset, height, breakable]. Platforms are [offset, height, width].
   V.courseData = {

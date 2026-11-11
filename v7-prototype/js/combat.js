@@ -134,6 +134,7 @@
     const b = s.boss;
     const phase = b.hp <= b.maxHp / 3 ? 2 : b.hp <= b.maxHp * 2 / 3 ? 1 : 0;
     if (phase <= b.phase) return;
+    b.phaseFrom = b.phase;
     b.phase = phase;
     b.phaseAt = s.elapsed;
     b.phaseUntil = s.elapsed + 1.18;
@@ -146,7 +147,8 @@
     s.zones.length = s.projectiles.length = s.echoes.length = s.chests.length = 0;
     s.arenaFX = {};
     V.emitParticles(s, 'parry', b.x + b.w / 2, b.y + b.h / 2, { color: b.definition.color, heavy: true });
-    V.audio?.effect?.(b.definition.sound, true);
+    if (b.definition.sprite === 'god') V.audio?.effect?.(phase === 2 ? 'god-collapse' : 'god-morph');
+    else V.audio?.effect?.(b.definition.sound, true);
     V.say(s, 'PHASE ' + (phase + 1) + ' · ' + b.definition.phases[phase]);
   }
 

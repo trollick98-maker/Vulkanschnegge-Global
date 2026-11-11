@@ -54,7 +54,7 @@
       connect(side, region.id, region.id, entrance);
       entrance = region.id;
     });
-    nodes.push({ id: LAST, kind: 'boss', name: 'GOD.EXE', x: 950, y: 171, color: '#a6ff82',
+    nodes.push({ id: LAST, kind: 'boss', name: 'GOD.EXE', x: 950, y: 171, color: '#e27778',
       biome: LAST, gate: entrance, tier: 5, music: musicByZone[4] });
     connect(entrance, LAST, LAST, entrance);
     const byId = Object.fromEntries(nodes.map(node => [node.id, node]));

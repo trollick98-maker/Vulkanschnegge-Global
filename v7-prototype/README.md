@@ -57,6 +57,8 @@ Angriffe durchlaufen Vorbereitung, Ausführung und Erholung. Die Bosse bewegen s
 | Pumper Vortex | Laufbänder ziehen am Boden. In Phase III federn die Decks stärker und markierte Gewichte schlagen paarweise ein. | Nach einer Überlastung auf den Kraftgürtel zielen. |
 | GOD.EXE | Markierte Decks fallen kurz aus. In Phase III schalten sich drei Firewalls versetzt ein. | Den Kern während des Resets treffen. |
 
+GOD.EXE erscheint als Schneggs verzerrtes Spiegelbild. In ECHO bleibt die Silhouette fast intakt. In OVERWRITE zerreißen Panzer und Fühler in versetzten Segmenten. In KERNEL PANIC liegt der rote Spiralkern frei. Beide Phasenwechsel haben eigene Glitch-Klänge. Bei reduzierter Bewegung erscheint die neue Form sofort.
+
 Treffer, eigener Schaden, Blocks und Konter haben eigene Pixel-Effekte und Töne. Schadenszahlen zeigen die verlorenen HP. Bei eigenem Schaden leuchtet der Rand des Spielfelds rot. Mit **Effekte an/aus** schaltest du die Spielgeräusche unabhängig von der Musik.
 
 Der Dash zieht eine türkise Spur und hat einen eigenen Sound. Bei hohem Tempo wird die Spur lavafarben und der Dash klingt kräftiger. In Arenen hörst und siehst du ein kurzes Schlittern, wenn du auf dem Boden aus hohem Tempo abbremst oder gegenlenkst.

@@ -132,6 +132,9 @@
     }
     if (section.kind !== 'arcade') V.applyShopLoadout(state.level, campaign);
     if (section.kind !== 'arcade') V.image('clear-' + V.clearArt(state.level));
+    if (state.level.chase?.definition.sprite === 'god') {
+      for (const form of V.godForms) V.image(form);
+    }
     const zone = section.route ? graph.byId[section.route.edge.b] : section.node;
     if (!intro && !skipIntro) V.startCameraCue(state.level);
     if (!intro) V.audio.startLevel(section.kind, state.level.chase?.definition.track ?? zone?.music);
