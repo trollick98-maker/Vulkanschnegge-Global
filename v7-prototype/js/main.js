@@ -16,8 +16,8 @@
 
   function transition(mode, keepMusic = false) {
     state.mode = mode;
-    get('restart-btn').disabled = mode === 'outro';
     get('test-skip-btn').classList.toggle('hidden', !canSkip());
+    if (mode !== 'clear') state.clearNext = null;
     frameAt = 0;
     carry = 0;
     V.input.reset();
@@ -131,6 +131,7 @@
       state.level = V.newBossChase(section.node, campaign.character, campaign.build, campaign.seed);
     }
     if (section.kind !== 'arcade') V.applyShopLoadout(state.level, campaign);
+    if (section.kind !== 'arcade') V.image('clear-' + V.clearArt(state.level));
     const zone = section.route ? graph.byId[section.route.edge.b] : section.node;
     if (!intro && !skipIntro) V.startCameraCue(state.level);
     if (!intro) V.audio.startLevel(section.kind, state.level.chase?.definition.track ?? zone?.music);
@@ -167,6 +168,13 @@
     V.render(s);
   }
 
+  function showClear(level, payout, title, button, next, final = false) {
+    transition('clear', true);
+    state.clearNext = next;
+    ui.showClear(level, payout, title, button);
+    V.audio.startClear(final ? 'finale' : level.kind);
+  }
+
   function finish() {
     const level = state.level;
     const section = state.section;
@@ -174,40 +182,28 @@
       enterBossArena(level);
       return;
     }
-    transition('result');
     if (!state.testMode) V.recordRun(section.kind, level);
-    if (!level.outcome) {
+    if (!level.outcome || section.kind === 'arcade') {
+      transition('result');
       ui.hud(level);
       V.render(level);
       ui.result(level);
-    } else if (section.kind === 'travel') {
-      if (V.arrive(campaign, graph, section.route, V.sectionPayout(level)) && campaign.arrival) enterNode();
-      else showMap();
-    } else {
-      if (!V.completeNode(campaign, graph, section.node.id, undefined, {
-        route: section.route, coins: V.sectionPayout(level)
-      })) {
-        showMap();
-        return;
-      }
-      if (section.node.id === graph.final) {
-        level.player.dashBuffer = level.player.jumpBuffer = 0;
-        level.player.vx = level.player.dashTime = level.speed = 0;
-        state.outroLeft = 1.1;
-        transition('outro');
-      }
-      else showMap();
+      return;
     }
-  }
 
-  function outro(level, dt) {
-    level.elapsed += dt;
-    V.tickParticles(level, dt);
-    state.outroLeft -= dt;
-    V.movePlayer(level, dt, {});
-    ui.hud(level);
-    V.render(level);
-    if (state.outroLeft <= 0) showMap();
+    const payout = V.sectionPayout(level);
+    if (section.kind === 'travel') {
+      if (!V.arrive(campaign, graph, section.route, payout)) return showMap();
+      const next = campaign.arrival ? enterNode : showMap;
+      showClear(level, payout, section.route.node.name, campaign.arrival ? 'Kampf starten' : 'Zur Weltkarte', next);
+      return;
+    }
+    if (!V.completeNode(campaign, graph, section.node.id, undefined, { route: section.route, coins: payout })) {
+      showMap();
+      return;
+    }
+    const final = section.node.id === graph.final;
+    showClear(level, payout, level.title, final ? 'Zur Befreiung' : 'Perk wählen', final ? endStory : showMap, final);
   }
 
   function frame(ms) {
@@ -219,10 +215,6 @@
     if (state.mode === 'boss-intro') {
       state.bossIntroLeft -= dt;
       if (state.bossIntroLeft <= 0) startBossChase();
-      return;
-    }
-    if (state.mode === 'outro') {
-      outro(state.level, dt);
       return;
     }
     if (state.mode !== 'play') return;
@@ -264,7 +256,7 @@
   V.backToMap = function () {
     if (!get('shop-overlay').classList.contains('hidden')) ui.closeShop();
     else if (!get('leaderboard-overlay').classList.contains('hidden')) ui.dialog(null);
-    else if (state.mode === 'play' || state.mode === 'boss-intro' || state.mode === 'result' || state.mode === 'outro') showMap();
+    else if (['play', 'boss-intro', 'result', 'clear'].includes(state.mode)) showMap();
   };
   get('launch-screen').addEventListener('click', event => {
     if (state.mode !== 'launch') return;
@@ -294,6 +286,12 @@
     if (state.mode === 'map' && !campaign.pending) ui.shop(campaign, graph);
   });
   get('boss-intro-next').addEventListener('click', startBossChase);
+  get('clear-next').addEventListener('click', () => {
+    const next = state.clearNext;
+    if (state.mode !== 'clear' || !next) return;
+    state.clearNext = null;
+    next();
+  });
   get('back-btn').addEventListener('click', V.backToMap);
   get('home').addEventListener('click', showMap);
   function retry() {

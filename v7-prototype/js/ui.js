@@ -5,7 +5,7 @@
   const world = get('world-ui');
   const game = get('game-panel');
   const plot = get('map-plot');
-  const dialogs = ['upgrade-overlay', 'leaderboard-overlay', 'result', 'story-overlay', 'boss-intro', 'shop-overlay'].map(get);
+  const dialogs = ['upgrade-overlay', 'leaderboard-overlay', 'result', 'clear-overlay', 'story-overlay', 'boss-intro', 'shop-overlay'].map(get);
   const NS = 'http://www.w3.org/2000/svg';
   const difficultyLabels = { common: 'Häufig', rare: 'Selten', epic: 'Episch' };
   const kinds = { travel: 'REISE', arena: 'GEGNERLEVEL', arcade: 'ENDLOS', 'boss-chase': 'VERFOLGUNG' };
@@ -321,7 +321,7 @@
   function reward(campaign, graph, select) {
     const pending = campaign.pending;
     const node = graph.byId[pending.node];
-    content('reward-tag', node.name.toUpperCase() + ' · ' + (node.kind === 'boss' ? 'BOSS BESIEGT' : 'LEVEL ABGESCHLOSSEN'));
+    content('reward-tag', node.name.toUpperCase() + ' · BELOHNUNG');
     const choices = get('upgrade-choices');
     choices.replaceChildren();
     for (const id of pending.choices) {
@@ -412,6 +412,18 @@
     dialog('boss-intro');
   }
 
+  function showClear(s, payout, title, buttonText) {
+    const key = V.clearArt(s);
+    const art = get('clear-illustration');
+    frameArt(art, V.imagePath('clear-' + key), V.clearShots[key], s.boss ? 5200 : 4100);
+    content('clear-label', s.boss ? 'BOSS BESIEGT' : s.kind === 'travel' ? 'ZIEL ERREICHT' : 'LEVEL CLEARED');
+    content('clear-title', title);
+    content('clear-coins', '+' + payout);
+    content('clear-time', duration(Math.floor(s.elapsed + (s.trackOffset ?? 0))));
+    content('clear-next', buttonText);
+    dialog('clear-overlay');
+  }
+
   function recordRow(target, name, score) {
     const row = document.createElement('div');
     row.className = 'record-row';
@@ -493,5 +505,5 @@
   }
   refreshCharacters();
 
-  V.ui = { map, showGame, hud, shop, closeShop, reward, result, showSlide, bossIntro, dialog };
+  V.ui = { map, showGame, hud, shop, closeShop, reward, result, showClear, showSlide, bossIntro, dialog };
 })();

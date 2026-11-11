@@ -1,6 +1,18 @@
 (function () {
   'use strict';
   const V = window.VS7;
+  V.clearArt = s => (s.boss || s.chase || s.biome === 'god' ? 'boss-' : '') + s.biome;
+  V.clearShots = {
+    reef: ['cyan', '62% 52%', 4, -1, 1.10, 1.19],
+    greed: ['gold', '50% 58%', 0, 3, 1.17, 1.05],
+    diva: ['violet', '60% 53%', 4, 0, 1.09, 1.18],
+    vortex: ['cyan', '51% 47%', -3, 2, 1.14, 1.08],
+    'boss-reef': ['gold', '52% 65%', -2, -3, 1.19, 1.08],
+    'boss-greed': ['gold', '59% 57%', 5, -1, 1.18, 1.11],
+    'boss-diva': ['violet', '48% 61%', -3, -2, 1.16, 1.08],
+    'boss-vortex': ['cyan', '52% 57%', 2, 3, 1.16, 1.09],
+    'boss-god': ['green', '62% 54%', 5, 1, 1.13, 1.21]
+  };
   V.storyShots = {
     'intro-harbor': ['gold', '50% 65%', 2, -1, 1.03, 1.14],
     'intro-omens': ['violet', '50% 30%', 0, 2, 1.16, 1.06],

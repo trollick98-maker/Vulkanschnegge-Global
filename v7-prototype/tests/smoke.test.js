@@ -81,6 +81,28 @@ test('cinematic art maps every new sprite and every story shot to an offline ass
   }
 });
 
+test('level clear uses the regional art, with a separate image for each boss and chase preload', () => {
+  const { V } = logic(undefined, ['config', 'assets', 'story']);
+  const art = new Set();
+  for (const biome of ['reef', 'greed', 'diva', 'vortex', 'god']) {
+    const key = V.clearArt({ biome, boss: {} });
+    assert.equal(V.clearArt({ biome, chase: {} }), key);
+    assert.equal(key, 'boss-' + biome);
+    art.add(key);
+    if (biome !== 'god') art.add(V.clearArt({ biome }));
+  }
+  assert.equal(art.size, 9);
+  for (const key of art) {
+    assert.equal(V.clearShots[key].length, 6);
+    const webp = fs.readFileSync(path.join(root, V.imagePath('clear-' + key)));
+    assert.equal(webp.toString('ascii', 8, 12), 'WEBP');
+  }
+  for (const kind of ['travel', 'arena', 'boss', 'finale']) {
+    const wave = fs.readFileSync(path.join(root, 'assets/sfx/clear-' + kind + '.wav'));
+    assert.equal(wave.toString('ascii', 8, 12), 'WAVE');
+  }
+});
+
 test('the six surge atlases contain 50 transparent sprites with valid source frames', () => {
   const { V } = logic(undefined, ['config', 'assets', 'surge-art']);
   let sprites = 0;
@@ -1418,6 +1440,26 @@ test('transitioning from a fight to the menu pauses every active sound effect', 
   assert.ok(effects.every(voice => !voice.paused));
   audio.startMenu();
   assert.ok(effects.every(voice => voice.paused));
+});
+
+test('clear sounds replace the level track, respect sound settings and stop on continue', () => {
+  const { audio, players } = audioFixture();
+  audio.startLevel('boss', 'reef-tax');
+  const theme = players[0];
+  audio.setEnabled(false);
+  for (const kind of ['travel', 'arena', 'boss', 'finale']) {
+    const previous = players.at(-1);
+    audio.startClear(kind);
+    assert.ok(theme.paused && previous.paused);
+    assert.equal(players.at(-1).src, 'assets/sfx/clear-' + kind + '.wav');
+    assert.equal(players.at(-1).paused, false);
+  }
+  audio.startLevel('story', 'home-at-last');
+  assert.ok(players.every(player => player.paused));
+  audio.setEffectsEnabled(false);
+  const count = players.length;
+  audio.startClear('travel');
+  assert.equal(players.length, count);
 });
 
 test('hit sounds use a bounded pool, play with music muted and stop when effects are muted', () => {

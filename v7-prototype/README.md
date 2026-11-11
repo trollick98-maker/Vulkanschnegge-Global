@@ -13,6 +13,7 @@ Beim Öffnen des Spiels erscheint **LAUNCH** auf schwarzem Grund. Ein Klick oder
 - In Gegnerleveln und Bossarenen baut jede Figur beim Lenken Tempo auf. Otter beschleunigt am stärksten, danach folgen Frogo und Schnegg. Loslassen bremst.
 - Gegner, Böden und Plattformen haben eigene Biom-Sprites. Münzen tragen ein Spiralrelief. Am Ende der Gegnerlevel wechseln die Zielportale beim Öffnen von orangefarbenen Gittertoren zu türkisen Wirbeln. Boss-Geschosse haben eigene Silhouetten, und Kartenmotive markieren die Regionen.
 - Nach Kämpfen wählst du einen Perk. Der Build gilt für alle weiteren Abschnitte der Kampagne. Offene Belohnungen bleiben beim Neuladen erhalten. Der Endlos-Modus hat einen eigenen Startzustand.
+- Erfolgreiche Reisen, Gegnerlevel und Bosskämpfe enden auf einer illustrierten Abschlusskarte mit Münzprämie und Laufzeit. Vier Regionen und fünf Bosse haben eigene Motive und Kamerafahrten. Reise, Arena, Boss und Finale haben eigene Abschlussklänge. Der Weiter-Knopf führt zum nächsten Kampf, zur Perk-Auswahl oder zur Befreiung.
 - Normale Reisen und Gegnerlevel haben feste Musik pro Kampagnenzone. In Zone 1 läuft „Pixel Depths“, in Zone 2 und 3 „Into the Deep“ und ab Zone 4 „Vulkanschnegge Theme“. Bosse haben ihre eigenen Tracks. Im Endlos-Modus wechseln die Tracks weiterhin mit dem Tempo.
 - Der letzte der vier Götter vor dem Riss ergibt sich in dieser Fassung aus der Seed-Reihenfolge. GOD.EXE ist der letzte Kampf. Auf „I AM THE SOURCE“ beim Reveal folgt „RUN THE LOOP“ im Kampf. „Home, At Last“ startet im Abspann.
 

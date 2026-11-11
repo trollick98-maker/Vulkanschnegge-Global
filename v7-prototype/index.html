@@ -147,7 +147,7 @@
       </div>
     </section>
     <section id="upgrade-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="reward-title">
-      <div class="overlay-card"><img class="reward-art" src="assets/images/story/reward.webp" alt="" loading="lazy" decoding="async"><p id="reward-tag" class="eyebrow">LEVEL ABGESCHLOSSEN</p><h2 id="reward-title">Wähle einen Perk</h2><div id="upgrade-choices" class="upgrade-choices"></div></div>
+      <div class="overlay-card"><img class="reward-art" src="assets/images/story/reward.webp" alt="" loading="lazy" decoding="async"><p id="reward-tag" class="eyebrow">BELOHNUNG</p><h2 id="reward-title">Wähle einen Perk</h2><div id="upgrade-choices" class="upgrade-choices"></div></div>
     </section>
     <section id="leaderboard-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="leaderboard-title">
       <div class="overlay-card"><p class="eyebrow">REKORDE</p><h2 id="leaderboard-title">Schneggboard</h2>
@@ -160,6 +160,22 @@
     <section id="result" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="result-title">
       <div class="overlay-card"><p id="result-tag" class="eyebrow"></p><h2 id="result-title"></h2><p id="result-description"></p>
         <div class="result-actions"><button id="replay" class="primary">Erneut versuchen</button><button id="home" class="quiet">Zur Weltkarte</button></div>
+      </div>
+    </section>
+    <section id="clear-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="clear-label clear-title">
+      <div class="overlay-card clear-card">
+        <div class="story-art clear-art">
+          <img id="clear-illustration" alt="">
+          <p class="eyebrow clear-label" id="clear-label"></p>
+        </div>
+        <div class="clear-summary">
+          <h2 id="clear-title"></h2>
+          <dl class="clear-stats">
+            <div><dt>Münzen</dt><dd id="clear-coins"></dd></div>
+            <div><dt>Zeit</dt><dd id="clear-time"></dd></div>
+          </dl>
+          <button id="clear-next" class="primary" type="button"></button>
+        </div>
       </div>
     </section>
     <section id="story-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="story-line">

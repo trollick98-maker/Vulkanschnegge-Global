@@ -6,7 +6,8 @@
   const failed = new Set();
   const effects = new Map();
   const effectNames = ['hit', 'hurt', 'guard', 'parry', 'dash', 'dash-fast', 'skid', 'katana',
-    'reef-charge', 'greed-strike', 'diva-note', 'vortex-slam', 'god-fault', 'boss-break'];
+    'reef-charge', 'greed-strike', 'diva-note', 'vortex-slam', 'god-fault', 'boss-break',
+    'clear-travel', 'clear-arena', 'clear-boss', 'clear-finale'];
   let scene = null;
   let wanted = null;
   let active = null;
@@ -82,6 +83,11 @@
       const voice = voices.get(active);
       if (voice && !voice.audio.paused) return Promise.resolve(true);
       return select(wanted);
+    },
+    startClear(kind) {
+      this.stop();
+      scene = 'clear';
+      this.effect('clear-' + kind);
     },
     updateRunner(speed, dt) {
       if (scene !== 'arcade') return;

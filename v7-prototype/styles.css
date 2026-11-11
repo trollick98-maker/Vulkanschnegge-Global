@@ -664,6 +664,70 @@ canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; 
   .story-art img { transform: none !important; opacity: 1 !important; }
   .story-art .story-previous, .story-art::after { display: none; }
 }
+.clear-card {
+  width: min(970px, 100%);
+  padding: clamp(8px, 1.6vw, 16px);
+  border-color: #8c7857;
+  background: linear-gradient(155deg, #163347, #0b1728 75%);
+}
+.clear-art {
+  margin: 0;
+  border-color: color-mix(in srgb, var(--art-glow) 50%, #274355);
+  box-shadow: inset 0 0 16px #010b12;
+}
+.clear-art img { max-height: min(55dvh, 470px); }
+.clear-art .clear-label {
+  position: absolute;
+  z-index: 3;
+  top: clamp(10px, 2vw, 20px);
+  left: clamp(10px, 2vw, 22px);
+  margin: 0;
+  padding: .55em .82em;
+  border: 1px solid color-mix(in srgb, var(--art-glow) 66%, #243c53);
+  border-radius: 4px;
+  background: #071422e8;
+  color: var(--art-glow);
+  font-size: clamp(10px, 1.7vw, 17px);
+  line-height: 1.15;
+  letter-spacing: .12em;
+}
+.clear-summary {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: clamp(12px, 2vw, 28px);
+  padding: clamp(10px, 2vw, 20px) clamp(4px, 1vw, 10px) 5px;
+}
+.clear-summary h2 { margin: 0; color: #fff3d5; }
+.clear-stats {
+  display: flex;
+  gap: clamp(14px, 2.3vw, 26px);
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.clear-stats dt { font-size: 11px; color: var(--muted); }
+.clear-stats dd { margin: 3px 0 0; color: var(--gold); font-weight: 800; }
+#clear-next { min-width: 9em; }
+@media (max-width: 540px) {
+  .clear-summary { grid-template-columns: 1fr auto; gap: 10px; }
+  .clear-summary h2 { grid-column: 1 / -1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  #clear-overlay:not(.hidden) .clear-card {
+    animation: clear-card-enter 360ms cubic-bezier(.17,.63,.33,1) both;
+  }
+  #clear-overlay:not(.hidden) .clear-label {
+    animation: clear-label-enter 570ms cubic-bezier(.17,.63,.33,1) both;
+  }
+  @keyframes clear-card-enter {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes clear-label-enter {
+    from { opacity: 0; transform: translateX(-12px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+}
 .foot { padding: 18px 0; color: var(--muted); font-size: 12px; }
 .foot span { margin: 0 5px; }
 kbd { padding: 2px 5px; background: #132439; border: 1px solid #3f596e; border-radius: 4px; }

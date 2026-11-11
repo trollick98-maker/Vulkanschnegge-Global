@@ -41,6 +41,8 @@
   for (const biome of ['reef', 'greed', 'diva', 'vortex', 'god']) {
     images['boss-intro-' + biome] = 'boss-intros/' + biome + '.webp';
     images['panorama-' + biome] = 'cinematic/' + biome + '.webp';
+    images['clear-boss-' + biome] = 'clear/boss-' + biome + '.webp';
+    if (biome !== 'god') images['clear-' + biome] = 'clear/' + biome + '.webp';
   }
   V.sceneryProps = {
     reef: ['fan-coral', 'dive-lantern', 'porthole', 'reef-eel'],
