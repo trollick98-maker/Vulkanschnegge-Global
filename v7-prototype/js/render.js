@@ -5,7 +5,8 @@
   const g = canvas.getContext('2d', { alpha: false });
   const { W, H, GROUND: G } = V;
   const backdrops = new Map();
-  const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  const motionPreference = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+  let reducedMotion = motionPreference?.matches;
   // Y coordinate of each walkable deck in its source PNG.
   const deckY = { reef: 17, greed: 2, diva: 2, vortex: 2, god: 1 };
   const atlas = {
@@ -14,7 +15,7 @@
   };
   g.imageSmoothingEnabled = false;
 
-  function background(key, time, dist, arena, cameraY) {
+  function background(key, time, dist, arena, cameraY, worldWidth) {
     const colors = V.biomes[key];
     const cacheKey = arena ? key + ':arena' : key;
     if (!backdrops.has(cacheKey)) {
@@ -39,20 +40,36 @@
       backdrops.set(cacheKey, plate);
     }
     g.drawImage(backdrops.get(cacheKey), 0, 0);
-    const ridge = arena ? G - V.clamp(cameraY * .16, -75, 75) : G;
-    g.fillStyle = colors.far;
-    g.beginPath();
-    g.moveTo(0, ridge);
-    for (let i = -1; i < 10; i++) {
-      const x = i * 132 - (dist * .19) % 132;
-      g.lineTo(x, ridge - 61);
-      g.lineTo(x + 38, ridge - 141 + i % 3 * 22);
-      g.lineTo(x + 78, ridge - 124);
-      g.lineTo(x + 119, ridge - 61);
+    const panorama = V.readyImage('panorama-' + key);
+    if (panorama) {
+      const height = H * 1.18;
+      const width = Math.max(W, height * panorama.naturalWidth / panorama.naturalHeight);
+      const progress = V.clamp(dist / Math.max(W, worldWidth - W), 0, 1);
+      const drift = reducedMotion ? .5 : arena ? .12 + .76 * progress : .5 - Math.cos(dist / 3100) * .5;
+      const lift = reducedMotion ? 0 : V.clamp((cameraY ?? 0) * .12, -36, 36);
+      g.globalAlpha = .89;
+      g.drawImage(panorama, (W - width) * drift, (H - height) / 2 - lift, width, height);
+      g.globalAlpha = 1;
+    } else {
+      const ridge = arena ? G - V.clamp(cameraY * .16, -75, 75) : G;
+      g.fillStyle = colors.far;
+      g.beginPath();
+      g.moveTo(0, ridge);
+      for (let i = -1; i < 10; i++) {
+        const x = i * 132 - (dist * .19) % 132;
+        g.lineTo(x, ridge - 61);
+        g.lineTo(x + 38, ridge - 141 + i % 3 * 22);
+        g.lineTo(x + 78, ridge - 124);
+        g.lineTo(x + 119, ridge - 61);
+      }
+      g.lineTo(W, ridge);
+      g.closePath();
+      g.fill();
     }
-    g.lineTo(W, ridge);
-    g.closePath();
-    g.fill();
+    if (!arena && panorama) {
+      g.fillStyle = colors.ground;
+      g.fillRect(0, G, W, H - G);
+    }
     g.globalAlpha = .18;
     g.fillStyle = colors.accent;
     for (let i = 0; i < 30; i++) {
@@ -105,7 +122,7 @@
   }
 
   function drawScenery(s, local) {
-    if (!V.readyImage('surge-atlas-' + s.biome)) return;
+    const props = V.sceneryProps[s.biome];
     const spacing = 190;
     const left = local ? s.cameraX : s.dist - V.START_X;
     const first = Math.floor((left - 60) / spacing);
@@ -115,7 +132,9 @@
       const index = (slot % count + count) % count + 6 - count;
       const size = 58 + (index % 3) * 11;
       const x = V.stageX(s, slot * spacing);
-      surgeSprite(s.biome, index, x - size / 2, floor - size, size, size, true);
+      const prop = props[(slot % props.length + props.length) % props.length];
+      const painted = slot % 5 !== 4 && fittedSprite('scenery-' + prop, x - size / 2, floor - size, size, size, true);
+      if (!painted) surgeSprite(s.biome, index, x - size / 2, floor - size, size, size, true);
     };
     g.save();
     g.globalAlpha = .68;
@@ -153,6 +172,11 @@
         continue;
       }
       const size = p.size * (.5 + remaining * .5);
+      if (p.newArt) {
+        const art = p.atlas === 'action' ? 'ember-streak' : V.regionalEffects[p.atlas][p.frame - 6];
+        const span = size * 1.3;
+        if (fittedSprite('ambient-fx-' + art, p.x - span / 2, p.y - span / 2, span, span)) continue;
+      }
       if (!surgeSprite(p.atlas, p.frame, p.x - size / 2, p.y - size / 2, size, size)) {
         g.fillStyle = p.tint;
         g.fillRect(p.x - 1, p.y - 1, 3, 3);
@@ -185,6 +209,8 @@
     if (!reducedMotion && p.invuln > 0 && Math.floor(s.elapsed * 13) % 2 === 0) g.globalAlpha = .42;
     g.rotate(p.angle * p.facing * Math.PI / 180);
     g.scale(p.facing * (1 + squash - stretch * .5), 1 - squash + stretch);
+    g.shadowColor = s.character === 'snail' ? '#f9a05ec9' : '#c8f6ffc9';
+    g.shadowBlur = 7;
     if (!sprite(s.character, -p.w / 2, -p.h / 2, p.w, p.h)) {
       g.fillStyle = '#ffb966';
       g.fillRect(-p.w * .37, -p.h * .33, p.w * .67, p.h * .68);
@@ -863,10 +889,41 @@
     g.restore();
   }
 
+  function drawCameraCue(s, view) {
+    const compact = canvas.clientWidth > 0 && canvas.clientWidth < 600;
+    const y = compact ? 144 : 99;
+    const shade = g.createRadialGradient(W / 2, H / 2, H * .18, W / 2, H / 2, W * .60);
+    shade.addColorStop(0, 'transparent');
+    shade.addColorStop(1, '#020911');
+    g.save();
+    g.globalAlpha = view.alpha * .5;
+    g.fillStyle = shade;
+    g.fillRect(0, 0, W, H);
+    g.globalAlpha = view.alpha;
+    g.textAlign = 'center';
+    g.shadowColor = '#020911';
+    g.shadowBlur = 10;
+    g.fillStyle = V.biomes[s.biome].accent;
+    g.font = compact ? 'bold 18px monospace' : 'bold 15px monospace';
+    g.fillText(view.title, W / 2, y);
+    g.fillStyle = '#fff7e3';
+    g.font = compact ? 'bold 30px system-ui, sans-serif' : 'bold 27px system-ui, sans-serif';
+    g.fillText(s.chase ? s.node.name : s.title, W / 2, y + 31, W * .60);
+    g.restore();
+  }
+
   V.render = function (section) {
+    reducedMotion = motionPreference?.matches;
     const arena = section.kind === 'arena';
     const local = V.usesMomentum(section);
-    background(section.biome, section.elapsed, local ? section.cameraX : section.dist, local, section.cameraY);
+    const view = V.cameraView(section);
+    if (view) {
+      g.save();
+      g.translate(W / 2 + view.x, H / 2 + view.y);
+      g.scale(view.zoom, view.zoom);
+      g.translate(-W / 2, -H / 2);
+    }
+    background(section.biome, section.elapsed, local ? section.cameraX : section.dist, local, section.cameraY, section.worldWidth);
     if (local) {
       g.save();
       g.translate(-Math.round(section.cameraX), -Math.round(section.cameraY));
@@ -895,6 +952,10 @@
     drawParticles(section, false);
     drawImpacts(section);
     if (local) g.restore();
+    if (view) {
+      g.restore();
+      drawCameraCue(section, view);
+    }
     drawDamageEdge(section);
     drawPhaseBanner(section);
   };

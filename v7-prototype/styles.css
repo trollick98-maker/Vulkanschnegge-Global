@@ -599,25 +599,70 @@ canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; 
   margin-bottom: 14px;
   image-rendering: pixelated;
 }
-.story-card { width: min(780px, 100%); padding: clamp(12px, 2.3vw, 24px); text-align: center; }
+.story-card { width: min(880px, 100%); padding: clamp(12px, 2.3vw, 24px); text-align: center; }
 .boss-intro-card .story-art { border-color: #c78c53; }
 .boss-intro-card .story-art img { aspect-ratio: 5 / 3; }
 .boss-intro-card .eyebrow { color: var(--gold); }
 .story-art {
+  --art-glow: #9af8ff;
+  position: relative;
+  isolation: isolate;
   margin-bottom: 16px;
   border-radius: 7px;
   border: 1px solid #426675;
   overflow: hidden;
   background: #081524;
 }
+.story-art[data-tone="gold"] { --art-glow: #ffe4a6; }
+.story-art[data-tone="violet"] { --art-glow: #f6b5ff; }
+.story-art[data-tone="green"] { --art-glow: #96ffa2; }
 .story-art img {
   display: block;
   width: 100%;
   height: auto;
   aspect-ratio: 2 / 1;
   max-height: min(55dvh, 470px);
-  object-fit: contain;
+  object-fit: cover;
   image-rendering: pixelated;
+}
+.story-art img.story-previous {
+  position: absolute;
+  inset: 0;
+  height: 100%;
+}
+.story-art img:not(.story-previous) { position: relative; z-index: 1; }
+.story-art img[hidden] { display: none; }
+.story-art .art-loading { opacity: 0; }
+.story-art::before,
+.story-art::after {
+  content: '';
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+}
+.story-art::before {
+  inset: 0;
+  background: radial-gradient(ellipse at 54% 50%, transparent 47%, #050b19a3 100%);
+}
+.story-art::after {
+  inset: -8%;
+  background:
+    radial-gradient(circle at 11% 65%, var(--art-glow) 0 1px, transparent 2px),
+    radial-gradient(circle at 24% 35%, var(--art-glow) 0 1.5px, transparent 2.5px),
+    radial-gradient(circle at 39% 76%, var(--art-glow) 0 1px, transparent 2px),
+    radial-gradient(circle at 65% 19%, var(--art-glow) 0 1px, transparent 2px),
+    radial-gradient(circle at 78% 46%, var(--art-glow) 0 1px, transparent 2px),
+    radial-gradient(circle at 90% 68%, var(--art-glow) 0 1.5px, transparent 2.5px);
+  opacity: .46;
+  animation: story-drift 7s ease-in-out infinite alternate;
+}
+@keyframes story-drift {
+  from { transform: translate(-1%, 3%); }
+  to { transform: translate(2%, -4%); opacity: .7; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-art img { transform: none !important; opacity: 1 !important; }
+  .story-art .story-previous, .story-art::after { display: none; }
 }
 .foot { padding: 18px 0; color: var(--muted); font-size: 12px; }
 .foot span { margin: 0 5px; }

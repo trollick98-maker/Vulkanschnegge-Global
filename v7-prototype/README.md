@@ -42,7 +42,7 @@ Du kannst einen Proviantplatz belegen. Er gilt im nächsten Gegnerlevel oder Bos
 
 ## Bosskämpfe
 
-Vor jedem Boss steht Schnegg in einem eigenen Pixelart-Intro seinem riesigen Gegner gegenüber. Das Bild bleibt drei Sekunden stehen. Mit **Verfolgung starten** kannst du es direkt überspringen.
+Vor jedem Boss fährt die Kamera in der Pixelart-Illustration von Schnegg zum Gegner. Nach drei Sekunden beginnt die Verfolgung. Mit **Verfolgung starten** kannst du direkt loslegen.
 
 Jede Route zu einem unbesiegten Boss beginnt mit einer 30-Sekunden-Verfolgung. Der Boss bleibt rechts im Bild und wechselt zwischen Zielsalven und Sperrfeuer. Helle Geschosse kannst du per Dash zurückwerfen. Die Salven werden dichter und schneller. Danach öffnet sich direkt die scrollende Plattformarena. Musik, Herzen und gesammelte Münzen gehen mit. In der Arena steuerst du mit A und D frei in beide Richtungen. Beim Loslassen bremst die Figur bis zum Stillstand, solange keine Strömung oder ein Laufband auf sie wirkt. Springe zu fliegenden Gegnern hoch und setze den Dash so an, dass der Schwertbogen den Boss schneidet. Der Glutkatana-Hieb dauert 120 Millisekunden. Jeder Waffenangriff zählt pro Ziel einmal. Treffer auf die markierte Schwachstelle bringen einen Bonus. Der Boss fällt bei 0 HP und hat dann eine kurze Siegesanimation. Don Moray startet mit 4.500 HP, nahe am bisherigen GOD.EXE mit 4.600 HP. GOD.EXE hat jetzt 7.630 HP, schnellere Salven und engere Pausen. Ein Neustart beginnt die Verfolgung mit vollen Herzen.
 
@@ -61,6 +61,8 @@ Treffer, eigener Schaden, Blocks und Konter haben eigene Pixel-Effekte und Töne
 Der Dash zieht eine türkise Spur und hat einen eigenen Sound. Bei hohem Tempo wird die Spur lavafarben und der Dash klingt kräftiger. In Arenen hörst und siehst du ein kurzes Schlittern, wenn du auf dem Boden aus hohem Tempo abbremst oder gegenlenkst.
 
 ## Sprite-Update
+
+Fünf Tiefsee-Panoramen bewegen sich hinter Wegen, Gegnerleveln und Bossarenen mit eigenem Parallax-Tempo. Dazu kommen 16 Kulissen-Sprites und 16 Partikelsprites. Bei Levelbeginn und am Eingang zur Bossarena fährt die Kamera kurz ins Bild. Bei der ersten Steuereingabe endet die Fahrt zügig. Vier neue Storybilder zeigen die Entführung, den Riss und zwei Etappen der Heimkehr. Die Storybilder bewegen sich mit Schwenks, Zoom und kurzen Überblendungen. Reduzierte Bewegung deaktiviert diese Animationen.
 
 24 Pixel-Sprites ergänzen die Boss- und HUD-Grafik. Eigene Symbole markieren Strom, Sprünge, Zielzonen und Systemfehler. Blasen, Schallwellen, Hanteln und rote Fehlerpakete haben unterschiedliche Silhouetten. Goldtruhe und Fallentruhe unterscheiden sich am Schloss. Goldhand und Bühnenvorhang erscheinen in den passenden Spezialangriffen. Boss-Abzeichen, Herz, Dash-Symbol und Kompass ergänzen Weltkarte und HUD. Glutkatana, Schwachstellen, Konter und Boss-Sieg haben eigene Effektsprites.
 

@@ -9,7 +9,7 @@ const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
 const modules = [
   'config', 'assets', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats',
-  'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-stage', 'boss-arena', 'combat', 'boss-chase', 'audio', 'online-board', 'input', 'story', 'render', 'ui', 'main'
+  'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-stage', 'boss-arena', 'combat', 'boss-chase', 'audio', 'online-board', 'input', 'story', 'camera', 'render', 'ui', 'main'
 ];
 const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats', 'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-stage', 'boss-arena', 'combat', 'boss-chase', 'story'];
 const idle = {};
@@ -29,6 +29,56 @@ test('the lightweight HTML entry loads each separate JS module in dependency ord
   assert.deepEqual([...html.matchAll(/<script src="js\/([^"]+)\.js"><\/script>/g)].map(match => match[1]), modules);
   assert.match(html, /<link rel="stylesheet" href="styles.css">/);
   for (const file of modules) assert.doesNotThrow(() => new vm.Script(read('js/' + file + '.js'), { filename: file }));
+});
+
+test('opening camera cues yield to input and follow the reduced-motion setting', () => {
+  const preference = { matches: false };
+  const { V } = logic(undefined, ['config', 'camera'], { matchMedia: () => preference });
+  for (const kind of ['travel', 'arena', 'arcade', 'boss-chase', 'boss']) {
+    const s = { kind, elapsed: 0, cameraX: 60, cameraY: 10 };
+    V.startCameraCue(s);
+    assert.ok(V.cameraView(s).zoom > 1, kind);
+    V.updateCameraCue(s, .10, { dashQueued: true });
+    assert.ok(V.cameraView(s).alpha > 0, kind);
+    V.updateCameraCue(s, .19, {});
+    assert.equal(V.cameraView(s), null, kind);
+    assert.equal(s.elapsed, 0);
+    assert.equal(s.cameraX, 60);
+    assert.equal(s.cameraY, 10);
+    V.startCameraCue(s);
+    V.updateCameraCue(s, 2, {});
+    assert.equal(V.cameraView(s), null, kind);
+  }
+  const boss = { kind: 'boss' };
+  V.startCameraCue(boss);
+  V.updateCameraCue(boss, .73, {});
+  assert.equal(V.cameraView(boss), null, 'the camera settles before the first boss windup');
+  V.startCameraCue(boss);
+  preference.matches = true;
+  assert.equal(V.cameraView(boss), null);
+  V.updateCameraCue(boss, 0, {});
+  V.startCameraCue(boss);
+  assert.equal(boss.cameraCue, null);
+});
+
+test('cinematic art maps every new sprite and every story shot to an offline asset', () => {
+  const { V } = logic(undefined, ['config', 'assets', 'story']);
+  const biomes = ['reef', 'greed', 'diva', 'vortex', 'god'];
+  const props = Object.values(V.sceneryProps).flat();
+  const effects = [...Object.values(V.regionalEffects).flat(), 'ember-streak'];
+  assert.equal(new Set(props).size, 16);
+  assert.equal(new Set(effects).size, 16);
+  for (const key of [...props.map(name => 'scenery-' + name), ...effects.map(name => 'ambient-fx-' + name)]) {
+    const png = fs.readFileSync(path.join(root, V.imagePath(key)));
+    assert.equal(png[25], 6, key);
+  }
+  for (const biome of biomes) assert.ok(fs.existsSync(path.join(root, V.imagePath('panorama-' + biome))), biome);
+  for (const { slides } of Object.values(V.stories)) {
+    for (const slide of slides) {
+      assert.ok(V.storyShots[slide.art], slide.art);
+      assert.ok(fs.existsSync(path.join(root, V.imagePath('story-' + slide.art))), slide.art);
+    }
+  }
 });
 
 test('the six surge atlases contain 50 transparent sprites with valid source frames', () => {

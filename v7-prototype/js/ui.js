@@ -9,6 +9,8 @@
   const NS = 'http://www.w3.org/2000/svg';
   const difficultyLabels = { common: 'Häufig', rare: 'Selten', epic: 'Episch' };
   const kinds = { travel: 'REISE', arena: 'GEGNERLEVEL', arcade: 'ENDLOS', 'boss-chase': 'VERFOLGUNG' };
+  const motionPreference = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const artVersions = new WeakMap();
 
   function content(id, value) {
     const element = get(id);
@@ -346,10 +348,52 @@
     dialog('result');
   }
 
+  function frameArt(art, src, shot, duration, crossfade = false) {
+    const frame = art.parentElement;
+    const previous = frame.querySelector('.story-previous');
+    const [tone, focus, x, y, from, to] = shot;
+    const version = (artVersions.get(art) ?? 0) + 1;
+    artVersions.set(art, version);
+    const animate = art.animate && !motionPreference?.matches;
+    if (previous) {
+      previous.hidden = !(animate && crossfade && art.complete && art.naturalWidth > 0);
+      if (!previous.hidden) {
+        previous.src = art.currentSrc;
+        previous.style.transform = getComputedStyle(art).transform;
+        previous.style.transformOrigin = getComputedStyle(art).transformOrigin;
+      }
+    }
+    for (const animation of art.getAnimations?.() ?? []) animation.cancel();
+    frame.dataset.tone = tone;
+    art.style.transformOrigin = focus;
+    art.src = src;
+    art.classList.toggle('art-loading', Boolean(previous && !previous.hidden));
+    if (!animate) return;
+
+    const reveal = () => {
+      if (artVersions.get(art) !== version) return;
+      art.classList.remove('art-loading');
+      if (!motionPreference?.matches) {
+        art.animate([
+          { transform: `translate(${x}%, ${y}%) scale(${from})` },
+          { transform: `translate(${-x / 2}%, ${-y / 2}%) scale(${to})` }
+        ], { duration, easing: 'cubic-bezier(.17,.63,.33,1)', fill: 'both' });
+        if (previous && !previous.hidden) {
+          art.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, easing: 'ease-out' }).onfinish = () => {
+            if (artVersions.get(art) === version) previous.hidden = true;
+          };
+        }
+      } else if (previous) previous.hidden = true;
+    };
+    if (art.decode) art.decode().then(reveal, reveal);
+    else reveal();
+  }
+
   function showSlide(slide) {
     const art = get('story-illustration');
     art.alt = slide.alt;
-    art.src = V.imagePath('story-' + slide.art);
+    frameArt(art, V.imagePath('story-' + slide.art), V.storyShots[slide.art], slide.art === 'rescue-home' ? 15500 : 8200,
+      !get('story-overlay').classList.contains('hidden'));
     content('story-label', slide.label);
     content('story-line', slide.line);
     content('story-note', slide.note || '');
@@ -361,7 +405,8 @@
     const art = get('boss-intro-image');
     const name = s.chase.definition.name;
     art.alt = 'Der winzige Schnegg steht vor ' + name + '.';
-    art.src = V.imagePath('boss-intro-' + s.biome);
+    const tone = { reef: 'cyan', greed: 'gold', diva: 'violet', vortex: 'cyan', god: 'green' }[s.biome];
+    frameArt(art, V.imagePath('boss-intro-' + s.biome), [tone, '57% 65%', 4, -1, 1.17, 1.09], 2850);
     content('boss-intro-name', name);
     content('boss-intro-place', 'BOSS · ' + s.node.name.toUpperCase());
     dialog('boss-intro');

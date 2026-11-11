@@ -132,6 +132,7 @@
     }
     if (section.kind !== 'arcade') V.applyShopLoadout(state.level, campaign);
     const zone = section.route ? graph.byId[section.route.edge.b] : section.node;
+    if (!intro && !skipIntro) V.startCameraCue(state.level);
     if (!intro) V.audio.startLevel(section.kind, state.level.chase?.definition.track ?? zone?.music);
     ui.showGame(state.level);
     V.render(state.level);
@@ -148,6 +149,7 @@
     frameAt = carry = 0;
     V.input.reset();
     V.audio.startLevel('boss', state.level.chase.definition.track);
+    V.startCameraCue(state.level);
     get('test-skip-btn').classList.toggle('hidden', !canSkip());
     ui.showGame(state.level);
   }
@@ -157,6 +159,7 @@
     V.applyShopLoadout(s, campaign);
     Object.assign(s, { hp: chase.hp, score: chase.score, coinsTaken: chase.coinsTaken,
       healAtCoins: chase.healAtCoins, trackOffset: chase.elapsed });
+    V.startCameraCue(s);
     state.level = s;
     hudAt = 0;
     // Keep playing the same audio voice and keep held inputs through the handoff.
@@ -225,6 +228,7 @@
     if (state.mode !== 'play') return;
 
     const level = state.level;
+    V.updateCameraCue(level, dt, V.input);
     V.tickParticles(level, dt);
     if (level.hitStop > 0) {
       level.hitStop = Math.max(0, level.hitStop - dt);

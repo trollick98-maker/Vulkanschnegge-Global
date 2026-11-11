@@ -33,13 +33,32 @@
     images['map-' + place] = 'weltkarte/' + place + '.webp';
   }
   for (const scene of [
-    'intro-harbor', 'intro-omens', 'intro-abduction', 'intro-sealed', 'intro-pursuit',
-    'rift', 'source', 'rescue-release', 'rescue-reunion', 'rescue-home'
+    'intro-harbor', 'intro-omens', 'intro-taken-v2', 'intro-sealed', 'intro-pursuit',
+    'rift-v2', 'source', 'rescue-release', 'rescue-reunion', 'rescue-escape', 'rescue-bridge', 'rescue-home'
   ]) {
     images['story-' + scene] = 'story/' + scene + '.webp';
   }
   for (const biome of ['reef', 'greed', 'diva', 'vortex', 'god']) {
     images['boss-intro-' + biome] = 'boss-intros/' + biome + '.webp';
+    images['panorama-' + biome] = 'cinematic/' + biome + '.webp';
+  }
+  V.sceneryProps = {
+    reef: ['fan-coral', 'dive-lantern', 'porthole', 'reef-eel'],
+    greed: ['brass-bollard', 'doubloons', 'anchor-chain', 'brass-urn'],
+    diva: ['pearl-shell', 'opera-mask', 'footlight', 'velvet'],
+    vortex: ['frozen-dumbbell', 'ice-gauge'],
+    god: ['broken-crt', 'cable-coil']
+  };
+  for (const name of Object.values(V.sceneryProps).flat()) images['scenery-' + name] = 'cinematic/' + name + '.png';
+  V.regionalEffects = {
+    reef: ['bubble', 'reef-spark', 'splash'],
+    greed: ['gold-shard', 'gold-glint', 'gold-flame'],
+    diva: ['feather', 'stage-star', 'sound-arc'],
+    vortex: ['ice-crystal', 'vapour', 'ice-surge'],
+    god: ['pixel-break', 'scan-pulse', 'glitch-shard']
+  };
+  for (const name of [...Object.values(V.regionalEffects).flat(), 'ember-streak']) {
+    images['ambient-fx-' + name] = 'cinematic/fx-' + name + '.png';
   }
   for (const effect of ['hit', 'hurt', 'guard', 'parry']) {
     images['impact-' + effect] = 'treffer/' + effect + '.png';

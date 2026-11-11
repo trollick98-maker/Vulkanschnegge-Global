@@ -4,6 +4,7 @@
   const V = window.VS7;
   const reducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)');
   const limit = V.particleLimit = 220;
+  const regionalBursts = new Set(['drift', 'charge', 'shot', 'zone']);
   const bursts = {
     dash: { count: 15, speed: 210, life: .37, size: 9, art: 0, aimed: true },
     'dash-fast': { count: 23, speed: 285, life: .43, size: 11, art: 0, aimed: true },
@@ -53,6 +54,7 @@
         gravity: profile.background ? 0 : 155, life, left: life, tint,
         size: profile.size * (.52 + rand() * .89),
         atlas: generic ? 'action' : s.biome, frame: generic ? profile.art : 6 + s.fxSequence++ % 3,
+        newArt: generic ? kind === 'dash-fast' : regionalBursts.has(kind),
         background: Boolean(profile.background)
       });
     }
