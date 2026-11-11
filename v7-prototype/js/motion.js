@@ -52,13 +52,12 @@
     V.audio?.effect?.(kind, heavy);
   };
 
-  function movementFeedback(s, kind, direction, speed) {
-    const p = s.player;
+  function movementFeedback(s, kind, direction, speed, p = s.player) {
     const skid = kind === 'skid';
     const life = skid ? .34 : .24;
     const size = skid ? V.clamp(65 + (speed - 380) * .07, 65, 106) : kind === 'dash-fast' ? 111 : 82;
     addEffect(s, {
-      kind, movement: true, direction, size, life, left: life,
+      kind, movement: true, direction, size, life, left: life, boss: p !== s.player,
       x: p.x + p.w / 2 - direction * (skid ? p.w * .12 : p.w * .39),
       y: p.y + p.h * (skid ? 1 : .55)
     }, 0);
@@ -66,16 +65,15 @@
     V.audio?.effect?.(kind);
   }
 
-  function updateSkid(s, canBrake, direction) {
-    const p = s.player;
+  V.updateSkid = function (s, p, canBrake, direction) {
     const speed = Math.abs(p.vx);
     const skidding = canBrake && p.grounded && p.vx * direction <= 0 &&
       speed >= (p.skidding ? 185 : 380);
-    if (skidding && !p.skidding && !s.effects.some(effect => effect.kind === 'skid')) {
-      movementFeedback(s, 'skid', Math.sign(p.vx), speed);
+    if (skidding && !p.skidding && !s.effects.some(effect => effect.kind === 'skid' && effect.boss === (p !== s.player))) {
+      movementFeedback(s, 'skid', Math.sign(p.vx), speed, p);
     }
     p.skidding = skidding;
-  }
+  };
 
   V.projectileHits = function (player, shot, reach = 0) {
     const rx = shot.r * .77 + reach;
@@ -195,15 +193,21 @@
     }
   }
 
+  V.accelerateBody = function (p, direction, dt, acceleration, speed, brake = motion.brake, counter = acceleration) {
+    if (!direction) {
+      p.vx += V.clamp(-p.vx, -brake * dt, brake * dt);
+    } else {
+      const excess = Math.max(0, p.vx * direction - motion.run - speed);
+      const force = p.vx * direction < 0 ? counter : acceleration;
+      p.vx += direction * force * dt / (1 + excess / 95) ** 2;
+    }
+  };
+
   function accelerate(s, direction, dt) {
     const p = s.player;
-    if (!direction) {
-      p.vx += V.clamp(-p.vx, -motion.brake * dt, motion.brake * dt);
-    } else {
-      const trait = V.characters[s.character];
-      const excess = Math.max(0, p.vx * direction - motion.run - trait.speed);
-      const acceleration = trait.acceleration * (s.accelerationFactor ?? 1) / (1 + excess / 95) ** 2;
-      p.vx += direction * acceleration * dt;
+    const trait = V.characters[s.character];
+    V.accelerateBody(p, direction, dt, trait.acceleration * (s.accelerationFactor ?? 1), trait.speed);
+    if (direction) {
       p.facing = direction;
     }
     p.vx += (s.wind || 0) * dt;
@@ -259,7 +263,7 @@
       p.jumps++;
     }
     const launch = p.dashBuffer > 0 && p.dashCooldown <= 0 && p.dashTime <= 0 && (!local || p.airDash);
-    updateSkid(s, local && p.dashTime <= 0 && !launch, direction);
+    V.updateSkid(s, p, local && p.dashTime <= 0 && !launch, direction);
     if (local && p.dashTime <= 0 && !launch) accelerate(s, direction, dt);
     if (!local && direction) p.facing = direction;
     if (launch) {

@@ -157,6 +157,15 @@
     const b = s.boss;
     const oldX = b.x;
     const oldY = b.y;
+    if (s.arenaGlitch?.active === 'race') {
+      V.updateRaceBoss(s, dt);
+      return [b.x - oldX, b.y - oldY];
+    }
+    if (b.racer) {
+      b.racer = null;
+      b.state = 'approach';
+      b.readyAt = Math.max(s.elapsed + .42, b.phaseUntil);
+    }
     facePlayer(s);
     const plan = b.plan;
     if (plan && s.elapsed >= plan.strike - 1e-7) {
@@ -187,7 +196,8 @@
     const weakX = b.x + b.w * (b.facing < 0 ? .40 : .60);
     const weakY = b.y + b.h * .60;
     return {
-      body: { x: b.x + b.w * .08, y: b.y + b.h * .17, w: b.w * .84, h: b.h * .78 },
+      body: b.racer ? V.raceBody(b) :
+        { x: b.x + b.w * .08, y: b.y + b.h * .17, w: b.w * .84, h: b.h * .78 },
       weak: { x: weakX - 25, y: weakY - 23, w: 50, h: 46 }
     };
   };
@@ -198,6 +208,7 @@
     b.state = 'defeated';
     b.defeatedAt = s.elapsed;
     V.restoreArenaGlitch(s);
+    if (b.racer) b.racer = null;
     b.plan = b.rush = b.flank = null;
     s.projectiles.length = s.zones.length = s.echoes.length = s.chests.length = 0;
     s.arenaFX = {};

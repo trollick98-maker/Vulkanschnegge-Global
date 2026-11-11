@@ -713,6 +713,48 @@
     }
   }
 
+  function drawRaceCues(s) {
+    const b = s.boss;
+    if (skinKey !== 'race' || !b.racer) return;
+    const target = b.racer.volley;
+    g.save();
+    if (b.skidding && !reducedMotion) {
+      const rear = b.x + b.w * (b.facing > 0 ? .22 : .78);
+      const length = Math.min(78, Math.abs(b.vx) * .14);
+      const x = Math.min(rear, rear - b.facing * length);
+      g.globalAlpha = .52;
+      g.fillStyle = skin.accent;
+      g.fillRect(x, G - 4, length, 2);
+      g.fillRect(x + 3, G - 1, length, 1);
+      g.globalAlpha = 1;
+    }
+    if (target) {
+      const muzzle = V.raceMuzzle(b);
+      g.strokeStyle = skin.danger;
+      g.lineWidth = 2;
+      g.setLineDash([8, 7]);
+      g.beginPath();
+      g.moveTo(muzzle.x, muzzle.y);
+      g.lineTo(target.x, target.y);
+      g.stroke();
+      g.setLineDash([]);
+      g.strokeRect(target.x - 14, target.y - 14, 28, 28);
+      g.fillStyle = skin.light;
+      g.fillRect(target.x - 2, target.y - 2, 4, 4);
+    }
+    if (b.x + b.w < s.cameraX || b.x > s.cameraX + W) {
+      const fromLeft = b.x < s.cameraX;
+      const x = s.cameraX + (fromLeft ? 26 : W - 26);
+      g.fillStyle = '#141c3d';
+      g.fillRect(x - 20, G - 57, 40, 35);
+      g.fillStyle = skin.light;
+      g.font = 'bold 26px monospace';
+      g.textAlign = 'center';
+      g.fillText(fromLeft ? '→' : '←', x, G - 30);
+    }
+    g.restore();
+  }
+
   function drawBoss(s) {
     const b = s.boss;
     const shadow = b.definition.sprite === 'god';
@@ -755,6 +797,7 @@
     const recoil = reducedMotion ? 0 : (b.hitSide ?? 0) * b.flash * 39;
     drawBossArt(b, b.x + recoil, b.y, b.facing, 1, s.elapsed, death);
     g.restore();
+    drawRaceCues(s);
 
     const weak = (windup && plan.attack.interrupt) || (b.state === 'recovery' && b.exposed > 1);
     if (weak) {

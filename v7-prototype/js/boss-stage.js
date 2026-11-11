@@ -42,6 +42,93 @@
     s.arenaGlitch.changedAt = s.elapsed;
   };
 
+  V.raceBody = b => ({ x: b.x + b.w * .10, y: b.y + b.h * .23, w: b.w * .80, h: b.h * .75 });
+  V.raceMuzzle = b => ({ x: b.x + b.w * .50, y: b.y + b.h * .32 });
+
+  function raceTarget(s) {
+    const p = s.player;
+    const center = p.x + p.w / 2;
+    if (p.y + p.h < G - 38) {
+      return { x: V.clamp(center + p.vx * .14, 24, s.worldWidth - 24), y: p.y + p.h / 2 };
+    }
+    let nearest = null;
+    let distance = Infinity;
+    for (const deck of s.platforms) {
+      if (deck.ground || deck.enabled === false) continue;
+      const x = deck.worldX + deck.w / 2;
+      const delta = Math.abs(center - x);
+      if (delta >= distance) continue;
+      nearest = { x, y: deck.y - 19 };
+      distance = delta;
+    }
+    return nearest ?? { x: center, y: p.y - 70 };
+  }
+
+  function raceVolley(s, racer) {
+    if (s.elapsed < s.boss.phaseUntil) {
+      racer.volley = null;
+      racer.shootAt = Math.max(racer.shootAt, s.boss.phaseUntil + .45);
+      return;
+    }
+    if (!racer.volley) {
+      if (s.elapsed >= racer.shootAt) racer.volley = { ...raceTarget(s), at: s.elapsed + .68 };
+      return;
+    }
+    if (s.elapsed < racer.volley.at) return;
+    const b = s.boss;
+    const { x, y } = V.raceMuzzle(b);
+    const aim = Math.atan2(racer.volley.y - y, racer.volley.x - x);
+    const speed = b.phase === 2 ? 485 : 425;
+    s.projectiles.push({ key: 'packet', ...V.bossShots.packet, x, y,
+      vx: Math.cos(aim) * speed, vy: Math.sin(aim) * speed });
+    V.emitParticles(s, 'shot', x, y, { color: '#89e7fa', direction: Math.sign(Math.cos(aim)) || 1 });
+    V.audio?.effect?.(b.definition.sound);
+    racer.volley = null;
+    racer.shootAt = s.elapsed + (b.phase === 2 ? 1.6 : 2.05);
+  }
+
+  V.updateRaceBoss = function (s, dt) {
+    const b = s.boss;
+    const p = s.player;
+    if (!b.racer) {
+      b.racer = { enteredAt: s.elapsed, shootAt: s.elapsed + .85, backoffUntil: 0, backoff: 0, volley: null };
+      b.plan = b.rush = b.flank = null;
+      b.vx = b.vy = 0;
+      b.skidding = false;
+    }
+    b.state = 'racing';
+    const racer = b.racer;
+    const oldX = b.x;
+    const oldY = b.y;
+    const floor = G - b.h;
+    b.grounded = b.y >= floor;
+    const delta = p.x + p.w / 2 - (b.x + b.w / 2);
+    const duringShift = s.elapsed < b.phaseUntil;
+    let drive = Math.abs(delta) > 32 ? Math.sign(delta) : Math.sign(b.vx) || b.facing;
+    if (s.elapsed < racer.backoffUntil) drive = racer.backoff;
+    if (duringShift) drive = 0;
+    V.updateSkid(s, b, b.grounded, drive);
+    V.accelerateBody(b, drive, dt, 2150, 145, 875, 925);
+    b.vx = V.clamp(b.vx, -590, 590);
+    if (Math.abs(b.vx) > 18) b.facing = Math.sign(b.vx);
+    const next = b.x + b.vx * dt;
+    b.x = V.clamp(next, 35, s.worldWidth - b.w - 35);
+    if (b.x !== next) {
+      racer.backoff = -Math.sign(b.vx);
+      racer.backoffUntil = s.elapsed + .48;
+      b.vx = 0;
+    }
+    b.vy += V.arenaMotion.gravity * dt;
+    b.y = Math.min(floor, b.y + b.vy * dt);
+    b.grounded = b.y === floor;
+    if (b.grounded) b.vy = 0;
+    if (!duringShift && b.grounded && s.elapsed >= racer.enteredAt + .30 && Math.abs(b.x - oldX) / dt >= 120) {
+      const relative = { ...p, previousX: p.previousX + b.x - oldX, previousY: p.previousY + b.y - oldY };
+      if (V.movementContact(relative, V.raceBody(b)) < Infinity) V.hurt(s, Math.sign(b.x - oldX));
+    }
+    if (s.outcome === null) raceVolley(s, racer);
+  };
+
   V.bossStages = {
     reef: { shot: 'plasma', width: 94, height: 190, interval: 4.25,
       hints: ['Das Wasser steigt · längere Sprünge unter Wasser', 'Die Strömung dreht · zwischen den Fontänen bleiben'] },

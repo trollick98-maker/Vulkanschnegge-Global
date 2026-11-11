@@ -166,6 +166,74 @@ test('all three glitch worlds have a complete local render kit', () => {
   }
 });
 
+function raceFixture() {
+  const { V } = logic();
+  const graph = V.generateMap('race-driving');
+  const s = V.newCombat(graph.byId.god, 'snail', {}, graph.seed);
+  const b = s.boss;
+  s.elapsed = 12;
+  b.phase = 1;
+  b.phaseAt = 5;
+  b.hp = Math.floor(b.maxHp * .55);
+  Object.assign(s.arenaGlitch, { active: 'race', endsAt: 40 });
+  return { V, s, b, tick: (count, actions = idle) => {
+    for (let i = 0; i < count; i++) V.updateCombat(s, V.rules.step, actions);
+  } };
+}
+
+test('the racer accelerates, skids through a reversal, then yields to normal boss movement', () => {
+  const { V, s, b, tick } = raceFixture();
+  s.player.x = 1450;
+  tick(Math.ceil(.58 / V.rules.step));
+  assert.ok(b.vx > 480);
+  const x = b.x;
+  s.player.x = 200;
+  tick(Math.ceil(.22 / V.rules.step));
+  assert.ok(b.x > x + 70 && b.vx > 0 && b.skidding);
+  assert.equal(b.facing, 1);
+  assert.ok(s.effects.some(effect => effect.kind === 'skid' && effect.boss));
+  tick(Math.ceil(.58 / V.rules.step));
+  assert.ok(b.vx < 0);
+  assert.equal(b.facing, -1);
+  s.arenaGlitch.endsAt = s.elapsed;
+  tick(1);
+  assert.equal(b.racer, null);
+  assert.equal(b.state, 'approach');
+});
+
+test('the racer hits on the ground and can be cleared with a normal jump', () => {
+  for (const jump of [false, true]) {
+    const { V, s, b, tick } = raceFixture();
+    s.player.x = 215;
+    b.x = 490;
+    tick(1);
+    b.racer.enteredAt = s.elapsed - 1;
+    b.vx = -525;
+    const hp = s.hp;
+    tick(1, jump ? { jump: true, right: true } : idle);
+    tick(Math.ceil(.52 / V.rules.step), jump ? { right: true } : idle);
+    assert.equal(s.hp, jump ? hp : hp - 1);
+  }
+});
+
+test('the racer telegraphs a reflectable shot at an elevated target', () => {
+  const { V, s, b, tick } = raceFixture();
+  const deck = s.platforms[2];
+  const p = s.player;
+  Object.assign(p, { x: deck.worldX + deck.w / 2 - p.w / 2, y: deck.y - p.h });
+  tick(1);
+  b.racer.shootAt = s.elapsed;
+  tick(1);
+  const target = b.racer.volley;
+  assert.ok(target.y < V.GROUND - 75);
+  assert.equal(s.projectiles.length, 0);
+  tick(Math.ceil(.69 / V.rules.step));
+  const shot = s.projectiles.find(q => q.key === 'packet');
+  assert.ok(shot?.reflect && shot.vy < 0);
+  const t = (target.y - shot.y) / shot.vy;
+  assert.ok(Math.abs(shot.x + shot.vx * t - target.x) < .01);
+});
+
 test('the six surge atlases contain 50 transparent sprites with valid source frames', () => {
   const { V } = logic(undefined, ['config', 'assets', 'surge-art']);
   let sprites = 0;
