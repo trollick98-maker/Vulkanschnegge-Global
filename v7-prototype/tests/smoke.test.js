@@ -317,6 +317,24 @@ test('the gladiator throws an arc onto a platform, charges, then dashes straight
   assert.equal(b.state, 'approach');
 });
 
+test('gladiator cancels a charged spear when its landing platform disappears', () => {
+  const { V, s, b, tick } = gladiatorFixture();
+  tick(1);
+  const deck = s.platforms[2];
+  const attack = b.gladiator;
+  attack.spear = {
+    x: deck.worldX + 20, y: deck.y, deck, offset: 20,
+    chargeUntil: s.elapsed + .25
+  };
+  b.state = 'spear-charge';
+  deck.enabled = false;
+  tick(1);
+  assert.equal(attack.spear, null);
+  assert.equal(attack.dash, undefined);
+  assert.equal(b.state, 'spear-recover');
+  assert.ok(attack.nextAt > s.elapsed);
+});
+
 test('the gladiator spear deals one heart and can still land after a hit', () => {
   const { V, s, b, tick } = gladiatorFixture();
   const p = s.player;
