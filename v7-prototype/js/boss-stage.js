@@ -249,7 +249,12 @@
     if (attack.spear) {
       const spear = attack.spear;
       if (!spear.deck) flySpear(s, spear, dt);
-      else {
+      else if (spear.deck.enabled === false) {
+        // A disappearing deck must not remain the target of a charged dash.
+        attack.spear = null;
+        attack.nextAt = s.elapsed + .38;
+        b.state = 'spear-recover';
+      } else {
         spear.x = spear.deck.worldX + spear.offset;
         spear.y = spear.deck.y;
         if (s.elapsed >= spear.chargeUntil) startGladiatorDash(s, attack);
