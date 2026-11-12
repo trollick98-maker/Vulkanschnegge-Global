@@ -104,6 +104,9 @@
       images['boss-stage-' + boss + '-' + part] = 'boss-stage/' + boss + '-' + part + '.png';
     }
   }
+  V.expansionArt = ['crab', 'scarab', 'diva', 'vortex', 'glitch', 'bee', 'ember', 'car', 'arc',
+    'shuttle', 'lift', 'belt', 'upper', 'cave', 'stalactites', 'arrow', 'slash', 'spark'];
+  for (const name of V.expansionArt) images['exp-' + name] = 'arena-expansion/' + name + '.png';
   V.assets = {};
   V.imagePath = name => 'assets/images/' + images[name];
   V.image = function (name) {

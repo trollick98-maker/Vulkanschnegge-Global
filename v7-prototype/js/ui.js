@@ -224,6 +224,17 @@
     content('hud-life', s.hp + ' / ' + s.maxHp);
     content('hud-coins', '◈ ' + s.coinsTaken);
     content('hud-dash', dashReady ? 'bereit' : 'lädt');
+    const ability = V.ultimateAbility(s);
+    const charge = s.ultimateCharge ?? 0;
+    const ready = Boolean(ability && charge >= 100 && !s.ultimate && b?.state !== 'defeated');
+    get('hud-ultimate').classList.toggle('hidden', !ability);
+    get('touch-ultimate').classList.toggle('hidden', !ability);
+    get('touch-ultimate').disabled = !ready;
+    if (ability) {
+      get('ultimate-meter').value = charge;
+      get('hud-ultimate').classList.toggle('ready', ready);
+      content('ultimate-label', ability.name + (ready ? ' · F · Bereit' : ' · ' + charge + '%'));
+    }
     const dash = local ? ' · ' + s.weapon.name + ' ' + (p.dashTime > 0 ? p.dashPower : V.weaponDamage(s, s.speed)) : '';
     content('hud-score', Math.floor(s.score) + ' P · ' + Math.round(s.speed) + ' Tempo' + dash);
     const alive = s.kind === 'arena' ? s.enemies.filter(enemy => enemy.hp > 0).length : 0;

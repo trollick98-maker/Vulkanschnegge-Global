@@ -277,6 +277,49 @@
     return true;
   }
 
+  function drawArenaDeck(platform, x, time) {
+    const { y, w } = platform;
+    if (platform.mover) {
+      const vertical = platform.mover.y !== 0;
+      const center = platform.homeX + w / 2;
+      g.strokeStyle = '#7d9eaa73';
+      g.lineWidth = 2;
+      g.beginPath();
+      if (vertical) {
+        g.moveTo(center, platform.homeY - 37);
+        g.lineTo(center, platform.homeY + 95);
+      } else {
+        g.moveTo(platform.homeX - 37, y + 16);
+        g.lineTo(platform.homeX + w + 37, y + 16);
+      }
+      g.stroke();
+      return sprite(vertical ? 'exp-lift' : 'exp-shuttle', x, y - (vertical ? 16 : 2), w, vertical ? 65 : 38);
+    }
+    if (platform.upper) return sprite('exp-upper', x, y - 9, w, 42);
+    if (platform.conveyor) {
+      const segments = Math.ceil(w / 114);
+      const width = w / segments;
+      for (let i = 0; i < segments; i++) {
+        g.save();
+        g.translate(x + width * (i + .5), y);
+        g.scale(Math.sign(platform.conveyor), 1);
+        sprite('exp-belt', -width / 2, -3, width, 32);
+        const slide = reducedMotion ? 0 : ((time * Math.abs(platform.conveyor) / 35) % 1 - .5) * 21;
+        sprite('exp-arrow', slide - 8, 2, 16, 15);
+        g.restore();
+      }
+    }
+    return false;
+  }
+
+  function drawCaves(s) {
+    for (const cave of s.caves) {
+      if (cave.x + cave.w < s.cameraX || cave.x > s.cameraX + W) continue;
+      sprite('exp-cave', cave.x, cave.y, cave.w, cave.h);
+      sprite('exp-stalactites', cave.x + 22, cave.y + 36, Math.min(114, cave.w * .55), 41);
+    }
+  }
+
   function drawCourse(s) {
     const left = s.cameraX ?? 0;
     const top = s.cameraY ?? 0;
@@ -300,6 +343,7 @@
         g.globalAlpha = 1;
         continue;
       }
+      if (s.kind === 'arena' && !platform.ground && drawArenaDeck(platform, x, s.elapsed)) continue;
       if (platform.ground) {
         g.fillStyle = colors.ground;
         g.fillRect(x, platform.y, platform.w, 116);
@@ -324,6 +368,7 @@
         g.fillStyle = '#3c6871';
         g.fillRect(x, platform.y, platform.w, platform.h);
       }
+      if (platform.conveyor) drawArenaDeck(platform, x, s.elapsed);
       g.fillStyle = colors.accent;
       g.globalAlpha = .55;
       g.fillRect(x + 6, platform.y, platform.w - 12, 2);
@@ -363,11 +408,14 @@
       g.save();
       g.translate(x + w / 2, y + h);
       const variant = enemy.variant && V.readyImage('surge-atlas-' + s.biome);
+      const art = enemy.reinforcement ? V.reinforcementArt(s) : s.biome + '-' + enemy.key;
+      const stride = enemy.entering ? 2.5 : enemy.reinforcement && enemy.attackState === 'ready' ? 1.3 : 0;
+      if (stride && !reducedMotion) g.translate(0, -Math.abs(Math.sin(s.elapsed * 16 + enemy.maxHp)) * stride);
       g.scale((variant ? enemy.facing : -enemy.facing) * (1 + crouch * .4), 1 - crouch);
       if (!reducedMotion && enemy.flash > 0) g.filter = 'brightness(1.55)';
       const drawn = variant
         ? surgeSprite(s.biome, variantFrames[enemy.key], -w / 2, -h, w, h, true)
-        : fittedSprite(s.biome + '-' + enemy.key, -w / 2, -h, w, h, true);
+        : fittedSprite(art, -w / 2, -h, w, h, true);
       g.restore();
       if (!drawn) {
         g.fillStyle = '#14233d';
@@ -1184,13 +1232,100 @@
     g.restore();
   }
 
+  function ultimateView(s) {
+    const { focus, retreat, end } = V.ultimateTiming;
+    const time = s.ultimate.time;
+    const progress = V.clamp(Math.min(time / focus, (end - time) / (end - retreat)), 0, 1);
+    const amount = progress * progress * (3 - 2 * progress);
+    const p = s.player;
+    const x = p.x + p.w / 2 - Math.round(s.cameraX);
+    const y = p.y + p.h / 2 - Math.round(s.cameraY);
+    const travel = reducedMotion ? 0 : amount;
+    const zoom = 1 + travel * 2.55;
+    const focusX = V.lerp(x, W / 2, travel);
+    const focusY = V.lerp(y, H * .54, travel);
+    return { amount, zoom, focusX, focusY, x: focusX - W / 2 - (x - W / 2) * zoom,
+      y: focusY - H / 2 - (y - H / 2) * zoom };
+  }
+
+  function drawUltimate(s, view) {
+    const cut = s.ultimate;
+    const { focus, swing } = V.ultimateTiming;
+    const p = s.player;
+    const weapon = s.weapon;
+    const wind = V.clamp((cut.time - focus * .65) / (swing - focus * .65), 0, 1);
+    const strike = V.clamp((cut.time - swing) / .10, 0, 1);
+    const spear = weapon.id === 'reef-spear';
+    const cock = spear ? -.25 : V.lerp(-1.30, -2.97, wind ** 1.2);
+    const angle = V.lerp(cock, spear ? .035 : .92, 1 - (1 - strike) ** 3);
+    g.save();
+    g.globalAlpha = view.amount;
+    g.fillStyle = '#000';
+    g.fillRect(0, 0, W, H);
+    g.translate(view.focusX, view.focusY);
+    g.scale(view.zoom * cut.facing, view.zoom);
+    g.save();
+    g.shadowColor = cut.ability.color;
+    g.shadowBlur = view.zoom * 2.5;
+    g.filter = 'brightness(1.55)';
+    const drawn = sprite(s.character, -p.w / 2, -p.h / 2, p.w, p.h);
+    g.restore();
+    if (!drawn) {
+      g.fillStyle = '#dfad76';
+      g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+    }
+    g.translate(spear ? 8 - wind * 13 + strike * 33 : 10, -1);
+    if (cut.time >= swing && cut.time < swing + .23) {
+      g.save();
+      g.globalAlpha = view.amount * (1 - (cut.time - swing) / .23);
+      if (weapon.id === 'katana') fittedSprite('exp-arc', -23, -55, 110, 112);
+      else if (spear) {
+        g.fillStyle = cut.ability.color;
+        g.fillRect(5, -2, 125, 4);
+      } else fittedSprite('exp-spark', 6, -21, 88, 65);
+      g.restore();
+    }
+    g.rotate(angle);
+    const blade = V.readyImage(weapon.sprite);
+    const length = weapon.reach + weapon.grip;
+    if (blade) {
+      const height = length * blade.naturalHeight / blade.naturalWidth;
+      g.drawImage(blade, -weapon.grip, -height / 2, length, height);
+    } else {
+      g.fillStyle = cut.ability.color;
+      g.fillRect(-weapon.grip, -2, length, 4);
+    }
+    g.restore();
+  }
+
+  function drawUltimateMarks(s) {
+    for (const mark of s.ultimateMarks ?? []) {
+      const age = s.elapsed - mark.start;
+      if (age < 0 || age > .32) continue;
+      const { boss, size } = mark;
+      const x = boss ? boss.x + boss.w * mark.x : mark.x;
+      const y = boss ? boss.y + boss.h * mark.y : mark.y;
+      g.save();
+      g.translate(x, y);
+      g.scale(mark.facing, 1);
+      g.globalAlpha = (1 - age / .32) ** .72;
+      fittedSprite('exp-slash', -size * .50, -size * .50, size, size);
+      g.rotate(-.47);
+      g.fillStyle = mark.color;
+      g.fillRect(-size * .43, -1, size * .86, 2);
+      if (!boss && !reducedMotion) fittedSprite('exp-spark', -size * .38, -size * .26, size * .76, size * .52);
+      g.restore();
+    }
+  }
+
   V.render = function (section) {
     reducedMotion = motionPreference?.matches;
     skinKey = section.arenaGlitch?.active;
     skin = V.arenaGlitchThemes[skinKey];
     const arena = section.kind === 'arena';
     const local = V.usesMomentum(section);
-    const view = V.cameraView(section);
+    const ultimate = section.ultimate ? ultimateView(section) : null;
+    const view = ultimate ?? V.cameraView(section);
     if (view) {
       g.save();
       g.translate(W / 2 + view.x, H / 2 + view.y);
@@ -1205,6 +1340,7 @@
     drawParticles(section, true);
     if (section.boss) drawStageBackdrop(section);
     drawScenery(section, local);
+    if (arena) drawCaves(section);
     drawCourse(section);
     if (arena) {
       drawExit(section);
@@ -1218,6 +1354,7 @@
     if (section.boss) {
       drawBossFloor(section);
       drawZones(section);
+      drawEnemies(section);
       drawBoss(section);
     }
     drawMovementEffects(section);
@@ -1225,13 +1362,15 @@
     drawWeapon(section);
     drawParticles(section, false);
     drawImpacts(section);
+    drawUltimateMarks(section);
     if (local) g.restore();
     if (view) {
       g.restore();
-      drawCameraCue(section, view);
+      if (!ultimate) drawCameraCue(section, view);
     }
     drawDamageEdge(section);
     drawPhaseBanner(section);
     drawGlitchCut(section);
+    if (ultimate) drawUltimate(section, ultimate);
   };
 })();

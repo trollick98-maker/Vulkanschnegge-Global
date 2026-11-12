@@ -112,7 +112,9 @@
             <span class="hud-stat"><img src="assets/images/spritepack/hud-heart.png" alt="Leben"><span id="hud-life"></span></span>
             <span id="hud-coins"></span>
             <span class="hud-stat" title="Dash mit J oder X"><img src="assets/images/spritepack/hud-dash.png" alt="Dash"><span id="hud-dash"></span></span>
-          </div><div id="hud-score"></div></div>
+          </div><div id="hud-score"></div>
+            <div id="hud-ultimate" class="hidden"><label for="ultimate-meter" id="ultimate-label"></label><progress id="ultimate-meter" max="100" value="0"></progress></div>
+          </div>
           <div class="game-buttons">
             <button id="back-btn" class="quiet" title="Zur Weltkarte (Escape)">↶ Karte</button>
             <button id="restart-btn" class="quiet" title="Abschnitt neu starten">⟳ Neustart</button>
@@ -124,7 +126,7 @@
       </div>
       <div id="touch-controls" class="touch-controls">
         <div><button data-key="left" aria-label="Links">◀</button><button data-key="right" aria-label="Rechts">▶</button></div>
-        <div><button data-key="jump" aria-label="Springen">↥</button><button data-key="dash" aria-label="Dash">⚡</button></div>
+        <div><button data-key="ultimate" id="touch-ultimate" type="button" class="hidden" aria-label="Ultimate">ULT</button><button data-key="jump" aria-label="Springen">↥</button><button data-key="dash" aria-label="Dash">⚡</button></div>
       </div>
     </section>
 
@@ -222,6 +224,7 @@
   <script src="js/online-board.js"></script>
   <script src="js/input.js"></script>
   <script src="js/story.js"></script>
+  <script src="js/ultimate.js"></script>
   <script src="js/camera.js"></script>
   <script src="js/boss-animation.js"></script>
   <script src="js/render.js"></script>

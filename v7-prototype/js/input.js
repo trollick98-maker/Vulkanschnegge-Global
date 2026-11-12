@@ -1,18 +1,18 @@
 (function () {
   'use strict';
   const V = window.VS7;
-  const I = V.input = { left: false, right: false, jump: false, dash: false, jumpQueued: false, dashQueued: false };
-  const held = { left: new Set(), right: new Set(), jump: new Set(), dash: new Set() };
+  const I = V.input = { left: false, right: false, jump: false, dash: false, jumpQueued: false, dashQueued: false, ultimateQueued: false };
+  const held = { left: new Set(), right: new Set(), jump: new Set(), dash: new Set(), ultimate: new Set() };
   const translate = {
     ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
-    Space: 'jump', ArrowUp: 'jump', KeyW: 'jump', KeyJ: 'dash', KeyX: 'dash'
+    Space: 'jump', ArrowUp: 'jump', KeyW: 'jump', KeyJ: 'dash', KeyX: 'dash', KeyF: 'ultimate'
   };
 
   function set(key, source, on) {
     const sources = held[key];
     if (!sources) return;
     if (on) {
-      if (!sources.size && (key === 'jump' || key === 'dash')) I[key + 'Queued'] = true;
+      if (!sources.size && (key === 'jump' || key === 'dash' || key === 'ultimate')) I[key + 'Queued'] = true;
       sources.add(source);
     } else sources.delete(source);
     I[key] = sources.size > 0;
@@ -45,7 +45,7 @@
       held[key].clear();
       I[key] = false;
     }
-    I.jumpQueued = I.dashQueued = false;
+    I.jumpQueued = I.dashQueued = I.ultimateQueued = false;
   };
   window.addEventListener('blur', I.reset);
 

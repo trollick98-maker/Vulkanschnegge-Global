@@ -10,13 +10,13 @@
     const s = V.newSection({ kind: 'boss', character, build, biome: node.biome,
       seed: seed + ':' + node.id, hp: V.rules.bossPlayerHp, title: definition.name });
     const maxHp = definition.hp + 270 * (node.tier - 1);
-    Object.assign(s, { node, wind: 0 });
+    Object.assign(s, { node, wind: 0, enemies: [], kills: 0, reinforcementsAt: 6, reinforcementCount: 0 });
     s.boss = { definition, x: 610, y: G - 133, w: 172, h: 133, hp: maxHp, maxHp,
       state: 'approach', phase: 0, phaseAt: 0, phaseUntil: 0, stageNext: Infinity, stageTurns: 0, readyAt: .75, hurtAt: 0, flash: 0, facing: -1, side: 1, turns: 0,
       random: V.randomFor(s.seed + ':boss-ai'), bag: [] };
     V.initBossArena(s);
     V.initArenaGlitch(s);
-    V.say(s, 'Dash mit dem Glutkatana · ' + definition.tip);
+    V.say(s, 'Dash mit ' + s.weapon.name + ' · ' + definition.tip);
     return s;
   };
 
@@ -211,6 +211,7 @@
   V.defeatBoss = function (s) {
     const b = s.boss;
     b.hp = 0;
+    s.enemies.length = 0;
     b.state = 'defeated';
     b.defeatedAt = s.elapsed;
     V.restoreArenaGlitch(s);
@@ -224,6 +225,18 @@
     V.emitParticles(s, 'defeat', b.x + b.w / 2, b.y + b.h * .45, { color: b.definition.color });
     V.say(s, b.definition.name + ' besiegt');
     V.audio?.effect?.('boss-break', true);
+  };
+
+  V.damageBoss = function (s, power) {
+    const b = s.boss;
+    const floor = Math.floor(b.maxHp * (2 - b.phase) / 3);
+    const damage = Math.min(b.hp - floor, power);
+    if (damage <= 0) return 0;
+    b.hp -= damage;
+    b.flash = .17;
+    b.hitSide = s.player.facing;
+    s.score += damage;
+    return damage;
   };
 
   function strikeBoss(s, dx, dy) {
@@ -241,14 +254,10 @@
     if (p.swing) p.swing.hits.add(b);
     else p.dashTarget = b;
     const bonus = weakHit ? (canInterrupt ? b.plan.attack.exposed : b.exposed) : 1;
-    const floor = Math.floor(b.maxHp * (2 - b.phase) / 3);
-    const damage = Math.min(b.hp - floor, Math.round(p.dashPower * bonus));
-    if (damage <= 0) return;
-    b.hp -= damage;
+    const damage = V.damageBoss(s, Math.round(p.dashPower * bonus));
+    if (!damage) return;
+    V.chargeDash(s, damage);
     b.hurtAt = s.elapsed + .12;
-    b.flash = .17;
-    b.hitSide = p.facing;
-    s.score += damage;
     if (s.chainDash) {
       p.dashCooldown = 0;
       p.airDash = true;
@@ -298,6 +307,7 @@
           p.dashCooldown = 0;
           p.airDash = true;
         }
+        V.chargeUltimate(s, 10);
         V.hitFeedback(s, 'parry', q.x, q.y);
         s.score += 80;
       }
@@ -342,6 +352,9 @@
     if (s.outcome !== null) return;
     strikeBoss(s, dx, dy);
     if (b.state === 'defeated') return;
+    V.updateReinforcements(s);
+    V.updateEnemies(s, dt);
+    if (s.outcome !== null) return;
     V.updateBossZones(s, dt);
     if (s.outcome === null) V.updateBossShots(s, dt);
     s.speed = Math.abs(s.player.vx);

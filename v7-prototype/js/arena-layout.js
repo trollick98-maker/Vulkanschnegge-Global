@@ -37,13 +37,20 @@
     const shapes = patterns[node.biome];
     const elevations = terraces[node.biome];
     const islandCount = node.tier >= 3 ? 8 : 7;
+    const upperDecks = [];
+    const caves = [];
     const platforms = [{ worldX: 0, y: V.GROUND, w: between(370, 465), h: 17, ground: true }];
     const traps = [];
     let previous = platforms[0];
 
-    function append(y, w, ground) {
-      const gap = Math.floor(V.arenaJumpGap(previous.y, y) * between(69, 96) / 100);
-      previous = { worldX: previous.worldX + previous.w + gap, y, w, h: 17, ground };
+    function append(y, w, ground, mover) {
+      const motionX = (previous.mover?.x ?? 0) + (mover?.x ?? 0);
+      const motionY = (previous.mover?.y ?? 0) + (mover?.y ?? 0);
+      const reach = V.arenaJumpGap(previous.y, y + Math.sign(y - previous.y || 1) * motionY);
+      const gap = Math.floor(reach * between(84, 99) / 100 - motionX);
+      const worldX = previous.worldX + previous.w + gap;
+      previous = { worldX, y, w, h: 17, ground };
+      if (mover) Object.assign(previous, { mover, homeX: worldX, homeY: y });
       platforms.push(previous);
     }
 
@@ -56,7 +63,11 @@
       for (let step = 1; step < links; step++) {
         const relief = (shape[(step - 1) % shape.length] - .35) * jumpHeight * .42;
         const y = Math.round(V.lerp(fromY, targetY, step / links) - relief + between(-5, 5));
-        append(y, between(100, 156), false);
+        const mover = step === 1 && island < islandCount - 1 ? {
+          x: island % 2 ? 36 : 0, y: island % 2 ? 0 : 37,
+          rate: island % 3 === 0 ? 2.8 : 1.32, phase: between(0, 100) * .063
+        } : null;
+        append(y, between(112, 156), false, mover);
       }
       append(targetY, between(420, 565), true);
       if (island < islandCount - 1 && (island % 2 === 0 || (node.tier >= 3 && island > 2))) {
@@ -65,7 +76,50 @@
       }
     }
 
+    const islands = platforms.filter(platform => platform.ground);
+    for (const [index, island] of islands.entries()) {
+      if (index === 0 || index === islandCount - 1) continue;
+      if ((index + node.tier) % 3 === 0) island.conveyor = index % 2 ? 114 : -150;
+      const cave = (node.biome === 'reef' || node.biome === 'vortex') && index === 2;
+      const secondFloor = index === (node.biome === 'greed' ? 3 : 4);
+      if (!cave && !secondFloor) continue;
+      const { worldX, y, w } = island;
+      upperDecks.push(
+        { worldX: worldX + 28, y: y - 89, w: 105, h: 17, upper: 'step' },
+        { worldX: worldX + 163, y: y - 174, w: w - 319, h: 17, upper: 'floor' },
+        { worldX: worldX + w - 122, y: y - 88, w: 99, h: 17, upper: 'step' });
+      if (cave) caves.push({ x: worldX + 130, y: y - 177, w: w - 260, h: 178 });
+    }
     const worldWidth = previous.worldX + previous.w;
-    return { platforms, traps, worldWidth, exitX: worldWidth - 100, exitY: previous.y };
+    return { platforms, upperDecks, caves, traps, worldWidth, exitX: worldWidth - 100, exitY: previous.y };
+  };
+
+  V.moveArenaDecks = function (s, dt) {
+    const p = s.player;
+    for (const deck of s.platforms) {
+      if (!deck.mover) continue;
+      const { x, y, rate, phase } = deck.mover;
+      const wave = Math.sin(s.elapsed * rate + phase);
+      const dx = deck.homeX + x * wave - deck.worldX;
+      const dy = deck.homeY + y * wave - deck.y;
+      if (p.grounded && Math.abs(p.y + p.h - deck.y) < 2 &&
+          p.x + p.w > deck.worldX + 4 && p.x < deck.worldX + deck.w - 4) {
+        p.x += dx;
+        p.y += dy;
+        s.supportY = deck.y + dy;
+      } else if (dy < 0 && p.vy >= 0 && p.y + p.h <= deck.y && p.y + p.h >= deck.y + dy &&
+          p.x + p.w > deck.worldX + dx + 4 && p.x < deck.worldX + dx + deck.w - 4) {
+        p.y = deck.y + dy - p.h;
+      }
+      deck.worldX += dx;
+      deck.y += dy;
+      for (const coin of deck.coins) {
+        coin.worldX += dx;
+        coin.y += dy;
+      }
+    }
+    const belt = p.grounded && s.platforms.find(deck => deck.conveyor && Math.abs(p.y + p.h - deck.y) < 2 &&
+      p.x + p.w / 2 > deck.worldX && p.x + p.w / 2 < deck.worldX + deck.w);
+    if (belt) p.x += belt.conveyor * dt;
   };
 })();

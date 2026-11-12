@@ -16,6 +16,7 @@
 
   function transition(mode, keepMusic = false) {
     state.mode = mode;
+    get('game-panel').classList.remove('ultimate-active');
     get('test-skip-btn').classList.toggle('hidden', !canSkip());
     if (mode !== 'clear') state.clearNext = null;
     frameAt = 0;
@@ -132,6 +133,9 @@
     }
     if (section.kind !== 'arcade') V.applyShopLoadout(state.level, campaign);
     if (section.kind !== 'arcade') V.image('clear-' + V.clearArt(state.level));
+    if (section.kind === 'arena' || state.level.chase) {
+      for (const part of V.expansionArt) V.image('exp-' + part);
+    }
     if (state.level.chase?.definition.sprite === 'god') {
       for (const form of V.godForms) V.image(form);
       for (const theme of Object.keys(V.arenaGlitchThemes)) {
@@ -226,6 +230,19 @@
     if (state.mode !== 'play') return;
 
     const level = state.level;
+    if (V.input.ultimateQueued) {
+      V.input.ultimateQueued = false;
+      V.beginUltimate(level);
+    }
+    if (level.ultimate) {
+      V.input.consume();
+      carry = 0;
+      V.updateUltimate(level, dt);
+      get('game-panel').classList.toggle('ultimate-active', Boolean(level.ultimate));
+      ui.hud(level);
+      V.render(level);
+      return;
+    }
     V.updateCameraCue(level, dt, V.input);
     V.tickParticles(level, dt);
     if (level.hitStop > 0) {

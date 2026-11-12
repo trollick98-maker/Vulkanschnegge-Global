@@ -11,13 +11,14 @@
 
   function populate(s) {
     const random = V.randomFor(s.seed + ':enemies');
-    const islands = s.platforms.filter(platform => platform.ground).slice(1);
+    const islands = [...s.platforms.filter(platform => platform.ground).slice(1), ...s.upperDecks.filter(deck => deck.upper === 'floor')];
     islands.forEach((island, index) => {
-      if (index % 3 === 2 && index !== islands.length - 1) return;
+      const lastGround = island.worldX + island.w === s.worldWidth;
+      if (!island.upper && index % 3 === 2 && !lastGround) return;
       const hasTrap = s.traps.some(trap => trap.x > island.worldX && trap.x < island.worldX + island.w);
-      const count = !hasTrap && s.node.tier >= 3 && index % 2 === 1 ? 3 : 2;
+      const count = island.upper ? 1 : !hasTrap && s.node.tier >= 3 && index % 2 === 1 ? 3 : 2;
       for (let i = 0; i < count; i++) {
-        const tunnelGuard = s.node.id === 'reef-side' && index === islands.length - 1 && i === count - 1;
+        const tunnelGuard = s.node.id === 'reef-side' && lastGround && i === count - 1;
         const key = s.node.tier === 1 && i === 0 ? 'crawler' :
           (tunnelGuard || random() < (s.node.tier - 1) * .19) ? 'armored' : random() < .48 ? 'jumper' : 'crawler';
         const type = kinds[key];
@@ -38,6 +39,7 @@
     s.node = node;
     s.player.x = 76;
     Object.assign(s, V.generateArena(node, seed));
+    s.platforms.push(...s.upperDecks);
     s.cameraX = 0;
     s.cameraY = V.GROUND - 405;
     s.checkpointX = s.player.x;
@@ -46,8 +48,19 @@
     s.enemies = [];
     s.kills = 0;
     for (const platform of s.platforms) {
+      const first = s.coins.length;
       V.addCoin(s, platform.worldX + platform.w * .50, platform.y - 23);
       V.addCoin(s, platform.worldX + platform.w * .68, platform.y - 23);
+      if (platform.mover) {
+        platform.coins = s.coins.slice(first);
+        const phaseOffset = Math.sin(platform.mover.phase);
+        platform.worldX += platform.mover.x * phaseOffset;
+        platform.y += platform.mover.y * phaseOffset;
+        for (const coin of platform.coins) {
+          coin.worldX += platform.mover.x * phaseOffset;
+          coin.y += platform.mover.y * phaseOffset;
+        }
+      }
     }
     populate(s);
     V.say(s, 'Räume den Weg frei · Ausgang rechts');
@@ -57,6 +70,14 @@
   function updateEnemy(s, enemy, dt) {
     const ground = enemy.floorY - enemy.h;
     enemy.flash = Math.max(0, (enemy.flash ?? 0) - dt);
+    if (enemy.entering) {
+      enemy.x += enemy.facing * 232 * dt;
+      if ((enemy.entryX - enemy.x) * enemy.facing <= 0) {
+        enemy.x = enemy.entryX;
+        enemy.entering = false;
+      }
+      return;
+    }
     enemy.attackLeft -= dt;
     if (enemy.attackState === 'tell') {
       if (enemy.attackLeft > 0) return;
@@ -104,47 +125,70 @@
     return V.clamp(s.player.x + s.player.w / 2 - V.W * .42, 0, s.worldWidth - V.W);
   };
 
-  function hitEnemy(s, enemy, damage) {
+  V.damageEnemy = function (s, enemy, damage) {
     const amount = Math.min(enemy.hp, damage);
-    enemy.hp = Math.max(0, enemy.hp - damage);
+    if (amount <= 0) return 0;
+    enemy.hp -= amount;
+    enemy.entering = false;
+    enemy.attackState = 'recover';
+    enemy.attackLeft = .56;
+    enemy.flash = .13;
+    if (enemy.hp === 0) {
+      s.kills++;
+      s.score += 75 + damage;
+      if (!enemy.reinforcement) V.addCoin(s, enemy.x + enemy.w / 2, enemy.y + enemy.h / 2);
+    }
+    return amount;
+  };
+
+  function hitEnemy(s, enemy, damage) {
+    const amount = V.damageEnemy(s, enemy, damage);
     if (!s.player.swing) V.rebound(s);
     else if (s.chainDash) {
       s.player.dashCooldown = 0;
       s.player.airDash = true;
     }
-    enemy.attackState = 'recover';
-    enemy.attackLeft = .56;
-    if (amount > 0) enemy.flash = .13;
+    if (amount > 0) {
+      V.chargeDash(s, damage);
+      if (enemy.hp === 0) V.chargeUltimate(s, 22);
+    }
     V.hitFeedback(s, amount > 0 ? 'hit' : 'guard', enemy.x + enemy.w / 2, enemy.y + enemy.h / 2,
       { amount, direction: s.player.facing, heavy: enemy.hp === 0 });
-    if (enemy.hp === 0) {
-      s.kills++;
-      s.score += 75 + damage;
-      V.addCoin(s, enemy.x + enemy.w / 2, enemy.y + enemy.h / 2);
-    }
-    V.say(s, damage > 0 ? s.weapon.name + ' · −' + amount + ' HP' : 'Mehr Anlauf!');
+    V.say(s, amount > 0 ? s.weapon.name + ' · −' + amount + ' HP' : 'Mehr Anlauf!');
   }
 
-  V.updateArena = function (s, dt, actions) {
-    if (s.outcome !== null) return;
-    s.elapsed += dt;
-    V.movePlayer(s, dt, actions);
+  const reinforcementArt = {
+    reef: 'crab', greed: 'scarab', diva: 'diva', vortex: 'vortex', god: 'glitch',
+    garden: 'bee', inferno: 'ember', race: 'car'
+  };
+  V.reinforcementArt = s => 'exp-' + reinforcementArt[s.arenaGlitch?.active ?? s.biome];
+
+  V.updateReinforcements = function (s) {
+    if (s.elapsed < s.reinforcementsAt) return;
+    s.enemies = s.enemies.filter(enemy => enemy.hp > 0);
+    s.reinforcementsAt = s.elapsed + (s.boss.phase === 0 ? 8 : 6.5);
+    const cap = s.boss.phase === 0 ? 2 : 3;
+    if (s.enemies.length >= cap) return;
     const p = s.player;
-    if (p.y > s.supportY + 300) {
-      p.invuln = 0;
-      V.hurt(s);
-      Object.assign(p, { x: s.checkpointX, y: s.checkpointY - p.h, vx: 0, vy: 0, grounded: true,
-        jumps: 0, airDash: true, dashBuffer: 0, jumpBuffer: 0, dashCooldown: 0, angle: 0, landTime: 0, swing: null });
-      s.cameraX = V.arenaCameraTarget(s);
-      s.cameraY = s.checkpointY - 405;
-      s.supportY = s.checkpointY;
-      s.speed = 0;
-      if (s.outcome === null) V.say(s, 'Abgrund · zurück auf die letzte Insel');
-      return;
-    }
-    s.cameraX = V.lerp(s.cameraX, V.arenaCameraTarget(s), Math.min(1, dt * 7.5));
-    const targetY = p.grounded ? p.y + p.h - 405 : V.clamp(s.cameraY, p.y + p.h - 475, p.y - 115);
-    s.cameraY = V.lerp(s.cameraY, targetY, Math.min(1, dt * 6));
+    const typeKey = (s.reinforcementCount++ + s.boss.phase) % 3 === 1 ? 'jumper' : 'crawler';
+    const type = kinds[typeKey];
+    let facing = s.reinforcementCount % 2 ? 1 : -1;
+    const cameraLeft = s.cameraX;
+    const cameraRight = cameraLeft + V.W;
+    if (p.x < cameraLeft + 220) facing = -1;
+    else if (p.x > cameraRight - 220) facing = 1;
+    const x = facing === 1 ? cameraLeft - type.w - 12 : cameraRight + 12;
+    const minAdvance = x + facing * (type.w + 55);
+    const nearPlayer = p.x - facing * 295;
+    const entryX = V.clamp(facing === 1 ? Math.max(minAdvance, nearPlayer) : Math.min(minAdvance, nearPlayer),
+      14, s.worldWidth - type.w - 14);
+    const hp = type.baseHp + s.boss.phase * 22;
+    s.enemies.push({ ...type, key: typeKey, x, y: V.GROUND - type.h, floorY: V.GROUND, facing, hp, maxHp: hp,
+      left: 14, right: s.worldWidth - type.w - 14, attackState: 'ready', attackLeft: .45, entering: true, entryX, reinforcement: true });
+  };
+
+  V.updateEnemies = function (s, dt) {
+    const p = s.player;
     let firstHit = Infinity;
     let target;
     for (const enemy of s.enemies) {
@@ -170,6 +214,30 @@
       p.swing?.hits.add(target);
       hitEnemy(s, target, p.dashPower);
     }
+  };
+
+  V.updateArena = function (s, dt, actions) {
+    if (s.outcome !== null) return;
+    s.elapsed += dt;
+    V.moveArenaDecks(s, dt);
+    V.movePlayer(s, dt, actions);
+    const p = s.player;
+    if (p.y > s.supportY + 300) {
+      p.invuln = 0;
+      V.hurt(s);
+      Object.assign(p, { x: s.checkpointX, y: s.checkpointY - p.h, vx: 0, vy: 0, grounded: true,
+        jumps: 0, airDash: true, dashBuffer: 0, jumpBuffer: 0, dashCooldown: 0, angle: 0, landTime: 0, swing: null });
+      s.cameraX = V.arenaCameraTarget(s);
+      s.cameraY = s.checkpointY - 405;
+      s.supportY = s.checkpointY;
+      s.speed = 0;
+      if (s.outcome === null) V.say(s, 'Abgrund · zurück auf die letzte Insel');
+      return;
+    }
+    s.cameraX = V.lerp(s.cameraX, V.arenaCameraTarget(s), Math.min(1, dt * 7.5));
+    const targetY = p.grounded ? p.y + p.h - 405 : V.clamp(s.cameraY, p.y + p.h - 475, p.y - 115);
+    s.cameraY = V.lerp(s.cameraY, targetY, Math.min(1, dt * 6));
+    V.updateEnemies(s, dt);
     for (const shot of s.projectiles) {
       shot.x += shot.vx * dt;
       if (shot.x < shot.left || shot.x > shot.right) shot.dead = true;

@@ -7,7 +7,7 @@
   const effects = new Map();
   const effectNames = ['hit', 'hurt', 'guard', 'parry', 'dash', 'dash-fast', 'skid', 'katana',
     'reef-charge', 'greed-strike', 'diva-note', 'vortex-slam', 'god-fault', 'god-morph', 'god-collapse', 'god-arena-glitch', 'boss-break',
-    'clear-travel', 'clear-arena', 'clear-boss', 'clear-finale'];
+    'ultimate-katana', 'ultimate-spear', 'ultimate-axe', 'clear-travel', 'clear-arena', 'clear-boss', 'clear-finale'];
   let scene = null;
   let wanted = null;
   let active = null;
@@ -15,6 +15,7 @@
   let effectsEnabled = true;
   let volume = .30;
   let zoneTime = 0;
+  let cinematicSound = null;
 
   function pause() {
     for (const voice of playing) voice.audio.pause();
@@ -26,8 +27,15 @@
     }
   }
 
+  function createEffect(key) {
+    const audio = new Audio();
+    audio.preload = 'auto';
+    audio.src = 'assets/sfx/' + key + '.wav';
+    return audio;
+  }
+
   function play(voice) {
-    if (!scene || (!enabled && scene !== 'boss') || document.hidden) return Promise.resolve(false);
+    if (cinematicSound || !scene || (!enabled && scene !== 'boss') || document.hidden) return Promise.resolve(false);
     return voice.audio.play().then(() => true, () => false);
   }
 
@@ -100,6 +108,21 @@
         select('fast');
       }
     },
+    cinematic(on, sound) {
+      cinematicSound = on ? sound : null;
+      if (on) {
+        pause();
+        pauseEffects();
+        if (effectsEnabled && !effects.has(sound)) effects.set(sound, [createEffect(sound)]);
+        return;
+      }
+      const voice = voices.get(active);
+      if (voice) {
+        voice.gain = 0;
+        voice.audio.volume = 0;
+        play(voice);
+      }
+    },
     current: () => active,
     bossClock() {
       if (scene !== 'boss' || active !== wanted) return null;
@@ -114,18 +137,14 @@
       if (!effectsEnabled) pauseEffects();
     },
     effect(key, heavy = false) {
-      if (!scene || scene === 'story' || scene === 'menu' || !effectsEnabled || volume === 0 || document.hidden || !effectNames.includes(key)) return;
+      if ((cinematicSound && key !== cinematicSound) || !scene || scene === 'story' || scene === 'menu' || !effectsEnabled || volume === 0 || document.hidden || !effectNames.includes(key)) return;
       if (!effects.has(key)) effects.set(key, []);
       const pool = effects.get(key);
       const idle = pool.findIndex(voice => voice.paused);
       let audio;
       if (idle >= 0) audio = pool.splice(idle, 1)[0];
       else if (pool.length === 2) audio = pool.shift();
-      else {
-        audio = new Audio();
-        audio.preload = 'auto';
-        audio.src = 'assets/sfx/' + key + '.wav';
-      }
+      else audio = createEffect(key);
       pool.push(audio);
       if (audio.readyState > 0) audio.currentTime = 0;
       audio.volume = volume * .92;
@@ -150,6 +169,7 @@
     },
     stop() {
       pauseEffects();
+      cinematicSound = null;
       scene = null;
       wanted = null;
       active = null;
@@ -162,7 +182,7 @@
       playing.clear();
     },
     tick(dt) {
-      if (!scene || (!enabled && scene !== 'boss') || document.hidden) return;
+      if (cinematicSound || !scene || (!enabled && scene !== 'boss') || document.hidden) return;
       for (const voice of playing) {
         const target = voices.get(active) === voice ? 1 : 0;
         voice.gain = V.clamp(voice.gain + (target ? 1 : -1) * dt / 1.1, 0, 1);

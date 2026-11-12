@@ -9,7 +9,7 @@ Beim Öffnen des Spiels erscheint **LAUNCH** auf schwarzem Grund. Ein Klick oder
 - Das Hauptmenü führt zur Weltkarte, zum Endlos-Modus und zum Schneggboard. Im Atlas folgen die illustrierten Biome der Reihenfolge des Seeds. Der Riss erscheint mit dem passenden Story-Kapitel.
 - Pixelart-Bilder erzählen von der Entführung in der Heimatbucht bis zur Befreiung nach dem Sieg über GOD.EXE. Die beiden Schnecken kehren im Abspann gemeinsam in ihre Bucht zurück. Das Perk-Menü hat ein eigenes Bild.
 - Wähle eine Figur und starte eine neue Kampagne, wenn du mit dieser Figur spielen willst. Derselbe Seed erzeugt dieselbe Karte. Normale Reisen dauern zwischen 2 und 3 Minuten, beschleunigen automatisch und starten pro späterer Zone mit 42 Tempo mehr. Bossrouten beginnen mit einer kurzen Verfolgung.
-- **A/D oder Pfeiltasten** zum Steuern, **Leertaste** zum Springen und Doppelspringen, **J** oder **X** für den Panzer-Dash und **Esc** für die Karte. Auf Touch-Geräten stehen eigene Tasten zur Verfügung.
+- **A/D oder Pfeiltasten** zum Steuern, **Leertaste** zum Springen und Doppelspringen, **J** oder **X** für den Panzer-Dash, **F** für die geladene Waffen-Ultimate und **Esc** für die Karte. Auf Touch-Geräten stehen eigene Tasten zur Verfügung.
 - In Gegnerleveln und Bossarenen baut jede Figur beim Lenken Tempo auf. Otter beschleunigt am stärksten, danach folgen Frogo und Schnegg. Loslassen bremst.
 - Gegner, Böden und Plattformen haben eigene Biom-Sprites. Münzen tragen ein Spiralrelief. Am Ende der Gegnerlevel wechseln die Zielportale beim Öffnen von orangefarbenen Gittertoren zu türkisen Wirbeln. Boss-Geschosse haben eigene Silhouetten, und Kartenmotive markieren die Regionen.
 - Nach Kämpfen wählst du einen Perk. Der Build gilt für alle weiteren Abschnitte der Kampagne. Offene Belohnungen bleiben beim Neuladen erhalten. Der Endlos-Modus hat einen eigenen Startzustand.
@@ -75,11 +75,21 @@ Fünf Tiefsee-Panoramen bewegen sich hinter Wegen, Gegnerleveln und Bossarenen m
 
 50 weitere Sprites verteilen sich auf 12 Gegnervarianten, 18 Kulissen und 20 Partikelmotive. Korallen, Anker, Bühnenrequisiten, Fitnessgeräte und Serverteile stehen entlang der Strecken und in den Arenen. Beim Dash sprühen Glutspuren, Landungen wirbeln Staub auf und Münzen funkeln beim Einsammeln. Treffer, Konter und Bossangriffe nutzen regionale Partikel. Beim Boss-Finale kommt ein größerer Ausbruch dazu. Die zusätzlichen Partikel sind auf 220 gleichzeitig begrenzt und lassen sich über die Systemeinstellung für reduzierte Bewegung ausblenden.
 
+## Waffen-Ultimates
+
+Schadende Dashes, besiegte Gegner und abgewehrte Bossgeschosse laden die Anzeige. Bei 100 Prozent aktiviert **F** oder **ULT** die Attacke. Das Spiel und die Musik halten für den Schnitt an. Danach läuft der Kampf weiter.
+
+- **Glutkatana · Nullschnitt** trifft alle sichtbaren Gegner und zeichnet acht Schnitte über einen sichtbaren Boss.
+- **Riffspieß · Flutlanze** durchstößt Gegner vor der Figur auf ihrer Höhe bis zum Bildrand.
+- **Ankerbeil · Ankerbeben** trifft in einem Umkreis um die Figur auch ober- und unterhalb liegende Gegner.
+
+In Bossarenen kommen regionale Verstärkungen vom Bildrand. GOD.EXE wechselt ihre Sprites mit der Dimension.
+
 ## Prozedurale Plattformwege
 
-Seed und Level-ID bestimmen Inselbreiten, Plattformhöhen und Abstände. Jedes Biom hat eigene Folgen aus steigenden und fallenden Plattformen. Die Strecke bleibt beim Neustart reproduzierbar, auch mit einem anderen Perk-Build.
+Seed und Level-ID bestimmen Inselbreiten, Plattformhöhen und Abstände. Jedes Biom hat eigene Folgen aus steigenden und fallenden Plattformen. Die Strecke bleibt beim Neustart reproduzierbar, auch mit einem anderen Perk-Build. Höhlen und zweite Ebenen haben eigene Gegner. An den Seiten führen Stufen nach oben. Brücken fahren seitlich, Lifte senkrecht und Laufbänder schieben in Pfeilrichtung.
 
-Die maximale Höhe eines Grundsprungs ist `v₀² / (2g)`. Für ein Ziel, das um `Δh` höher liegt, ist die Flugzeit bis zur Landung auf dem absteigenden Teil der Sprungkurve `(v₀ + √(v₀² − 2gΔh)) / g`. Daraus ergibt sich die horizontale Reichweite vom Stand bis zum Lauftempo. Der Generator rechnet mit dem niedrigsten Lauftempo und der höchsten Schwerkraft der Grundfiguren, nimmt die kleinere Reichweite beider Richtungen und verwendet höchstens 72 Prozent davon.
+Die maximale Höhe eines Grundsprungs ist `v₀² / (2g)`. Für ein Ziel, das um `Δh` höher liegt, ist die Flugzeit bis zur Landung auf dem absteigenden Teil der Sprungkurve `(v₀ + √(v₀² − 2gΔh)) / g`. Daraus ergibt sich die horizontale Reichweite vom Stand bis zum Lauftempo. Der Generator rechnet mit dem niedrigsten Lauftempo und der höchsten Schwerkraft der Grundfiguren, nimmt die kleinere Reichweite beider Richtungen und verwendet höchstens 72 Prozent davon. Bei beweglichen Plattformen berücksichtigt der Generator die weiteste Stellung.
 
 ## Testmodus
 

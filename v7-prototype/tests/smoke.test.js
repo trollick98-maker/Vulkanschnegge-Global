@@ -9,9 +9,9 @@ const read = name => fs.readFileSync(path.join(root, name), 'utf8');
 const plain = value => JSON.parse(JSON.stringify(value));
 const modules = [
   'config', 'assets', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats',
-  'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-stage', 'boss-arena', 'combat', 'boss-chase', 'audio', 'online-board', 'input', 'story', 'camera', 'boss-animation', 'render', 'ui', 'main'
+  'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-stage', 'boss-arena', 'combat', 'boss-chase', 'audio', 'online-board', 'input', 'story', 'ultimate', 'camera', 'boss-animation', 'render', 'ui', 'main'
 ];
-const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats', 'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-stage', 'boss-arena', 'combat', 'boss-chase', 'story'];
+const rules = ['config', 'profile', 'upgrades', 'campaign', 'course-data', 'boss-data', 'boss-beats', 'weapons', 'shop', 'surge-art', 'particles', 'motion', 'runner', 'arena-layout', 'arena-traps', 'arena', 'boss-stage', 'boss-arena', 'combat', 'boss-chase', 'story', 'ultimate'];
 const idle = {};
 
 function logic(storage = new Map(), files = rules, extra = {}) {
@@ -1013,8 +1013,10 @@ test('all base characters can single-jump generated platforms in both directions
       V.movePlayer(s, V.rules.step, { right: steer && direction > 0, left: steer && direction < 0, jump: frame === 0 });
       if (p.grounded) break;
     }
-    assert.ok(p.grounded && Math.abs(p.y + p.h - to.y) < .01 &&
-      p.x + p.w / 2 > to.worldX && p.x + p.w / 2 < to.worldX + to.w,
+    const onDestination = p.grounded && p.x + p.w / 2 > to.worldX && p.x + p.w / 2 < to.worldX + to.w;
+    const onUpperDeck = to.ground && s.upperDecks.some(deck => Math.abs(p.y + p.h - deck.y) < .01 &&
+      p.x + p.w > deck.worldX + 4 && p.x < deck.worldX + deck.w - 4);
+    assert.ok(onDestination && (Math.abs(p.y + p.h - to.y) < .01 || onUpperDeck),
     s.seed + ' ' + s.character + ' from ' + from.worldX + ' to ' + to.worldX);
   }
   for (const seed of ['blue-reef', 'gold-vault', 'pink-stage', 'wreck-storm']) {
@@ -1022,9 +1024,15 @@ test('all base characters can single-jump generated platforms in both directions
     for (const node of graph.nodes.filter(item => item.kind === 'arena' && !item.optional)) {
       for (const character of Object.keys(V.characters)) {
         const s = V.newArena(node, character, {}, seed);
-        for (let i = 1; i < s.platforms.length; i++) {
-          cross(s, s.platforms[i - 1], s.platforms[i]);
-          cross(s, s.platforms[i], s.platforms[i - 1]);
+        const main = s.platforms.filter(deck => !deck.upper);
+        for (let i = 1; i < main.length; i++) {
+          cross(s, main[i - 1], main[i]);
+          cross(s, main[i], main[i - 1]);
+        }
+        for (let i = 0; i < s.upperDecks.length; i += 3) {
+          const [left, roof, right] = s.upperDecks.slice(i, i + 3);
+          cross(s, left, roof);
+          cross(s, right, roof);
         }
       }
     }
@@ -1184,7 +1192,8 @@ test('every boss takes one normal katana hit per dash, has a death sequence and 
     const s = V.newCombat(node, 'otter', {}, 'death');
     assert.ok(s.boss.x > s.player.x && s.boss.x < V.W);
     assert.ok(s.platforms.length >= 6 && V.usesMomentum(s));
-    s.boss.readyAt = 1e5;
+    s.boss.readyAt = s.reinforcementsAt = 1e5;
+    if (s.arenaGlitch) s.arenaGlitch.random = () => 0;
     const first = bossDash(V, s);
     assert.equal(first, 327, id);
     assert.equal(s.outcome, null);
@@ -1776,4 +1785,123 @@ test('online board can retry a transient script failure and reads only scores', 
   assert.deepEqual(plain(await env.VS7.loadLegacyLeaderboard()), []);
   assert.equal(appended, 3);
   assert.equal(reads, 1);
+});
+
+test('ultimate charge comes from combat, and the katana strikes exactly the visible enemies and boss', () => {
+  const { V } = logic();
+  const seed = 'ultimate';
+  const graph = V.generateMap(seed);
+  const s = V.newCombat(graph.byId.reef, 'snail', {}, seed);
+  assert.equal(V.beginUltimate(s), false);
+  assert.ok(bossDash(V, s) > 0);
+  assert.ok(s.ultimateCharge > 10 && s.ultimateCharge < 100);
+  s.cameraX = 0;
+  const makeEnemy = (x, y, hp) => ({ x, y, w: 30, h: 30, hp });
+  const small = makeEnemy(600, 395, 100);
+  const strong = makeEnemy(820, 300, 620);
+  const outside = makeEnemy(980, 400, 100);
+  const above = makeEnemy(600, -50, 100);
+  s.enemies.push(small, strong, outside, above);
+  const cues = [];
+  V.audio = { cinematic: (...args) => cues.push(args), effect: (...args) => cues.push(args) };
+  const snapshot = [s.elapsed, s.player.x, s.boss.x, s.boss.hp];
+  V.chargeUltimate(s, 100);
+  assert.ok(V.beginUltimate(s));
+  assert.equal(s.ultimateCharge, 0);
+  assert.equal(V.beginUltimate(s), false);
+  V.updateUltimate(s, .70);
+  assert.deepEqual([s.elapsed, s.player.x, s.boss.x, s.boss.hp], snapshot);
+  V.updateUltimate(s, .12);
+  assert.deepEqual(cues, [[true, 'ultimate-katana'], ['ultimate-katana']]);
+  V.updateUltimate(s, .4);
+  assert.equal(s.ultimate, null);
+  assert.equal(s.elapsed, snapshot[0]);
+  assert.equal(s.boss.hp, snapshot[3] - 500);
+  assert.deepEqual(s.enemies.map(enemy => enemy.hp).join(','), '0,160,100,100');
+  assert.equal(s.kills, 1);
+  assert.equal(s.ultimateCharge, 0);
+  assert.equal(s.ultimateMarks.filter(mark => mark.boss === s.boss).length, 8);
+  assert.equal(s.ultimateMarks.filter(mark => !mark.boss).length, 2);
+  assert.deepEqual(cues.at(-1), [false]);
+});
+
+test('spear and axe ultimates use their own targeting and boss damage respects the phase floor', () => {
+  const { V } = logic();
+  const seed = 'weapon-targets';
+  const graph = V.generateMap(seed);
+  for (const id of ['reef-spear', 'anchor-axe']) {
+    const s = V.newCombat(graph.byId.reef, 'snail', {}, seed);
+    s.weapon = V.weapons[id];
+    Object.assign(s.player, { x: 340, y: 380, facing: 1 });
+    Object.assign(s.boss, { x: 420, y: 320, hp: Math.floor(s.boss.maxHp * 2 / 3) + 22 });
+    s.enemies = [230, 460, 840].map(x => ({ x, y: 375, w: 40, h: 40, hp: 100 }));
+    V.chargeUltimate(s, 100);
+    assert.ok(V.beginUltimate(s));
+    V.updateUltimate(s, 1.2);
+    assert.deepEqual(s.enemies.map(enemy => enemy.hp), id === 'reef-spear' ? [100, 0, 0] : [0, 0, 100]);
+    assert.equal(s.boss.hp, Math.floor(s.boss.maxHp * 2 / 3));
+    V.updateCombat(s, V.rules.step, idle);
+    assert.equal(s.boss.phase, 1);
+  }
+});
+
+test('boss reinforcements enter from the sides, chase, attack and follow the active dimension', () => {
+  const { V } = logic();
+  const seed = 'reinforcements';
+  const s = V.newCombat(V.generateMap(seed).byId.god, 'snail', {}, seed);
+  Object.assign(s.player, { x: 480, y: V.GROUND - s.player.h });
+  s.elapsed = 6;
+  V.updateReinforcements(s);
+  const first = s.enemies[0];
+  assert.ok(first.x + first.w < s.cameraX);
+  for (let tick = 0; tick < 220 && first.attackState !== 'active'; tick++) {
+    s.player.previousX = s.player.x;
+    s.player.previousY = s.player.y;
+    V.updateEnemies(s, V.rules.step);
+  }
+  assert.equal(first.entering, false);
+  assert.equal(first.attackState, 'active');
+  s.boss.phase = 1;
+  s.arenaGlitch.active = 'garden';
+  assert.equal(V.reinforcementArt(s), 'exp-bee');
+  s.arenaGlitch.active = 'race';
+  assert.equal(V.reinforcementArt(s), 'exp-car');
+  for (let time = 14; time < 80; time += 7) {
+    s.elapsed = time;
+    V.updateReinforcements(s);
+  }
+  assert.equal(s.enemies.length, 3);
+  V.defeatBoss(s);
+  assert.equal(s.enemies.length, 0);
+});
+
+test('arena movers carry the player and coins, belts push, and upper rooms contain enemies', () => {
+  const { V } = logic();
+  const seed = 'two-storey';
+  const s = V.newArena(V.generateMap(seed).byId['reef-arena'], 'snail', {}, seed);
+  assert.ok(s.caves.length && s.upperDecks.length);
+  const floor = s.upperDecks.find(deck => deck.upper === 'floor');
+  assert.ok(s.enemies.some(enemy => enemy.floorY === floor.y && enemy.x >= floor.worldX && enemy.x < floor.worldX + floor.w));
+  const rates = new Set(s.platforms.filter(deck => deck.mover).map(deck => deck.mover.rate));
+  assert.ok(rates.size >= 2);
+  const p = s.player;
+  for (const axis of ['x', 'y']) {
+    const deck = s.platforms.find(platform => platform.mover?.[axis]);
+    const coin = deck.coins[0];
+    Object.assign(p, { x: deck.worldX + 24, y: deck.y - p.h, grounded: true });
+    const offset = [coin.worldX - deck.worldX, coin.y - deck.y];
+    const previous = [deck.worldX, deck.y];
+    s.elapsed += .31;
+    V.moveArenaDecks(s, .31);
+    assert.notEqual(axis === 'x' ? deck.worldX : deck.y, previous[axis === 'x' ? 0 : 1]);
+    assert.ok(Math.abs(p.x - deck.worldX - 24) < 1e-8);
+    assert.ok(Math.abs(p.y + p.h - deck.y) < 1e-8);
+    assert.ok(Math.abs(coin.worldX - deck.worldX - offset[0]) < 1e-8);
+    assert.ok(Math.abs(coin.y - deck.y - offset[1]) < 1e-8);
+  }
+  const belt = s.platforms.find(platform => platform.conveyor);
+  Object.assign(p, { x: belt.worldX + 55, y: belt.y - p.h, grounded: true });
+  const before = p.x;
+  V.moveArenaDecks(s, .02);
+  assert.ok(Math.abs(p.x - before - belt.conveyor * .02) < 1e-8);
 });
