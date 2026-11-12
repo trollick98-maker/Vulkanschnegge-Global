@@ -112,13 +112,20 @@
             <span class="hud-stat"><img src="assets/images/spritepack/hud-heart.png" alt="Leben"><span id="hud-life"></span></span>
             <span id="hud-coins"></span>
             <span class="hud-stat" title="Dash mit J oder X"><img src="assets/images/spritepack/hud-dash.png" alt="Dash"><span id="hud-dash"></span></span>
-          </div><div id="hud-score"></div>
-            <div id="hud-ultimate" class="hidden"><label for="ultimate-meter" id="ultimate-label"></label><progress id="ultimate-meter" max="100" value="0"></progress></div>
-          </div>
-          <div class="game-buttons">
-            <button id="back-btn" class="quiet" title="Zur Weltkarte (Escape)">↶ Karte</button>
-            <button id="restart-btn" class="quiet" title="Abschnitt neu starten">⟳ Neustart</button>
-            <button id="test-skip-btn" class="quiet hidden" type="button">Abschnitt überspringen</button>
+          </div><div id="hud-score"></div></div>
+          <div class="game-center">
+            <div class="game-buttons">
+              <button id="back-btn" class="quiet" title="Zur Weltkarte (Escape)">↶ Karte</button>
+              <button id="restart-btn" class="quiet" title="Abschnitt neu starten">⟳ Neustart</button>
+              <button id="test-skip-btn" class="quiet hidden" type="button">Abschnitt überspringen</button>
+            </div>
+            <div id="hud-ultimate" class="hidden">
+              <button id="ultimate-button" data-key="ultimate" type="button" aria-keyshortcuts="F" aria-describedby="ultimate-name" disabled>
+                <strong>ULTI</strong><kbd>F</kbd><span id="ultimate-status">0 %</span>
+              </button>
+              <progress id="ultimate-meter" max="100" value="0" aria-label="Ulti-Ladestand"></progress>
+              <span id="ultimate-name"></span>
+            </div>
           </div>
           <div class="hud-box gauge"><div id="hud-number"></div><div class="meter" id="hud-track"><div id="hud-meter"></div></div><div id="hud-label" class="eyebrow"></div></div>
         </div>
@@ -126,7 +133,7 @@
       </div>
       <div id="touch-controls" class="touch-controls">
         <div><button data-key="left" aria-label="Links">◀</button><button data-key="right" aria-label="Rechts">▶</button></div>
-        <div><button data-key="ultimate" id="touch-ultimate" type="button" class="hidden" aria-label="Ultimate">ULT</button><button data-key="jump" aria-label="Springen">↥</button><button data-key="dash" aria-label="Dash">⚡</button></div>
+        <div><button data-key="ultimate" id="touch-ultimate" type="button" class="hidden" aria-label="Ultimate" aria-describedby="ultimate-status" disabled>ULT</button><button data-key="jump" aria-label="Springen">↥</button><button data-key="dash" aria-label="Dash">⚡</button></div>
       </div>
     </section>
 

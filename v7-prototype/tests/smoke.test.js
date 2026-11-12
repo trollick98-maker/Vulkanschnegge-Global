@@ -579,6 +579,59 @@ test('shared keyboard and touch bindings stay held until the last source release
   assert.equal(V.input.consume().dash, false);
 });
 
+test('ultimate controls display the charge from zero and accept clicks or F once ready', () => {
+  const win = new EventTarget();
+  const html = read('index.html');
+  const elements = new Map([...html.matchAll(/<\w+[^>]*\bid="([^"]+)"[^>]*>/g)].map(([markup, id]) => {
+    const element = new EventTarget();
+    const classes = new Set((markup.match(/class="([^"]+)"/)?.[1] ?? '').split(' '));
+    element.classList = { toggle: (name, on) => on ? classes.add(name) : classes.delete(name), contains: name => classes.has(name) };
+    element.dataset = { key: markup.match(/data-key="([^"]+)"/)?.[1] };
+    element.style = {};
+    return [id, element];
+  }));
+  const get = id => elements.get(id);
+  let focuses = 0;
+  get('game').focus = () => focuses++;
+  const { V } = logic(undefined, [...rules, 'input', 'ui'], {
+    addEventListener: win.addEventListener.bind(win),
+    document: { getElementById: get, querySelectorAll: query => query === '[data-key]' ?
+      [...elements.values()].filter(el => el.dataset.key) : [] }
+  });
+  const seed = 'ultimate-hud';
+  const graph = V.generateMap(seed);
+  const arena = V.newArena(graph.byId['reef-arena'], 'snail', {}, seed);
+  V.state = { mode: 'play' };
+  const click = id => get(id).dispatchEvent(new Event('click'));
+  V.ui.hud(arena);
+  assert.match(html, /<strong>ULTI<\/strong><kbd>F<\/kbd>/);
+  assert.equal(get('hud-ultimate').classList.contains('hidden'), false);
+  assert.equal(get('ultimate-status').textContent, '0 %');
+  assert.equal(get('ultimate-name').textContent, 'Nullschnitt');
+  assert.equal(get('ultimate-meter').value, 0);
+  assert.equal(get('ultimate-button').disabled, true);
+  click('ultimate-button');
+  assert.equal(V.input.ultimateQueued, false);
+  V.chargeUltimate(arena, 100);
+  V.ui.hud(arena);
+  assert.equal(get('ultimate-status').textContent, 'Bereit');
+  assert.equal(get('hud-ultimate').classList.contains('ready'), true);
+  for (const id of ['ultimate-button', 'touch-ultimate']) {
+    assert.equal(get(id).disabled, false);
+    click(id);
+    assert.equal(V.input.ultimateQueued, true);
+    V.input.reset();
+  }
+  assert.equal(focuses, 2);
+  win.dispatchEvent(Object.assign(new Event('keydown'), { code: 'KeyF' }));
+  assert.equal(V.input.ultimateQueued, true);
+  assert.equal(V.beginUltimate(arena), true);
+  const chase = V.newBossChase(graph.byId.reef, 'snail', {}, seed);
+  V.ui.hud(chase);
+  assert.equal(get('hud-ultimate').classList.contains('hidden'), true);
+  assert.match(get('level-tip').textContent, /Ulti ab der Bossarena/);
+});
+
 test('campaign coin rewards are banked on successful route and combat completion', () => {
   const { V } = logic();
   const campaign = V.createCampaign('shop-payout', 'snail');

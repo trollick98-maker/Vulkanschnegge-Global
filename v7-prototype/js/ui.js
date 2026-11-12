@@ -217,7 +217,7 @@
     content('level-tip', glitch === 'race' ? 'Über den Wagen springen · markierte Plattformen verlassen' :
       glitch === 'inferno' ? 'Speer ausweichen · beim Aufladen die Dash-Linie räumen' :
       b ? b.plan?.attack.hint ?? (b.phase ? V.bossStages[s.biome].hints[b.phase - 1] : b.definition.tip) :
-      chase ? 'Hellen Kugeln per Dash begegnen · über Sperrfeuer springen' :
+      chase ? 'Helle Kugeln per Dash abwehren · Ulti ab der Bossarena' :
       local ? 'Anlauf nehmen · Gegner besiegen · Ziel rechts' : 'Springen · Kisten per Dash zerlegen');
     content('test-skip-btn', chase ? 'Zur Bossarena springen' : 'Abschnitt überspringen');
     const dashReady = p.dashCooldown <= 0 && (p.dashTime <= 0 || (local && p.dashLeft <= 0)) && (!local || p.airDash);
@@ -229,11 +229,12 @@
     const ready = Boolean(ability && charge >= 100 && !s.ultimate && b?.state !== 'defeated');
     get('hud-ultimate').classList.toggle('hidden', !ability);
     get('touch-ultimate').classList.toggle('hidden', !ability);
-    get('touch-ultimate').disabled = !ready;
+    get('ultimate-button').disabled = get('touch-ultimate').disabled = !ready;
     if (ability) {
       get('ultimate-meter').value = charge;
       get('hud-ultimate').classList.toggle('ready', ready);
-      content('ultimate-label', ability.name + (ready ? ' · F · Bereit' : ' · ' + charge + '%'));
+      content('ultimate-name', ability.name);
+      content('ultimate-status', ready ? 'Bereit' : charge + ' %');
     }
     const dash = local ? ' · ' + s.weapon.name + ' ' + (p.dashTime > 0 ? p.dashPower : V.weaponDamage(s, s.speed)) : '';
     content('hud-score', Math.floor(s.score) + ' P · ' + Math.round(s.speed) + ' Tempo' + dash);

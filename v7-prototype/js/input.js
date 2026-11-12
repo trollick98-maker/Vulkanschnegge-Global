@@ -51,6 +51,14 @@
 
   for (const button of document.querySelectorAll('[data-key]')) {
     const key = button.dataset.key;
+    if (key === 'ultimate') {
+      button.addEventListener('click', () => {
+        if (V.state?.mode !== 'play' || button.disabled) return;
+        I.ultimateQueued = true;
+        document.getElementById('game').focus({ preventScroll: true });
+      });
+      continue;
+    }
     button.addEventListener('pointerdown', event => {
       if (V.state?.mode !== 'play') return;
       event.preventDefault();

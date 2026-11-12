@@ -77,7 +77,7 @@ Fünf Tiefsee-Panoramen bewegen sich hinter Wegen, Gegnerleveln und Bossarenen m
 
 ## Waffen-Ultimates
 
-Schadende Dashes, besiegte Gegner und abgewehrte Bossgeschosse laden die Anzeige. Bei 100 Prozent aktiviert **F** oder **ULT** die Attacke. Das Spiel und die Musik halten für den Schnitt an. Danach läuft der Kampf weiter.
+In Gegner- und Bossarenen steht **ULTI** oben mittig unter den Spielmenü-Tasten. Schadende Dashes, besiegte Gegner und abgewehrte Bossgeschosse laden den Balken. Bei 100 Prozent löst **F** oder ein Klick auf **ULTI** die Attacke aus. Auf Touch-Geräten gibt es zusätzlich **ULT** neben den Bewegungstasten. Das Spiel und die Musik halten für den Schnitt an. Danach läuft der Kampf weiter.
 
 - **Glutkatana · Nullschnitt** trifft alle sichtbaren Gegner und zeichnet acht Schnitte über einen sichtbaren Boss.
 - **Riffspieß · Flutlanze** durchstößt Gegner vor der Figur auf ihrer Höhe bis zum Bildrand.
