@@ -328,7 +328,8 @@ test('gladiator cancels a charged spear when its landing platform disappears', (
   };
   b.state = 'spear-charge';
   deck.enabled = false;
-  tick(1);
+  s.elapsed += V.rules.step;
+  V.updateGladiator(s, V.rules.step);
   assert.equal(attack.spear, null);
   assert.equal(attack.dash, undefined);
   assert.equal(b.state, 'spear-recover');
