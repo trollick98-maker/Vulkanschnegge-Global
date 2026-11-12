@@ -1958,3 +1958,56 @@ test('arena movers carry the player and coins, belts push, and upper rooms conta
   V.moveArenaDecks(s, .02);
   assert.ok(Math.abs(p.x - before - belt.conveyor * .02) < 1e-8);
 });
+
+test('the gladiator varies attacks inside one dimension and walks through multiple poses', () => {
+  const { V, s, b, tick } = gladiatorFixture();
+  const { V: art } = logic(undefined, ['config', 'assets', 'boss-animation']);
+  const phaseStart = s.elapsed;
+  s.arenaGlitch.endsAt = phaseStart + 10;
+  s.reinforcementsAt = Infinity;
+  const p = s.player;
+  Object.assign(p, { x: 370, y: V.GROUND - p.h, invuln: 100 });
+  const poses = new Set();
+  const states = new Set();
+  for (let i = 0; i < Math.floor(9.98 / V.rules.step); i++) {
+    tick(1);
+    states.add(b.state);
+    poses.add(art.gladiatorFrame(b, s.elapsed, false));
+    if (b.state === 'spear-walk') assert.equal(art.gladiatorFrame(b, s.elapsed, true), 0);
+  }
+  for (const state of ['spear-walk', 'spear-windup', 'spear-dash', 'spear-thrust-tell', 'spear-thrust',
+    'spear-slam-tell', 'spear-slam', 'spear-slam-impact', 'spear-recover']) assert.ok(states.has(state), state);
+  for (const pose of [1, 2, 3, 4, 6, 7, 8, 9, 10, 11]) assert.ok(poses.has(pose), String(pose));
+  const atlas = fs.readFileSync(path.join(root, art.imagePath('gladiator-atlas')));
+  assert.equal(atlas.toString('ascii', 8, 12), 'WEBP');
+  for (const cue of ['charge', 'swing', 'slam']) {
+    assert.equal(fs.readFileSync(path.join(root, 'assets/sfx/gladiator-' + cue + '.wav')).toString('ascii', 8, 12), 'WAVE');
+  }
+});
+
+test('the new gladiator attacks have safe windups and each hit at most one heart', () => {
+  for (const key of ['thrust', 'slam']) {
+    const { V, s, b, tick } = gladiatorFixture();
+    s.reinforcementsAt = Infinity;
+    const p = s.player;
+    Object.assign(p, { x: b.x + b.w + 40, y: V.GROUND - p.h, invuln: 0 });
+    tick(1);
+    const hp = s.hp;
+    b.gladiator.nextAt = s.elapsed;
+    b.gladiator.turns = key === 'thrust' ? 1 : 2;
+    tick(1);
+    const melee = b.gladiator.melee;
+    assert.equal(melee.key, key);
+    const x = melee.x;
+    tick(Math.floor(.38 / V.rules.step));
+    assert.equal(s.hp, hp);
+    assert.equal(melee.x, x);
+    for (let i = 0; i < 120 && b.gladiator.melee; i++) {
+      p.invuln = 0;
+      tick(1);
+    }
+    assert.equal(s.hp, hp - 1, key);
+    assert.ok(melee.hit);
+    assert.equal(b.state, 'spear-recover');
+  }
+});

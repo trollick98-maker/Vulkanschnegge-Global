@@ -138,6 +138,7 @@
     }
     if (state.level.chase?.definition.sprite === 'god') {
       for (const form of V.godForms) V.image(form);
+      V.image('gladiator-atlas');
       for (const theme of Object.keys(V.arenaGlitchThemes)) {
         for (const part of V.arenaGlitchArt) V.image('glitch-' + theme + '-' + part);
       }

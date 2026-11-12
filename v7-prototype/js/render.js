@@ -635,6 +635,29 @@
     g.restore();
   }
 
+  const gladiatorGrips = [[39, 85], [43, 85], [39, 86], [38, 84], [37, 68],
+    [20, 74], [27, 96], [18, 87], [36, 96], [20, 83], [31, 55], [48, 111]];
+
+  function drawGladiatorArt(b, elapsed) {
+    const tile = 144;
+    const frame = V.gladiatorFrame(b, elapsed, reducedMotion);
+    const image = V.readyImage('gladiator-atlas');
+    const [gripX, gripY] = gladiatorGrips[frame];
+    const hold = !b.gladiator?.spear;
+    const melee = b.gladiator?.melee;
+    const stance = frame === 4 ? .58 : frame === 9 ? .07 : frame === 10 ? .84 : frame === 11 ? -.58 : .48;
+    if (hold) {
+      const x = gripX * b.w / tile;
+      const y = gripY * b.h / tile - (frame === 0 ? 1 : 0);
+      const angle = Math.PI + stance;
+      const reach = frame === 9 ? 103 : melee?.key === 'slam' && frame === 11 ? 47 : 54;
+      drawSpear(x + Math.cos(angle) * reach, y + Math.sin(angle) * reach, angle, reach + 33);
+    }
+    if (image) {
+      g.drawImage(image, frame % 4 * tile, Math.floor(frame / 4) * tile, tile, tile, 0, 0, b.w, b.h);
+    } else sprite('glitch-inferno-boss', 0, 0, b.w, b.h);
+  }
+
   function drawBossArt(b, x, y, facing, opacity = 1, elapsed = 0, death = 0) {
     const shadow = b.definition.sprite === 'god';
     const clip = atlas[b.definition.sprite];
@@ -645,6 +668,11 @@
     g.globalAlpha *= opacity;
     g.translate(x + (mirror ? b.w : 0), y);
     if (mirror) g.scale(-1, 1);
+    if (shadow && skinKey === 'inferno') {
+      drawGladiatorArt(b, elapsed);
+      g.restore();
+      return;
+    }
     const pose = reducedMotion ? null : V.bossPose(b, elapsed, skinKey);
     if (pose) {
       g.translate(b.w / 2 + pose.x, b.h + pose.y);
@@ -864,21 +892,86 @@
     g.restore();
   }
 
-  function drawSpear(x, y, angle) {
+  function drawSpear(x, y, angle, length = 83) {
     g.save();
     g.translate(x, y);
     g.rotate(angle);
-    g.fillStyle = '#281d26';
-    g.fillRect(-65, -4, 52, 8);
-    g.fillStyle = '#c7804c';
-    g.fillRect(-62, -2, 50, 4);
-    g.fillStyle = '#ffb966';
-    g.fillRect(-56, -2, 42, 1);
-    g.fillStyle = '#80454a';
-    g.fillRect(-18, -6, 10, 12);
-    g.fillStyle = '#ffe0a0';
-    g.fillRect(-16, -4, 8, 8);
-    g.fillRect(-8, -2, 8, 4);
+    g.fillStyle = '#2d1b20';
+    g.fillRect(-length, -4, length - 14, 8);
+    g.fillStyle = '#ac6847';
+    g.fillRect(3 - length, -2, length - 20, 4);
+    g.fillStyle = '#e3a567';
+    g.fillRect(5 - length, -2, length - 24, 1);
+    g.fillStyle = '#713b39';
+    g.fillRect(-25, -5, 12, 10);
+    g.fillStyle = '#3d222d';
+    g.beginPath();
+    g.moveTo(0, 0);
+    g.lineTo(-17, -8);
+    g.lineTo(-23, 0);
+    g.lineTo(-17, 8);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#ffca7c';
+    g.beginPath();
+    g.moveTo(-2, 0);
+    g.lineTo(-17, -5);
+    g.lineTo(-20, 0);
+    g.lineTo(-16, 4);
+    g.closePath();
+    g.fill();
+    g.restore();
+  }
+
+  function drawGladiatorMelee(s, melee) {
+    const b = s.boss;
+    const warning = melee.start === undefined;
+    const ground = melee.y;
+    g.save();
+    g.strokeStyle = '#ffe4a9';
+    g.fillStyle = '#ff8749';
+    g.lineWidth = 2;
+    if (melee.key === 'thrust') {
+      const box = V.gladiatorThrust(b);
+      const start = Math.min(box.x, box.x + melee.x - b.x - b.w / 2);
+      if (warning) {
+        const width = box.w + Math.abs(melee.x - b.x - b.w / 2);
+        const progress = V.clamp((s.elapsed - melee.tellAt) / melee.lead, 0, 1);
+        g.globalAlpha = .42 + progress * .25;
+        g.setLineDash([7, 5]);
+        g.strokeRect(start, box.y, width, box.h);
+        g.fillRect(start, box.y + box.h - 3, width * progress, 3);
+      } else {
+        g.globalAlpha = .88;
+        g.fillRect(box.x, box.y + box.h * .45, box.w, 4);
+        g.globalAlpha = .40;
+        g.fillRect(box.x + 6, box.y + box.h * .2, box.w - 12, box.h * .68);
+      }
+    } else if (melee.impactAt === undefined) {
+      g.globalAlpha = .85;
+      g.beginPath();
+      g.ellipse(melee.x, ground - 1, 53, 11, 0, 0, Math.PI * 2);
+      g.stroke();
+      g.fillRect(melee.x - 12, ground - 4, 24, 4);
+      if (!reducedMotion) {
+        g.globalAlpha = .24;
+        g.fillRect(melee.x - 43, ground - 75, 86, 75);
+      }
+    } else {
+      const time = V.clamp((s.elapsed - melee.impactAt) / .34, 0, 1);
+      const spread = 36 + time * 152;
+      g.globalAlpha = .87 - .33 * time;
+      for (const side of [-1, 1]) {
+        const x = melee.x + side * spread;
+        g.fillRect(x - 14, ground - 4, 28, 4);
+        g.beginPath();
+        g.moveTo(x - side * 18, ground);
+        g.lineTo(x + side * 4, ground - 24 + 8 * time);
+        g.lineTo(x + side * 12, ground);
+        g.stroke();
+        if (!reducedMotion) fittedSprite(glitchArt('burst'), x - 19, ground - 33, 38, 34);
+      }
+    }
     g.restore();
   }
 
@@ -886,12 +979,42 @@
     const b = s.boss;
     const attack = b.gladiator;
     if (skinKey !== 'inferno' || !attack) return;
+    if (attack.melee) drawGladiatorMelee(s, attack.melee);
     if (attack.aim) {
-      const hand = V.gladiatorHand(b);
-      drawSpear(hand.x + b.facing * 35, hand.y - 29, b.facing > 0 ? -.62 : Math.PI + .62);
+      const { x, y, at } = attack.aim;
+      const launch = V.gladiatorSpearLaunch(b, attack.aim);
+      const time = V.clamp(1 - (at - s.elapsed) / .48, 0, 1);
+      g.save();
+      g.globalAlpha = .45 + time * .35;
+      g.strokeStyle = '#ffd899';
+      g.lineWidth = 2;
+      if (!reducedMotion) {
+        g.setLineDash([4, 7]);
+        g.beginPath();
+        g.moveTo(launch.x, launch.y);
+        for (let i = 1; i <= 18; i++) {
+          const point = V.gladiatorSpearPoint(launch, launch.flight * i / 18);
+          g.lineTo(point.x, point.y);
+        }
+        g.stroke();
+        g.setLineDash([]);
+      }
+      g.strokeRect(x - 15, y - 11, 30, 11);
+      g.restore();
     }
     const spear = attack.spear;
     if (!spear) return;
+    if (!spear.deck && !reducedMotion) {
+      g.save();
+      g.globalAlpha = .45;
+      g.strokeStyle = '#ffae63';
+      g.lineWidth = 3;
+      g.beginPath();
+      g.moveTo(spear.x - Math.cos(spear.angle) * 50, spear.y - Math.sin(spear.angle) * 50);
+      g.lineTo(spear.x - Math.cos(spear.angle) * 119, spear.y - Math.sin(spear.angle) * 119);
+      g.stroke();
+      g.restore();
+    }
     if (spear.deck && !attack.dash) {
       const charge = V.clamp((s.elapsed - spear.chargeAt) / (spear.chargeUntil - spear.chargeAt), 0, 1);
       const centerY = spear.y - b.h * .45;

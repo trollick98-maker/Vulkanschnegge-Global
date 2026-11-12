@@ -129,7 +129,26 @@
   const spearCharge = .68;
   const gladiatorDashSpeed = 1850;
 
-  V.gladiatorHand = b => ({ x: b.x + b.w * (b.facing < 0 ? .35 : .65), y: b.y + b.h * .39 });
+  const meleeMoves = {
+    thrust: { lead: .49, duration: .24, rest: .62, name: 'Speerstoß' },
+    slam: { lead: .54, duration: .50, rest: .82, name: 'Sprungschlag' }
+  };
+
+  V.gladiatorHand = b => ({ x: b.x + b.w * (b.facing < 0 ? .24 : .76), y: b.y + b.h * .50 });
+
+  V.gladiatorThrust = b => ({
+    x: b.facing > 0 ? b.x + b.w * .57 : b.x + b.w * .43 - 117,
+    y: b.y + b.h * .58, w: 117, h: 25
+  });
+
+  V.gladiatorHint = b => {
+    const attack = b.gladiator;
+    if (attack?.melee) return attack.melee.key === 'thrust' ?
+      'Speerstoß · über die markierte Bahn springen' : 'Sprungschlag · Landepunkt meiden, über die Welle springen';
+    if (attack?.spear?.deck) return 'Dash zum Speer · markierte Linie räumen';
+    if (attack?.spear || attack?.aim) return 'Speerwurf · aus der Flugbahn bleiben';
+    return 'Gladiator · auf Speer und Schild achten';
+  };
 
   function aimSpear(s) {
     const p = s.player;
@@ -141,12 +160,24 @@
     return { x, y: deck?.y ?? G, at: s.elapsed + .48 };
   }
 
+  V.gladiatorSpearLaunch = function (b, aim) {
+    const hand = V.gladiatorHand(b);
+    const flight = .90 + Math.min(.32, Math.abs(aim.x - hand.x) / 3000);
+    return { ...hand, flight, vx: (aim.x - hand.x) / flight,
+      vy: (aim.y - hand.y) / flight - spearGravity * flight / 2 };
+  };
+
+  V.gladiatorSpearPoint = (spear, t) => ({
+    x: spear.x + spear.vx * t, y: spear.y + spear.vy * t + spearGravity * t * t / 2
+  });
+
   function flySpear(s, spear, dt) {
     const oldX = spear.x;
     const oldY = spear.y;
     const edge = 35 + s.boss.w / 2;
-    const x = V.clamp(oldX + spear.vx * dt, edge, s.worldWidth - edge);
-    const y = oldY + spear.vy * dt + spearGravity * dt * dt / 2;
+    const next = V.gladiatorSpearPoint(spear, dt);
+    const x = V.clamp(next.x, edge, s.worldWidth - edge);
+    const y = next.y;
     let first = Infinity;
     let landed;
     if (y > oldY) {
@@ -182,7 +213,7 @@
       spear.chargeUntil = s.elapsed + spearCharge;
       s.boss.state = 'spear-charge';
       V.emitParticles(s, 'charge', spear.x, spear.y - 12, { color: '#ffab66' });
-      V.audio?.effect?.(s.boss.definition.sound);
+      V.audio?.effect?.('gladiator-charge');
     } else if (x === edge || x === s.worldWidth - edge) spear.vx = 0;
   }
 
@@ -195,7 +226,7 @@
       duration: Math.max(V.rules.step, Math.hypot(x - b.x, y - b.y) / gladiatorDashSpeed) };
     b.facing = Math.sign(x - b.x) || b.facing;
     b.state = 'spear-dash';
-    V.audio?.effect?.(b.definition.sound, true);
+    V.audio?.effect?.('gladiator-swing', true);
   }
 
   function dashToSpear(s, attack) {
@@ -215,21 +246,143 @@
       }
     }
     if (time < 1) return;
+    b.x = dash.x;
+    b.y = dash.y;
     const deck = attack.spear.deck;
     attack.support = deck.enabled === false ? null : deck;
-    attack.supportX = b.x - deck.worldX;
+    attack.deckX = deck.worldX;
     attack.spear = attack.dash = null;
-    attack.nextAt = s.elapsed + .98;
+    attack.recoverUntil = s.elapsed + .40;
+    attack.nextAt = s.elapsed + .90;
+    V.emitParticles(s, 'land', b.x + b.w / 2, gladiatorFeet(b), { color: '#ffa469', spread: b.w * .5 });
     b.state = 'spear-recover';
+  }
+
+  function gladiatorFeet(b) { return b.y + b.h; }
+
+  function supportGladiator(s, attack, dt) {
+    const b = s.boss;
+    const deck = attack.support;
+    if (deck && deck.enabled !== false && b.x + b.w * .72 > deck.worldX && b.x + b.w * .28 < deck.worldX + deck.w) {
+      b.x = V.clamp(b.x + deck.worldX - (attack.deckX ?? deck.worldX), 35, s.worldWidth - b.w - 35);
+      attack.deckX = deck.worldX;
+      b.y = deck.y - b.h;
+      return;
+    }
+    attack.support = null;
+    attack.deckX = null;
+    attack.fallSpeed += V.arenaMotion.gravity * dt;
+    b.y = Math.min(G - b.h, b.y + attack.fallSpeed * dt);
+    if (gladiatorFeet(b) >= G) attack.fallSpeed = 0;
+  }
+
+  function walkGladiator(s, attack, dt) {
+    const b = s.boss;
+    const p = s.player;
+    const distance = p.x + p.w / 2 - b.x - b.w / 2;
+    b.facing = Math.sign(distance) || b.facing;
+    if (Math.abs(distance) <= 124 || attack.fallSpeed > 0) {
+      b.state = 'spear-ready';
+      return;
+    }
+    const dx = b.facing * (b.phase === 2 ? 224 : 181) * dt;
+    const before = b.x;
+    b.x = V.clamp(b.x + dx, 35, s.worldWidth - b.w - 35);
+    attack.steps += Math.abs(b.x - before);
+    b.state = 'spear-walk';
+    if (attack.steps >= attack.nextFoot) {
+      attack.nextFoot += 35;
+      V.emitParticles(s, 'trail', b.x + b.w * .5, gladiatorFeet(b) - 4, { color: '#cd754a', direction: -b.facing });
+    }
+  }
+
+  function startMelee(s, attack, key) {
+    const b = s.boss;
+    const p = s.player;
+    const move = meleeMoves[key];
+    const center = b.x + b.w / 2;
+    b.facing = Math.sign(p.x + p.w / 2 - center) || b.facing;
+    const aim = aimSpear(s);
+    const distance = key === 'thrust' ? 139 : 460;
+    const x = V.clamp(key === 'thrust' ? center + b.facing * distance : aim.x,
+      Math.max(35 + b.w / 2, center - distance), Math.min(s.worldWidth - b.w / 2 - 35, center + distance));
+    attack.melee = { key, ...move, x, y: G, tellAt: s.elapsed, at: s.elapsed + move.lead, hit: false };
+    b.state = 'spear-' + key + '-tell';
+    V.audio?.effect?.('gladiator-charge');
+  }
+
+  function hitMelee(s, melee, box, dx = 0, dy = 0) {
+    if (melee.hit) return;
+    const p = s.player;
+    const relative = { ...p, previousX: p.previousX + dx, previousY: p.previousY + dy };
+    if (V.movementContact(relative, box) === Infinity) return;
+    melee.hit = true;
+    V.hurt(s, s.boss.facing);
+  }
+
+  function finishMelee(s, attack) {
+    const melee = attack.melee;
+    attack.recoverUntil = s.elapsed + melee.rest;
+    attack.nextAt = attack.recoverUntil + .46;
+    attack.melee = null;
+    s.boss.state = 'spear-recover';
+  }
+
+  function updateMelee(s, attack, dt) {
+    const b = s.boss;
+    const melee = attack.melee;
+    if (s.elapsed < melee.at) {
+      supportGladiator(s, attack, dt);
+      return;
+    }
+    if (melee.start === undefined) {
+      melee.start = s.elapsed;
+      melee.fromX = b.x;
+      melee.fromY = b.y;
+      attack.support = null;
+      attack.deckX = null;
+      b.state = 'spear-' + melee.key;
+      V.emitParticles(s, 'trail', b.x + b.w / 2, gladiatorFeet(b) - 5, { color: '#ff9a50', direction: -b.facing });
+      V.audio?.effect?.('gladiator-swing');
+    }
+    const time = V.clamp((s.elapsed - melee.start) / melee.duration, 0, 1);
+    const oldX = b.x;
+    const oldY = b.y;
+    b.x = V.lerp(melee.fromX, melee.x - b.w / 2, time);
+    if (melee.key === 'thrust') {
+      hitMelee(s, melee, V.gladiatorThrust(b), b.x - oldX);
+      if (time >= 1) finishMelee(s, attack);
+      return;
+    }
+    b.y = V.lerp(melee.fromY, G - b.h, time) - Math.sin(time * Math.PI) * 122;
+    if (time < 1) {
+      hitMelee(s, melee, V.bossHitboxes(b).body, b.x - oldX, b.y - oldY);
+      return;
+    }
+    if (melee.impactAt === undefined) {
+      melee.impactAt = s.elapsed;
+      hitMelee(s, melee, { x: melee.x - 49, y: G - 31, w: 98, h: 32 });
+      V.emitParticles(s, 'zone', melee.x, G - 6, { color: '#ff9a50', heavy: true, spread: 90 });
+      V.audio?.effect?.('gladiator-slam');
+      b.state = 'spear-slam-impact';
+    }
+    const wave = V.clamp((s.elapsed - melee.impactAt) / .34, 0, 1);
+    const radius = 36 + wave * 152;
+    const front = 29;
+    for (const side of [-1, 1]) {
+      hitMelee(s, melee, { x: melee.x + side * radius - front / 2, y: G - 24, w: front, h: 25 }, side * 447 * dt);
+    }
+    if (wave >= 1) finishMelee(s, attack);
   }
 
   V.updateGladiator = function (s, dt) {
     const b = s.boss;
     if (!b.gladiator) {
-      b.gladiator = { nextAt: Math.max(s.elapsed + .46, b.phaseUntil + .25), fallSpeed: 0 };
+      b.gladiator = { nextAt: Math.max(s.elapsed + .46, b.phaseUntil + .25), recoverUntil: 0,
+        fallSpeed: 0, steps: 0, nextFoot: 35, turns: 0 };
       b.plan = b.rush = b.flank = null;
       b.exposed = 1;
-      if (s.elapsed >= b.phaseUntil) b.state = 'spear-recover';
+      if (s.elapsed >= b.phaseUntil) b.state = 'spear-ready';
     }
     if (s.elapsed < b.phaseUntil) return;
     const attack = b.gladiator;
@@ -237,15 +390,11 @@
       dashToSpear(s, attack);
       return;
     }
-    if (attack.support && attack.support.enabled !== false) {
-      b.x = V.clamp(attack.support.worldX + attack.supportX, 35, s.worldWidth - b.w - 35);
-      b.y = attack.support.y - b.h;
-    } else {
-      attack.support = null;
-      attack.fallSpeed += V.arenaMotion.gravity * dt;
-      b.y = Math.min(G - b.h, b.y + attack.fallSpeed * dt);
-      if (b.y === G - b.h) attack.fallSpeed = 0;
+    if (attack.melee) {
+      updateMelee(s, attack, dt);
+      return;
     }
+    supportGladiator(s, attack, dt);
     if (attack.spear) {
       const spear = attack.spear;
       if (!spear.deck) flySpear(s, spear, dt);
@@ -254,20 +403,34 @@
         spear.y = spear.deck.y;
         if (s.elapsed >= spear.chargeUntil) startGladiatorDash(s, attack);
       }
-    } else if (attack.aim && s.elapsed >= attack.aim.at) {
-      const start = V.gladiatorHand(b);
-      const aim = attack.aim;
-      const time = .90 + Math.min(.32, Math.abs(aim.x - start.x) / 3000);
-      const vx = (aim.x - start.x) / time;
-      const vy = (aim.y - start.y) / time - spearGravity * time / 2;
-      attack.spear = { ...start, vx, vy, angle: Math.atan2(vy, vx), hit: false };
+      return;
+    }
+    if (attack.aim) {
+      if (s.elapsed < attack.aim.at) return;
+      const launch = V.gladiatorSpearLaunch(b, attack.aim);
+      attack.spear = { ...launch, angle: Math.atan2(launch.vy, launch.vx), hit: false };
       attack.aim = null;
       b.state = 'spear-flight';
-      V.audio?.effect?.(b.definition.sound);
-    } else if (!attack.aim && s.elapsed >= attack.nextAt) {
+      attack.thrownAt = s.elapsed;
+      V.audio?.effect?.('gladiator-swing');
+      return;
+    }
+    if (s.elapsed < attack.recoverUntil) return;
+    if (s.elapsed < attack.nextAt) {
+      walkGladiator(s, attack, dt);
+      return;
+    }
+
+    const turn = attack.turns++ % 3;
+    const distance = Math.abs(s.player.x + s.player.w / 2 - b.x - b.w / 2);
+    const ground = gladiatorFeet(b) >= G;
+    if (turn !== 0 && (turn === 2 || !ground || distance > 290)) startMelee(s, attack, 'slam');
+    else if (turn === 1) startMelee(s, attack, 'thrust');
+    else {
       attack.aim = aimSpear(s);
       b.facing = Math.sign(attack.aim.x - b.x - b.w / 2) || b.facing;
       b.state = 'spear-windup';
+      V.audio?.effect?.('gladiator-charge');
     }
   };
 

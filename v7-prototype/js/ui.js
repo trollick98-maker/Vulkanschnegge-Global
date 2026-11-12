@@ -215,7 +215,7 @@
     const dimension = glitch ? V.arenaGlitchThemes[glitch].title : s.arenaGlitch?.endsAt ? 'Turbinenhalle' : '';
     content('level-kind', [kind, dimension, s.supplyName].filter(Boolean).join(' · '));
     content('level-tip', glitch === 'race' ? 'Über den Wagen springen · markierte Plattformen verlassen' :
-      glitch === 'inferno' ? 'Speer ausweichen · beim Aufladen die Dash-Linie räumen' :
+      glitch === 'inferno' ? V.gladiatorHint(b) :
       b ? b.plan?.attack.hint ?? (b.phase ? V.bossStages[s.biome].hints[b.phase - 1] : b.definition.tip) :
       chase ? 'Helle Kugeln per Dash abwehren · Ulti ab der Bossarena' :
       local ? 'Anlauf nehmen · Gegner besiegen · Ziel rechts' : 'Springen · Kisten per Dash zerlegen');

@@ -52,6 +52,7 @@
       images['glitch-' + theme + '-' + part] = 'arena-glitch/' + theme + '/' + part + (part === 'panorama' ? '.webp' : '.png');
     }
   }
+  images['gladiator-atlas'] = 'arena-glitch/inferno/gladiator.webp';
   V.sceneryProps = {
     reef: ['fan-coral', 'dive-lantern', 'porthole', 'reef-eel'],
     greed: ['brass-bollard', 'doubloons', 'anchor-chain', 'brass-urn'],

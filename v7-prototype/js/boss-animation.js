@@ -21,6 +21,20 @@
     race: { rate: 16, sway: 0, lift: 1.7, roll: .018, attack: .07, stretch: .055 }
   };
 
+  const gladiatorPoses = {
+    'spear-windup': 4, 'spear-flight': 5, 'spear-charge': 6, 'spear-dash': 7,
+    'spear-thrust-tell': 8, 'spear-thrust': 9, 'spear-slam-tell': 6, 'spear-slam': 10,
+    'spear-slam-impact': 11, 'spear-recover': 11
+  };
+  const steps = [1, 2, 3, 2];
+  V.gladiatorFrame = function (b, time, reduced) {
+    const attack = b.gladiator;
+    if (!attack) return 0;
+    if (b.state === 'spear-walk') return reduced ? 0 : steps[Math.floor(attack.steps / 15) % steps.length];
+    if (b.state === 'spear-flight' && time - attack.thrownAt >= .25) return 0;
+    return gladiatorPoses[b.state] ?? 0;
+  };
+
   V.bossPose = function (b, elapsed, theme) {
     const phase = b.phase ?? 0;
     const key = b.definition.sprite === 'god' ? theme ?? godForms[phase] : b.definition.sprite;
