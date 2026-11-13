@@ -136,9 +136,19 @@
     if (section.kind === 'arena' || state.level.chase) {
       for (const part of V.expansionArt) V.image('exp-' + part);
     }
+    if (section.kind === 'arena') {
+      V.image('anim-' + section.node.biome);
+      V.image('anim-variants');
+    }
+    if (state.level.chase) {
+      V.image('anim-bosses');
+      V.image('anim-reinforcements');
+    }
     if (state.level.chase?.definition.sprite === 'god') {
       for (const form of V.godForms) V.image(form);
       V.image('gladiator-atlas');
+      V.image('anim-shadow');
+      V.image('anim-dimensions');
       for (const theme of Object.keys(V.arenaGlitchThemes)) {
         for (const part of V.arenaGlitchArt) V.image('glitch-' + theme + '-' + part);
       }

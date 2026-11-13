@@ -69,6 +69,7 @@
       }
       V.audio?.effect?.(b.definition.sound);
       b.warning = null;
+      b.volleyFlashUntil = s.elapsed + .24;
       b.next = s.elapsed + 1.18 - .45 * pressure;
     }
     V.updateBossShots(s, dt);

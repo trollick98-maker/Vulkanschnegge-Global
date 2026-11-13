@@ -141,6 +141,21 @@
     return true;
   }
 
+  const animationCells = {
+    bosses: [5, 144], shadow: [5, 144], dimensions: [4, 144], reinforcements: [6, 84], variants: [9, 84],
+    reef: [4, 84], greed: [4, 84], diva: [4, 84], vortex: [4, 84]
+  };
+
+  function animationSprite(frame, x, y, w, h) {
+    if (!frame) return false;
+    const image = V.readyImage('anim-' + frame.sheet);
+    if (!image) return false;
+    const [columns, cell] = animationCells[frame.sheet];
+    g.drawImage(image, frame.index % columns * cell, Math.floor(frame.index / columns) * cell,
+      cell, cell, x, y, w, h);
+    return true;
+  }
+
   function drawScenery(s, local) {
     const props = V.sceneryProps[s.biome];
     const spacing = 190;
@@ -400,23 +415,29 @@
   const variantFrames = { crawler: 0, jumper: 1, armored: 2 };
   function drawEnemies(s) {
     for (const enemy of s.enemies) {
-      if (enemy.hp <= 0) continue;
+      const death = enemy.hp <= 0;
+      const fade = death ? V.clamp((s.elapsed - (enemy.defeatedAt ?? -1)) / .27, 0, 1) : 0;
+      if (death && (reducedMotion || fade >= 1)) continue;
       const { x, y, w, h } = enemy;
       if (x + w < s.cameraX || x > s.cameraX + W || y + h < s.cameraY || y > s.cameraY + H) continue;
       const windingUp = enemy.attackState === 'tell';
       const crouch = windingUp && !reducedMotion ? .18 * (1 - enemy.attackLeft / enemy.windup) : 0;
+      const settling = enemy.attackState === 'recover' && !reducedMotion ?
+        .12 * V.clamp(enemy.attackLeft / enemy.recovery, 0, 1) : 0;
       g.save();
       g.translate(x + w / 2, y + h);
-      const variant = enemy.variant && V.readyImage('surge-atlas-' + s.biome);
+      const variant = enemy.variant && !enemy.reinforcement;
       const art = enemy.reinforcement ? V.reinforcementArt(s) : s.biome + '-' + enemy.key;
-      const stride = enemy.entering ? 2.5 : enemy.reinforcement && enemy.attackState === 'ready' ? 1.3 : 0;
-      if (stride && !reducedMotion) g.translate(0, -Math.abs(Math.sin(s.elapsed * 16 + enemy.maxHp)) * stride);
-      g.scale((variant ? enemy.facing : -enemy.facing) * (1 + crouch * .4), 1 - crouch);
+      const frame = V.enemySpriteFrame(s, enemy, art, reducedMotion);
+      const orientation = enemy.variant && !enemy.reinforcement ? enemy.facing : -enemy.facing;
+      g.scale(orientation * (1 + crouch * .4 + settling * .5 - fade * .16), 1 - crouch - settling - fade * .56);
+      if (death) g.globalAlpha = 1 - fade;
       if (!reducedMotion && enemy.flash > 0) g.filter = 'brightness(1.55)';
-      const drawn = variant
+      const drawn = animationSprite(frame, -w / 2, -h, w, h) || (variant
         ? surgeSprite(s.biome, variantFrames[enemy.key], -w / 2, -h, w, h, true)
-        : fittedSprite(art, -w / 2, -h, w, h, true);
+        : fittedSprite(art, -w / 2, -h, w, h, true));
       g.restore();
+      if (death) continue;
       if (!drawn) {
         g.fillStyle = '#14233d';
         g.fillRect(x + 1, y + 9, w - 2, h - 8);
@@ -680,7 +701,11 @@
       g.scale(pose.sx, pose.sy);
       g.translate(-b.w / 2, -b.h);
     }
-    if (image && shadow && (!skin || elapsed < b.phaseUntil || death)) {
+    const frame = V.bossSpriteFrame(b, elapsed, skinKey, reducedMotion);
+    const drawn = !death && animationSprite(frame, 0, 0, b.w, b.h);
+    if (drawn) {
+      if (!skin && shadow && b.phase === 2 && opacity === 1 && !reducedMotion) drawPanicCore(b, elapsed);
+    } else if (image && shadow && (!skin || elapsed < b.phaseUntil || death)) {
       drawShadow(b, image, elapsed, death);
       if (!skin && b.phase === 2 && opacity === 1 && !death && !reducedMotion) drawPanicCore(b, elapsed);
     } else if (image) drawRig(image, clip, b, pose);

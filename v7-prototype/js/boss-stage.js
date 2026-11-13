@@ -80,6 +80,7 @@
     V.emitParticles(s, 'shot', x, y, { color: '#89e7fa', direction: Math.sign(Math.cos(aim)) || 1 });
     V.audio?.effect?.(b.definition.sound);
     racer.volley = null;
+    b.volleyFlashUntil = s.elapsed + .24;
     racer.shootAt = s.elapsed + (b.phase === 2 ? 1.6 : 2.05);
   }
 
@@ -109,6 +110,7 @@
     if (Math.abs(b.vx) > 18) b.facing = Math.sign(b.vx);
     const next = b.x + b.vx * dt;
     b.x = V.clamp(next, 35, s.worldWidth - b.w - 35);
+    racer.wheelTravel = (racer.wheelTravel ?? 0) + Math.abs(b.x - oldX);
     if (b.x !== next) {
       racer.backoff = -Math.sign(b.vx);
       racer.backoffUntil = s.elapsed + .48;

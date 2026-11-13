@@ -134,6 +134,7 @@
     enemy.attackLeft = .56;
     enemy.flash = .13;
     if (enemy.hp === 0) {
+      enemy.defeatedAt = s.elapsed;
       s.kills++;
       s.score += 75 + damage;
       if (!enemy.reinforcement) V.addCoin(s, enemy.x + enemy.w / 2, enemy.y + enemy.h / 2);
@@ -196,6 +197,8 @@
       const oldX = enemy.x;
       const oldY = enemy.y;
       updateEnemy(s, enemy, dt);
+      enemy.moving = Math.abs(enemy.x - oldX) > .001;
+      enemy.stride = (enemy.stride ?? 0) + Math.abs(enemy.x - oldX);
       const contact = V.movementContact(p, enemy);
       const strike = s.weapon.angles ? V.weaponContact(s, enemy, enemy.x - oldX, enemy.y - oldY) :
         p.dashTime > 0 ? contact : Infinity;

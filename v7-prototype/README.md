@@ -69,6 +69,8 @@ Der Dash zieht eine türkise Spur und hat einen eigenen Sound. Bei hohem Tempo w
 
 ## Sprite-Update
 
+Für Bosse gibt es eigene Sprite-Posen beim Bewegen, Ausholen, Angreifen und Erholen. In der Verfolgung wechseln die Bilder passend zu den Salven. Auch GOD.EXEs drei Schattenphasen, die Zuckerwiesen-Biene und der Rennwagen wechseln ihre Frames. Gegner und Verstärkungen aller Regionen haben eigene Bewegungs- und Angriffsframes. Mit reduzierter Bewegung bleiben Angriffsposen lesbar und schnelle Bewegungsloops entfallen.
+
 Fünf Tiefsee-Panoramen bewegen sich hinter Wegen, Gegnerleveln und Bossarenen mit eigenem Parallax-Tempo. Dazu kommen 16 Kulissen-Sprites und 16 Partikelsprites. Bei Levelbeginn und am Eingang zur Bossarena fährt die Kamera kurz ins Bild. Bei der ersten Steuereingabe endet die Fahrt zügig. Vier neue Storybilder zeigen die Entführung, den Riss und zwei Etappen der Heimkehr. Die Storybilder bewegen sich mit Schwenks, Zoom und kurzen Überblendungen. Reduzierte Bewegung deaktiviert diese Animationen.
 
 24 Pixel-Sprites ergänzen die Boss- und HUD-Grafik. Eigene Symbole markieren Strom, Sprünge, Zielzonen und Systemfehler. Blasen, Schallwellen, Hanteln und rote Fehlerpakete haben unterschiedliche Silhouetten. Goldtruhe und Fallentruhe unterscheiden sich am Schloss. Goldhand und Bühnenvorhang erscheinen in den passenden Spezialangriffen. Boss-Abzeichen, Herz, Dash-Symbol und Kompass ergänzen Weltkarte und HUD. Glutkatana, Schwachstellen, Konter und Boss-Sieg haben eigene Effektsprites.

@@ -52,6 +52,9 @@
       images['glitch-' + theme + '-' + part] = 'arena-glitch/' + theme + '/' + part + (part === 'panorama' ? '.webp' : '.png');
     }
   }
+  V.animationBiomes = ['reef', 'greed', 'diva', 'vortex'];
+  V.animationSheets = ['bosses', 'shadow', 'dimensions', 'reinforcements', 'variants', ...V.animationBiomes];
+  for (const sheet of V.animationSheets) images['anim-' + sheet] = 'animation/' + sheet + '.webp';
   images['gladiator-atlas'] = 'arena-glitch/inferno/gladiator.webp';
   V.sceneryProps = {
     reef: ['fan-coral', 'dive-lantern', 'porthole', 'reef-eel'],

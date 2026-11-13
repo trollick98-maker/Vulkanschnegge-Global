@@ -2011,3 +2011,58 @@ test('the new gladiator attacks have safe windups and each hit at most one heart
     assert.equal(b.state, 'spear-recover');
   }
 });
+
+test('boss animation sheets follow combat, chase volleys, and GOD.EXE forms', () => {
+  const { V } = logic(undefined, ['config', 'assets', 'boss-animation']);
+  for (const [row, sprite] of ['bossEel', 'greed', 'diva', 'vortex'].entries()) {
+    const b = { definition: { sprite } };
+    for (const [state, col] of [['approach', 4], ['windup', 1], ['active', 2], ['recovery', 3]]) {
+      b.state = state;
+      assert.deepEqual(plain(V.bossSpriteFrame(b, 0, null, true)), { sheet: 'bosses', index: row * 5 + col });
+    }
+    b.state = undefined;
+    b.warning = {};
+    assert.equal(V.bossSpriteFrame(b, .3).index, row * 5 + 1);
+    b.warning = null;
+    b.volleyFlashUntil = .6;
+    assert.equal(V.bossSpriteFrame(b, .4).index, row * 5 + 2);
+  }
+  const b = { definition: { sprite: 'god' }, phase: 2, state: 'windup' };
+  assert.deepEqual(plain(V.bossSpriteFrame(b, 1)), { sheet: 'shadow', index: 11 });
+  assert.equal(V.bossSpriteFrame(b, 1, 'garden').index, 2);
+  b.state = 'active';
+  assert.equal(V.bossSpriteFrame(b, 1, 'garden').index, 3);
+  b.state = 'racing';
+  b.racer = { wheelTravel: 25 };
+  assert.equal(V.bossSpriteFrame(b, 1, 'race').index, 5);
+  b.skidding = true;
+  assert.equal(V.bossSpriteFrame(b, 1, 'race').index, 6);
+  assert.equal(V.bossSpriteFrame(b, 1, 'inferno'), null);
+});
+
+test('enemy animation sheets cover every biome, variant, and dimension reinforcement', () => {
+  const { V } = logic(undefined, ['config', 'assets', 'boss-animation']);
+  for (const [biomeIndex, biome] of V.animationBiomes.entries()) {
+    const s = { biome };
+    for (const [row, key] of ['crawler', 'jumper', 'armored'].entries()) {
+      const enemy = { key, attackState: 'ready', moving: true, stride: 9 };
+      assert.equal(V.enemySpriteFrame(s, enemy, '').index, row * 4);
+      assert.equal(V.enemySpriteFrame(s, enemy, '', true).index, row * 4 + 3);
+      enemy.attackState = 'tell';
+      assert.equal(V.enemySpriteFrame(s, enemy, '').index, row * 4 + 1);
+      enemy.attackState = 'active';
+      assert.equal(V.enemySpriteFrame(s, enemy, '').index, row * 4 + 2);
+      enemy.variant = true;
+      const variant = V.enemySpriteFrame(s, enemy, '');
+      assert.deepEqual(plain(variant), { sheet: 'variants', index: biomeIndex * 9 + row * 3 + 1 });
+    }
+  }
+  for (const [row, art] of ['crab', 'scarab', 'diva', 'vortex', 'glitch', 'bee', 'ember', 'car'].entries()) {
+    const enemy = { reinforcement: true, attackState: 'active' };
+    assert.deepEqual(plain(V.enemySpriteFrame({}, enemy, 'exp-' + art)), { sheet: 'reinforcements', index: row * 3 + 1 });
+  }
+  for (const sheet of V.animationSheets) {
+    const data = fs.readFileSync(path.join(root, V.imagePath('anim-' + sheet)));
+    assert.equal(data.toString('ascii', 8, 12), 'WEBP', sheet);
+  }
+});

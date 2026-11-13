@@ -35,6 +35,54 @@
     return gladiatorPoses[b.state] ?? 0;
   };
 
+  const bossRows = { bossEel: 0, greed: 1, diva: 2, vortex: 3 };
+  const enemyRows = { crawler: 0, jumper: 1, armored: 2 };
+  const reinforcementRows = { 'exp-crab': 0, 'exp-scarab': 1, 'exp-diva': 2, 'exp-vortex': 3,
+    'exp-glitch': 4, 'exp-bee': 5, 'exp-ember': 6, 'exp-car': 7 };
+  const animationRates = { bossEel: 4, greed: 3, diva: 5, vortex: 6, god: 6 };
+
+  V.bossSpriteFrame = function (b, elapsed, theme, reduced) {
+    const key = b.definition.sprite;
+    if (theme === 'inferno' || elapsed < b.phaseUntil || b.state === 'defeated') return null;
+    const warning = b.state === 'windup' || Boolean(b.warning);
+    const striking = b.state === 'active' || elapsed < (b.volleyFlashUntil ?? 0);
+    const recovering = b.state === 'recovery' || b.state === 'defeated' || b.flash > .09;
+    if (theme === 'garden') {
+      const flap = Math.floor(elapsed * 10) % 4;
+      const column = striking || b.rush ? 3 : warning ? 2 : reduced ? 0 : flap === 3 ? 1 : flap;
+      return { sheet: 'dimensions', index: column };
+    }
+    if (theme === 'race') {
+      const column = b.skidding && !reduced ? 2 : b.racer?.volley || striking ? 3 :
+        !reduced && Math.floor((b.racer?.wheelTravel ?? 0) / 22) % 2 ? 1 : 0;
+      return { sheet: 'dimensions', index: 4 + column };
+    }
+    const idling = !reduced && Math.floor(elapsed * animationRates[key]) % 2 === 1;
+    const column = striking ? 2 : warning || b.state === 'shift' ? 1 : recovering ? 3 :
+      idling || (!reduced && (b.rush || b.flank)) ? 0 : 4;
+    return key === 'god' ? { sheet: 'shadow', index: (b.phase ?? 0) * 5 + column } :
+      { sheet: 'bosses', index: bossRows[key] * 5 + column };
+  };
+
+  V.enemySpriteFrame = function (s, enemy, art, reduced) {
+    const state = enemy.attackState;
+    const moving = !reduced && enemy.moving && Math.floor((enemy.stride ?? 0) / 7) % 2 === 1;
+    const attack = state === 'active' && enemy.defeatedAt === undefined;
+    const tell = state === 'tell';
+    if (enemy.reinforcement) {
+      const row = reinforcementRows[art];
+      return row === undefined ? null : { sheet: 'reinforcements', index: row * 3 + (attack ? 1 : moving ? 0 : 2) };
+    }
+    const row = enemyRows[enemy.key];
+    if (row === undefined) return null;
+    if (enemy.variant) {
+      const biome = V.animationBiomes.indexOf(s.biome);
+      if (biome < 0) return null;
+      return { sheet: 'variants', index: biome * 9 + row * 3 + (attack ? 1 : moving ? 0 : 2) };
+    }
+    return { sheet: s.biome, index: row * 4 + (attack ? 2 : tell || enemy.flash > .05 ? 1 : moving ? 0 : 3) };
+  };
+
   V.bossPose = function (b, elapsed, theme) {
     const phase = b.phase ?? 0;
     const key = b.definition.sprite === 'god' ? theme ?? godForms[phase] : b.definition.sprite;
