@@ -2,15 +2,17 @@
   'use strict';
   const V = window.VS7;
   const abilities = {
-    katana: { name: 'Nullschnitt', damage: 460, bossDamage: 500, color: '#fff1bd', hits: 8, sound: 'ultimate-katana' },
+    katana: { name: 'Nullschnitt', sequence: true, bossDamage: 500, color: '#fff1bd', hits: 8, sound: 'ultimate-katana' },
     'reef-spear': { name: 'Flutlanze', damage: 390, bossDamage: 580, color: '#a3fff2', hits: 3, sound: 'ultimate-spear',
       reaches: (dx, dy, facing) => dx * facing >= -25 && Math.abs(dy) <= 120 },
     'war-hammer': { name: 'Donnerschlag', color: '#a7eeff', hammer: true, sound: 'ultimate-hammer' },
     'anchor-axe': { name: 'Ankerbeben', damage: 540, bossDamage: 620, color: '#ffac79', hits: 4, sound: 'ultimate-axe',
       reaches: (dx, dy) => Math.hypot(dx, dy * 1.25) <= 290 }
   };
-  const hammerTiming = V.hammerTiming = { rise: .25, lock: 1.24, impact: 1.47, end: 1.88 };
-  V.ultimateTiming = { focus: .24, swing: .76, retreat: .92, end: 1.19 };
+  const hammerTiming = V.hammerTiming = { rise: .25, lock: 2.20, impact: 2.45, end: 2.86 };
+  const defaultTiming = { focus: .24, swing: .76, retreat: .92, end: 1.19, strike: .10 };
+  const katanaTiming = { dark: .68, focus: 1.48, swing: 2.36, retreat: 2.75, end: 3.63, strike: .15 };
+  V.ultimateMarkDuration = .32;
   V.ultimateAbility = s => V.usesMomentum(s) ? abilities[s.weapon.id] : null;
   V.chargeUltimate = function (s, points) {
     if (V.ultimateAbility(s) && !s.ultimate) s.ultimateCharge = Math.min(100, (s.ultimateCharge ?? 0) + points);
@@ -21,7 +23,7 @@
     const ability = V.ultimateAbility(s);
     if (!ability || s.ultimate || (s.ultimateCharge ?? 0) < 100 || s.outcome !== null || s.boss?.state === 'defeated') return false;
     const p = s.player;
-    const cut = { ability, time: 0, facing: p.facing };
+    const cut = { ability, time: 0, facing: p.facing, timing: ability.sequence ? katanaTiming : defaultTiming };
     if (ability.hammer) {
       const origin = p.x + p.w / 2;
       const target = hammerTarget(s, origin, p.y + p.h);
@@ -35,6 +37,7 @@
     s.ultimateCharge = 0;
     s.cameraCue = null;
     s.ultimate = cut;
+    if (ability.sequence) prepareSequence(s, cut);
     V.audio?.cinematic?.(true, ability.sound);
     return true;
   };
@@ -47,24 +50,60 @@
       box.y + box.h / 2 - p.y - p.h / 2, s.ultimate.facing) ?? true;
   }
 
-  function release(s) {
-    const { ability, facing } = s.ultimate;
-    s.ultimateMarks = [];
-    for (const enemy of s.enemies) {
-      if (enemy.hp <= 0 || !targetable(s, enemy)) continue;
-      s.ultimateMarks.push({ x: enemy.x + enemy.w / 2, y: enemy.y + enemy.h / 2,
-        facing, start: s.elapsed, size: 88, color: ability.color });
-      V.damageEnemy(s, enemy, ability.damage);
-    }
+  function visibleTargets(s) {
+    const enemies = s.enemies.filter(enemy => enemy.hp > 0 && targetable(s, enemy));
     const boss = s.boss;
-    if (boss?.hp > 0 && targetable(s, V.bossHitboxes(boss).body)) {
-      for (let i = 0; i < ability.hits; i++) {
-        s.ultimateMarks.push({ boss, x: .23 + (i * 3 % 7) * .09, y: .27 + (i * 5 % 7) * .085,
-          facing: i % 2 ? -facing : facing, start: s.elapsed + i * .055, size: 56 + i % 3 * 12, color: ability.color });
-      }
-      V.damageBoss(s, ability.bossDamage);
-      if (boss.hp === 0) V.defeatBoss(s);
+    return { enemies, boss: boss?.hp > 0 && targetable(s, V.bossHitboxes(boss).body) ? boss : null };
+  }
+
+  function enemyMark(enemy, cut, start) {
+    return { x: enemy.x + enemy.w / 2, y: enemy.y + enemy.h / 2,
+      facing: cut.facing, start, size: 88, color: cut.ability.color };
+  }
+
+  function bossMarks(boss, cut, start) {
+    return Array.from({ length: cut.ability.hits }, (_, i) => ({
+      boss, x: .23 + (i * 3 % 7) * .09, y: .27 + (i * 5 % 7) * .085,
+      facing: i % 2 ? -cut.facing : cut.facing, start: start + i * .055, size: 56 + i % 3 * 12, color: cut.ability.color
+    }));
+  }
+
+  function prepareSequence(s, cut) {
+    const targets = visibleTargets(s);
+    const ordered = targets.boss ? [...targets.enemies, targets.boss] : [...targets.enemies];
+    ordered.sort((a, b) => cut.facing * (a.x + a.w / 2 - b.x - b.w / 2) || a.y - b.y);
+    let next = cut.timing.end;
+    const marks = [];
+    for (const target of ordered) {
+      const cuts = target === targets.boss ? bossMarks(target, cut, next) : [enemyMark(target, cut, next)];
+      marks.push(...cuts);
+      next = cuts.at(-1).start + V.ultimateMarkDuration + .09;
     }
+    const last = marks.at(-1);
+    cut.sequence = { ...targets, marks, damageAt: last ? last.start + V.ultimateMarkDuration + 2 : cut.timing.end };
+  }
+
+  function strikeBoss(s, boss, ability) {
+    if (!boss) return;
+    V.damageBoss(s, ability.bossDamage);
+    if (boss.hp === 0) V.defeatBoss(s);
+  }
+
+  function release(s, cut) {
+    const { ability, sequence } = cut;
+    if (sequence) {
+      for (const enemy of sequence.enemies) {
+        if (!V.damageEnemy(s, enemy, enemy.hp)) continue;
+        V.emitParticles(s, 'hit', enemy.x + enemy.w / 2, enemy.y + enemy.h / 2, { color: ability.color });
+      }
+      strikeBoss(s, sequence.boss, ability);
+      return;
+    }
+    const { enemies, boss } = visibleTargets(s);
+    s.ultimateMarks = enemies.map(enemy => enemyMark(enemy, cut, s.elapsed));
+    for (const enemy of enemies) V.damageEnemy(s, enemy, ability.damage);
+    if (boss) s.ultimateMarks.push(...bossMarks(boss, cut, s.elapsed));
+    strikeBoss(s, boss, ability);
   }
 
   function hammerTarget(s, x, feet, requireUnderfoot = false) {
@@ -139,11 +178,12 @@
       updateHammer(s, dt, input);
       return;
     }
-    if (previous < V.ultimateTiming.swing && cut.time >= V.ultimateTiming.swing) V.audio?.effect?.(cut.ability.sound);
-    if (cut.time < V.ultimateTiming.end) return;
+    const { swing, end } = cut.timing;
+    if (previous < swing && cut.time >= swing) V.audio?.effect?.(cut.ability.sound);
+    if (cut.time < (cut.sequence?.damageAt ?? end)) return;
     V.audio?.cinematic?.(false);
     V.say(s, cut.ability.name);
-    release(s);
+    release(s, cut);
     s.ultimate = null;
   };
 })();

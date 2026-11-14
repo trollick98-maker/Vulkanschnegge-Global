@@ -6,7 +6,7 @@ Entpacke die ZIP und öffne `v7-boss-overhaul/index.html`. Im Quellstand liegt d
 
 Beim Kampagnenstart wählst du Figur und Startwaffe. Zur Wahl stehen Glutkatana, Riffspieß, Ankerbeil und Kriegshammer. Die gewählte Waffe ist sofort ausgerüstet. In laufenden Kampagnen gibt es den Hammer in der Schmiede.
 
-Der Kriegshammer trifft beim Landen in Gegnerleveln und Bossarenen. Je höher die Fallgeschwindigkeit, desto mehr Schaden. Mit **S** oder **↓** in der Luft beschleunigst du den Sturz. Beim Dash bleibt es beim Grundschaden. Bei voller Ulti-Leiste startet **F** den Donnerschlag. Schnegg verschwindet nach oben und du richtest die kleiner werdenden Zielringe mit **A/D** oder den Pfeiltasten aus. Der Blitz schlägt in einem engen Bereich ein und kann bis zu 1.900 HP abziehen. Bossphasen begrenzen den Schaden an der nächsten Phasenschwelle.
+Der Kriegshammer trifft beim Landen in Gegnerleveln und Bossarenen. Je höher die Fallgeschwindigkeit, desto mehr Schaden. Mit **S** oder **↓** in der Luft beschleunigst du den Sturz. Beim Dash bleibt es beim Grundschaden. Bei voller Ulti-Leiste startet **F** den Donnerschlag. Schnegg verschwindet nach oben und bleibt knapp zwei Sekunden über dem Bild. In der Zeit richtest du die kleiner werdenden Zielringe mit **A/D** oder den Pfeiltasten aus. Der Blitz schlägt in einem engen Bereich ein und kann bis zu 1.900 HP abziehen. Bossphasen begrenzen den Schaden an der nächsten Phasenschwelle.
 
 ## Spielen
 
@@ -87,7 +87,7 @@ Fünf Tiefsee-Panoramen bewegen sich hinter Wegen, Gegnerleveln und Bossarenen m
 
 In Gegner- und Bossarenen steht **ULTI** oben mittig unter den Spielmenü-Tasten. Schadende Dashes, besiegte Gegner und abgewehrte Bossgeschosse laden den Balken. Bei 100 Prozent löst **F** oder ein Klick auf **ULTI** die Attacke aus. Auf Touch-Geräten gibt es zusätzlich **ULT** neben den Bewegungstasten. Das Spiel und die Musik halten für den Schnitt an. Danach läuft der Kampf weiter.
 
-- **Glutkatana · Nullschnitt** trifft alle sichtbaren Gegner und zeichnet acht Schnitte über einen sichtbaren Boss.
+- **Glutkatana · Nullschnitt** blendet die Arena aus und zoomt langsam auf die Figur. Nach dem Schlag und dem Herauszoomen erscheinen die Schnitte Gegner für Gegner. Zwei Sekunden nach dem letzten Schnitt fallen alle markierten Gegner gleichzeitig. Ein sichtbarer Boss bekommt acht Schnitte und nimmt zum selben Zeitpunkt Schaden.
 - **Riffspieß · Flutlanze** durchstößt Gegner vor der Figur auf ihrer Höhe bis zum Bildrand.
 - **Ankerbeil · Ankerbeben** trifft in einem Umkreis um die Figur auch ober- und unterhalb liegende Gegner.
 

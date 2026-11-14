@@ -1840,7 +1840,7 @@ test('online board can retry a transient script failure and reads only scores', 
   assert.equal(reads, 1);
 });
 
-test('ultimate charge comes from combat, and the katana strikes exactly the visible enemies and boss', () => {
+test('katana marks visible enemies in order and applies damage once after two seconds of silence', () => {
   const { V } = logic();
   const seed = 'ultimate';
   const graph = V.generateMap(seed);
@@ -1862,19 +1862,35 @@ test('ultimate charge comes from combat, and the katana strikes exactly the visi
   assert.ok(V.beginUltimate(s));
   assert.equal(s.ultimateCharge, 0);
   assert.equal(V.beginUltimate(s), false);
-  V.updateUltimate(s, .70);
-  assert.deepEqual([s.elapsed, s.player.x, s.boss.x, s.boss.hp], snapshot);
-  V.updateUltimate(s, .12);
+  const { sequence, timing } = s.ultimate;
+  const advanceTo = time => V.updateUltimate(s, time - s.ultimate.time);
+  assert.ok(timing.focus > 1 && timing.swing > 2);
+  const enemyCuts = sequence.marks.filter(mark => !mark.boss);
+  assert.equal(enemyCuts.length, 2);
+  assert.ok(enemyCuts[0].x < enemyCuts[1].x);
+  assert.ok(enemyCuts[0].start + V.ultimateMarkDuration < enemyCuts[1].start);
+  assert.ok(enemyCuts[0].start >= timing.end);
+  assert.equal(sequence.marks.filter(mark => mark.boss === s.boss).length, 8);
+  const lastCutEnd = sequence.marks.at(-1).start + V.ultimateMarkDuration;
+  assert.ok(Math.abs(sequence.damageAt - lastCutEnd - 2) < 1e-9);
+  advanceTo(timing.swing - .03);
+  assert.deepEqual(cues, [[true, 'ultimate-katana']]);
+  advanceTo(timing.swing + .03);
   assert.deepEqual(cues, [[true, 'ultimate-katana'], ['ultimate-katana']]);
-  V.updateUltimate(s, .4);
+  for (const checkpoint of [enemyCuts[0].start + .1, enemyCuts[1].start + .1, lastCutEnd, sequence.damageAt - .01]) {
+    advanceTo(checkpoint);
+    assert.deepEqual([s.elapsed, s.player.x, s.boss.x, s.boss.hp], snapshot);
+    assert.deepEqual(s.enemies.map(enemy => enemy.hp).join(','), '100,620,100,100');
+    assert.equal(s.kills, 0);
+  }
+  advanceTo(sequence.damageAt + .01);
   assert.equal(s.ultimate, null);
   assert.equal(s.elapsed, snapshot[0]);
   assert.equal(s.boss.hp, snapshot[3] - 500);
-  assert.deepEqual(s.enemies.map(enemy => enemy.hp).join(','), '0,160,100,100');
-  assert.equal(s.kills, 1);
+  assert.deepEqual(s.enemies.map(enemy => enemy.hp).join(','), '0,0,100,100');
+  assert.equal(small.defeatedAt, strong.defeatedAt);
+  assert.equal(s.kills, 2);
   assert.equal(s.ultimateCharge, 0);
-  assert.equal(s.ultimateMarks.filter(mark => mark.boss === s.boss).length, 8);
-  assert.equal(s.ultimateMarks.filter(mark => !mark.boss).length, 2);
   assert.deepEqual(cues.at(-1), [false]);
 });
 
@@ -2144,6 +2160,10 @@ test('hammer ultimate leaves the screen, can be aimed and strikes once in a smal
   for (let i = 0; i < 36; i++) V.updateUltimate(s, V.rules.step, { right: true });
   assert.ok(p.y + p.h < s.cameraY);
   assert.ok(s.ultimate.hammer.target.x > origin + 100);
+  assert.ok(V.hammerTiming.lock - V.hammerTiming.rise >= 1.9);
+  V.updateUltimate(s, 2 - s.ultimate.time);
+  assert.ok(p.y + p.h < s.cameraY && !p.grounded);
+  assert.equal(s.hammerImpactFx, undefined);
   assert.equal(s.boss.hp, 2500);
   while (s.ultimate) V.updateUltimate(s, V.rules.step, idle);
   assert.equal(p.y + p.h, s.hammerImpactFx.y);

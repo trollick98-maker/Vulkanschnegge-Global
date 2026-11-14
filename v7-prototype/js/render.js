@@ -1463,14 +1463,18 @@
   }
 
   function ultimateView(s) {
-    const { focus, retreat, end } = V.ultimateTiming;
-    const time = s.ultimate.time;
-    const progress = V.clamp(Math.min(time / focus, (end - time) / (end - retreat)), 0, 1);
-    const amount = progress * progress * (3 - 2 * progress);
+    const { time, timing } = s.ultimate;
+    const { dark = timing.focus, focus, retreat, end } = timing;
+    const returning = (end - time) / (end - retreat);
+    const smooth = progress => {
+      const t = V.clamp(progress, 0, 1);
+      return t * t * (3 - 2 * t);
+    };
+    const amount = smooth(Math.min(time / dark, returning));
     const p = s.player;
     const x = p.x + p.w / 2 - Math.round(s.cameraX);
     const y = p.y + p.h / 2 - Math.round(s.cameraY);
-    const travel = reducedMotion ? 0 : amount;
+    const travel = reducedMotion ? 0 : smooth(Math.min(time / focus, returning));
     const zoom = 1 + travel * 2.55;
     const focusX = V.lerp(x, W / 2, travel);
     const focusY = V.lerp(y, H * .54, travel);
@@ -1480,11 +1484,11 @@
 
   function drawUltimate(s, view) {
     const cut = s.ultimate;
-    const { focus, swing } = V.ultimateTiming;
+    const { focus, swing, strike: strikeDuration } = cut.timing;
     const p = s.player;
     const weapon = s.weapon;
     const wind = V.clamp((cut.time - focus * .65) / (swing - focus * .65), 0, 1);
-    const strike = V.clamp((cut.time - swing) / .10, 0, 1);
+    const strike = V.clamp((cut.time - swing) / strikeDuration, 0, 1);
     const spear = weapon.id === 'reef-spear';
     const cock = spear ? -.25 : V.lerp(-1.30, -2.97, wind ** 1.2);
     const angle = V.lerp(cock, spear ? .035 : .92, 1 - (1 - strike) ** 3);
@@ -1529,16 +1533,20 @@
   }
 
   function drawUltimateMarks(s) {
-    for (const mark of s.ultimateMarks ?? []) {
-      const age = s.elapsed - mark.start;
-      if (age < 0 || age > .32) continue;
+    const sequence = s.ultimate?.sequence;
+    const marks = sequence?.marks ?? s.ultimateMarks ?? [];
+    const time = sequence ? s.ultimate.time : s.elapsed;
+    const duration = V.ultimateMarkDuration;
+    for (const mark of marks) {
+      const age = time - mark.start;
+      if (age < 0 || age >= duration) continue;
       const { boss, size } = mark;
       const x = boss ? boss.x + boss.w * mark.x : mark.x;
       const y = boss ? boss.y + boss.h * mark.y : mark.y;
       g.save();
       g.translate(x, y);
       g.scale(mark.facing, 1);
-      g.globalAlpha = (1 - age / .32) ** .72;
+      g.globalAlpha = (1 - age / duration) ** .72;
       fittedSprite('exp-slash', -size * .50, -size * .50, size, size);
       g.rotate(-.47);
       g.fillStyle = mark.color;
@@ -1555,7 +1563,8 @@
     const arena = section.kind === 'arena';
     const local = V.usesMomentum(section);
     const hammer = section.ultimate?.hammer;
-    const ultimate = section.ultimate && !hammer ? ultimateView(section) : null;
+    const cut = section.ultimate;
+    const ultimate = cut && !hammer && cut.time < cut.timing.end ? ultimateView(section) : null;
     const view = ultimate ?? V.cameraView(section);
     if (view) {
       g.save();
@@ -1609,8 +1618,10 @@
       if (!ultimate) drawCameraCue(section, view);
     }
     drawDamageEdge(section);
-    drawPhaseBanner(section);
-    drawGlitchCut(section);
+    if (!cut?.sequence) {
+      drawPhaseBanner(section);
+      drawGlitchCut(section);
+    }
     if (ultimate) drawUltimate(section, ultimate);
   };
 })();
