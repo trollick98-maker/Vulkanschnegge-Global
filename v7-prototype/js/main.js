@@ -140,6 +140,8 @@
       for (const part of V.expansionArt) V.image('exp-' + part);
     }
     if (section.kind === 'arena') {
+      V.image(section.node.biome === 'reef' || section.node.biome === 'greed' ? 'anim-reef-v23' : 'anim-storm-v23');
+      V.image('anim-hunters-v23');
       V.image('anim-' + section.node.biome);
       V.image('anim-variants');
     }
@@ -246,7 +248,7 @@
     const level = state.level;
     if (V.input.ultimateQueued) {
       V.input.ultimateQueued = false;
-      V.beginUltimate(level);
+      if (V.beginUltimate(level)) V.saveUltimateProgress(campaign, level);
     }
     if (level.ultimate) {
       const actions = V.input.consume();
@@ -273,6 +275,7 @@
     while (carry + 1e-9 >= step) {
       carry -= step;
       updates[level.kind](level, step, V.input.consume(), clock);
+      V.saveUltimateProgress(campaign, level);
       if (level.hitStop > 0) {
         carry = 0;
         break;

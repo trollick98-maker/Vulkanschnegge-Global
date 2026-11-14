@@ -15,9 +15,11 @@
   V.ultimateMarkDuration = .32;
   V.ultimateAbility = s => V.usesMomentum(s) ? abilities[s.weapon.id] : null;
   V.chargeUltimate = function (s, points) {
-    if (V.ultimateAbility(s) && !s.ultimate) s.ultimateCharge = Math.min(100, (s.ultimateCharge ?? 0) + points);
+    if ((V.ultimateAbility(s) || (s.kind === 'boss-chase' && abilities[s.weapon.id])) && !s.ultimate) {
+      s.ultimateCharge = Math.min(100, (s.ultimateCharge ?? 0) + points);
+    }
   };
-  V.chargeDash = (s, damage) => V.chargeUltimate(s, 10 + Math.min(10, Math.floor(damage / 24)));
+  V.chargeDash = (s, damage) => V.chargeUltimate(s, 1 + Math.min(2, Math.floor(damage / 100)));
 
   V.beginUltimate = function (s) {
     const ability = V.ultimateAbility(s);
@@ -30,6 +32,7 @@
       if (!target) return false;
       cut.hammer = { target, origin, y: p.y, sky: (s.cameraY ?? 0) - V.H * .66 };
       p.hammerDive = false;
+      p.hammerApex = undefined;
       p.dashTime = p.dashLeft = p.dashBuffer = p.jumpBuffer = 0;
       p.swing = null;
       p.angle = 0;

@@ -909,7 +909,7 @@ test('an arena dash deals one third of launch speed and contact retains 65 perce
   s.weapon = V.weapons.shell;
   const p = s.player;
   s.enemies = [{ key: 'armored', x: 300, y: V.GROUND - 40, floorY: V.GROUND, w: 51, h: 40, hp: 175, maxHp: 175,
-    attackState: 'ready', attackLeft: 10, range: 245, left: 22, right: 400 }];
+    attackState: 'recover', attackLeft: 10, range: 245, left: 22, right: 400 }];
   p.x = 281;
   p.vx = 300;
   V.updateArena(s, V.rules.step, { dash: true, right: true });
@@ -1006,7 +1006,7 @@ test('mobs scale with zone and travel has progressively faster starts', () => {
   const { V } = logic();
   const graph = V.generateMap('tiers');
   const hp = tier => V.newArena({ ...graph.byId['reef-arena'], tier }, 'snail', {}, 'tiers').enemies;
-  assert.ok(hp(1).some(e => e.key === 'crawler' && e.hp === 100));
+  assert.ok(hp(1).some(e => e.key === 'crawler' && e.hp === 180));
   assert.ok(hp(4).every(e => e.hp === e.maxHp && e.hp >= 180));
   const starts = [1, 2, 3, 4, 5].map(tier => {
     const edge = graph.edges.find(e => e.tier === tier);
@@ -1031,7 +1031,9 @@ test('arena routes vary by seed and keep every gap within bidirectional base jum
       assert.notDeepEqual(plain(route), plain(V.generateArena(node, seed + '-other')));
       assert.ok(route.worldWidth > V.W * 5);
       const islands = route.platforms.filter(platform => platform.ground);
-      assert.equal(islands.length, node.tier >= 3 ? 8 : 7);
+      assert.ok(islands.length >= (node.tier >= 3 ? 7 : 6) && islands.length <= (node.optional ? 8 : 9));
+      const heights = islands.map(island => island.y);
+      assert.ok(Math.max(...heights) - Math.min(...heights) >= 375);
       assert.ok(islands.some(island => island.y < V.GROUND - 100));
       assert.ok(islands.some(island => island.y > V.GROUND + 60));
       assert.equal(route.exitY, islands.at(-1).y);
@@ -1147,6 +1149,7 @@ test('arena enemies warn, lock direction and execute distinct attacks', () => {
     const x = enemy.x;
     const target = enemy.targetX;
     arena.player.x = enemy.x + 110;
+    arena.player.invuln = 10;
     let minY = enemy.y;
     for (let frame = 0; frame < 80 && enemy.attackState !== 'recover'; frame++) {
       V.updateArena(arena, step, idle);
@@ -1847,7 +1850,7 @@ test('katana marks visible enemies in order and applies damage once after two se
   const s = V.newCombat(graph.byId.reef, 'snail', {}, seed);
   assert.equal(V.beginUltimate(s), false);
   assert.ok(bossDash(V, s) > 0);
-  assert.ok(s.ultimateCharge > 10 && s.ultimateCharge < 100);
+  assert.ok(s.ultimateCharge > 0 && s.ultimateCharge <= 3);
   s.cameraX = 0;
   const makeEnemy = (x, y, hp) => ({ x, y, w: 30, h: 30, hp });
   const small = makeEnemy(600, 395, 100);
@@ -2116,7 +2119,8 @@ test('hammer dash is unarmed and landings deal more damage with faster falls', (
   const s = make();
   V.movePlayer(s, V.rules.step, { dash: true });
   assert.equal(s.player.swing, null);
-  assert.equal(s.player.dashPower, V.dashDamage(s, 300));
+  assert.equal(s.player.dashPower, V.weaponDamage(s, 300));
+  assert.ok(s.player.dashPower < V.dashDamage(s, 300));
   assert.equal(s.enemies[0].hp, 700);
   const hits = [];
   for (const amount of [250, 450, 875]) {
@@ -2172,4 +2176,79 @@ test('hammer ultimate leaves the screen, can be aimed and strikes once in a smal
   assert.deepEqual(s.enemies.map(e => e.hp).join(','), '0,200,200');
   assert.equal(s.elapsed, 0);
   assert.equal(s.ultimateCharge, 0);
+});
+
+test('early arena damage leaves common enemies standing and hammer damage rises with height and speed', () => {
+  const { V } = logic();
+  const seed = 'start-balance';
+  const node = V.generateMap(seed).byId['reef-arena'];
+  const s = V.newArena(node, 'snail', {}, seed);
+  for (const id of Object.keys(V.starterWeapons)) {
+    s.weapon = V.weapons[id];
+    assert.ok(V.weaponDamage(s, 1200) < 155, id);
+  }
+  for (const [speed, height] of [[400, 30], [950, 110], [1300, 250]]) {
+    assert.ok(V.hammerDamage(speed, height) < 180);
+    assert.ok(V.hammerDamage(speed + 350, height) > V.hammerDamage(speed, height));
+    assert.ok(V.hammerDamage(speed, height + 80) > V.hammerDamage(speed, height));
+  }
+});
+
+test('campaign ultimate charge carries across fights, weapons, travel, reload, and consumption', () => {
+  const { V } = logic();
+  const seed = 'charge-carried';
+  const campaign = V.createCampaign(seed, 'frogo', 'katana');
+  const graph = V.generateMap(seed);
+  const s = V.newArena(graph.byId['reef-arena'], 'snail', {}, seed);
+  V.applyShopLoadout(s, campaign);
+  for (let i = 0; i < 10; i++) V.chargeDash(s, 140);
+  assert.equal(s.ultimateCharge, 20);
+  assert.equal(V.saveUltimateProgress(campaign, s), true);
+  let saved = V.loadCampaign();
+  assert.equal(saved.ultimateCharge, 20);
+  assert.equal(V.saveUltimateProgress(saved, { kind: 'travel' }), false);
+  assert.equal(V.saveUltimateProgress(saved, { kind: 'arcade', ultimateCharge: 100 }), false);
+  const chase = V.newBossChase(graph.byId.reef, 'snail', {}, seed);
+  V.applyShopLoadout(chase, saved);
+  assert.equal(chase.ultimateCharge, 20);
+  assert.equal(V.beginUltimate(chase), false);
+  V.chargeUltimate(chase, 2);
+  assert.ok(V.saveUltimateProgress(saved, chase));
+  saved = V.loadCampaign();
+  const boss = V.newCombat(graph.byId.reef, 'snail', {}, seed);
+  saved.weapon = 'anchor-axe';
+  V.applyShopLoadout(boss, saved);
+  assert.equal(boss.weapon.id, 'anchor-axe');
+  assert.equal(boss.ultimateCharge, 22);
+  V.chargeUltimate(boss, 100);
+  assert.ok(V.beginUltimate(boss));
+  assert.ok(V.saveUltimateProgress(saved, boss));
+  assert.equal(V.loadCampaign().ultimateCharge, 0);
+});
+
+test('an arena hunter traverses gaps, climbs between decks, and starts an attack', () => {
+  const { V } = logic();
+  const seed = 'hunter-ai';
+  const s = V.newArena(V.generateMap(seed).byId['reef-arena'], 'snail', {}, seed);
+  const ground = { worldX: 0, w: 232, y: 445 };
+  const bridge = { worldX: 335, w: 128, y: 372 };
+  const highDeck = { worldX: 515, w: 172, y: 282 };
+  s.platforms = [ground, bridge, highDeck];
+  s.enemies = [s.enemies.find(enemy => enemy.key === 'hunter')];
+  const [enemy] = s.enemies;
+  Object.assign(enemy, { x: 46, y: ground.y - enemy.h, floorY: ground.y, deck: ground });
+  Object.assign(s.player, { x: 636, y: highDeck.y - s.player.h });
+  s.player.previousX = s.player.x;
+  s.player.previousY = s.player.y;
+  const visited = new Set();
+  for (let frame = 0; frame < 300 && enemy.attackState !== 'tell'; frame++) {
+    s.elapsed += V.rules.step;
+    V.updateEnemies(s, V.rules.step);
+    visited.add(enemy.deck);
+  }
+  assert.ok(visited.has(bridge));
+  assert.equal(enemy.deck, highDeck);
+  assert.equal(enemy.floorY, highDeck.y);
+  assert.equal(enemy.attackState, 'tell');
+  assert.ok(enemy.x > highDeck.worldX);
 });

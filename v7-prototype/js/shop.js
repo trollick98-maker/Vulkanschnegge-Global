@@ -107,6 +107,7 @@
 
   V.applyShopLoadout = function (section, campaign) {
     section.weapon = V.weapons[campaign.weapon];
+    section.ultimateCharge = campaign.ultimateCharge ?? 0;
     if (section.kind !== 'arena' && section.kind !== 'boss' && !section.chase) return;
     const supply = known(campaign.supply)?.item;
     if (!supply) return;

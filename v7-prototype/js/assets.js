@@ -56,6 +56,8 @@
   }
   V.animationBiomes = ['reef', 'greed', 'diva', 'vortex'];
   V.animationSheets = ['bosses', 'shadow', 'dimensions', 'reinforcements', 'variants', ...V.animationBiomes];
+  V.enemyRevampSheets = ['reef-v23', 'storm-v23', 'hunters-v23'];
+  V.animationSheets.push(...V.enemyRevampSheets);
   for (const sheet of V.animationSheets) images['anim-' + sheet] = 'animation/' + sheet + '.webp';
   images['gladiator-atlas'] = 'arena-glitch/inferno/gladiator.webp';
   V.sceneryProps = {

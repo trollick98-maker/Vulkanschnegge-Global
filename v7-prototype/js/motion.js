@@ -156,6 +156,9 @@
     const local = V.usesMomentum(s);
     const wasGrounded = p.grounded;
     const previousBottom = p.y + p.h;
+    if (local && s.weapon.hammer) {
+      p.hammerApex = wasGrounded ? previousBottom : Math.min(p.hammerApex ?? previousBottom, previousBottom);
+    }
     p.grounded = false;
     p.vy += p.gravity * (s.gravityFactor ?? 1) * (p.hammerDive ? 2.8 : 1) * dt;
     p.y += p.vy * dt;
@@ -190,9 +193,10 @@
         }
       }
       if (!wasGrounded && local && s.weapon.hammer && s.outcome === null && s.boss?.state !== 'defeated') {
-        V.hammerImpact(s, p.x + p.w / 2, floor, fallSpeed);
+        V.hammerImpact(s, p.x + p.w / 2, floor, fallSpeed, false, floor - p.hammerApex);
       }
       p.hammerDive = false;
+      p.hammerApex = undefined;
     }
     if (!local && p.y < -70) {
       p.y = -70;

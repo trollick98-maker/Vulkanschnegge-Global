@@ -24,10 +24,16 @@
     'war-hammer': 'Sturzangriff mit ↓ / S · Donnerschlag für konzentrierten Schaden'
   };
 
-  V.hammerImpact = function (s, x, y, speed, ultimate = false) {
+  V.hammerDamage = function (speed, height) {
+    const fall = Math.max(0, speed);
+    const drop = Math.max(0, height);
+    return Math.min(255, Math.round(174 * (Math.sqrt(1 + fall / 720) - 1) + 76 * drop / (drop + 185)));
+  };
+
+  V.hammerImpact = function (s, x, y, speed, ultimate = false, height = 0) {
     if (!ultimate && speed < 310) return;
     const radius = ultimate ? 112 : 71;
-    const damage = ultimate ? 1900 : Math.min(520, Math.round(speed * .38));
+    const damage = ultimate ? 1900 : V.hammerDamage(speed, height);
     const area = { x: x - radius, y: y - (ultimate ? 87 : 53), w: radius * 2, h: ultimate ? 101 : 62 };
     const p = s.player;
     s.hammerImpactFx = { x, y, radius, at: s.elapsed, ultimate };
@@ -41,7 +47,7 @@
       if (!amount) continue;
       V.hitFeedback(s, 'hit', enemy.x + enemy.w / 2, enemy.y + enemy.h / 2,
         { amount, heavy: ultimate, direction: p.facing, silent: true });
-      if (!ultimate && enemy.hp === 0) V.chargeUltimate(s, 22);
+      if (!ultimate && enemy.hp === 0) V.chargeUltimate(s, 4);
       hits++;
     }
     const boss = s.boss;
@@ -67,7 +73,10 @@
 
   V.weaponDamage = function (s, speed, bonus = 1) {
     const weapon = s.weapon;
-    return V.dashDamage(s, speed, weapon.multiplier * bonus, weapon.baseDamage);
+    if (s.kind !== 'arena' || weapon.id === 'shell') return V.dashDamage(s, speed, weapon.multiplier * bonus, weapon.baseDamage);
+    const tier = s.node.tier - 1;
+    const momentum = Math.min(speed, 438 + tier * 49);
+    return V.dashDamage(s, momentum, weapon.multiplier * bonus * (.51 + tier * .075), weapon.baseDamage * .72);
   };
 
   V.startWeaponSwing = function (s) {

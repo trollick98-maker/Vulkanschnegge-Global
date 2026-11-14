@@ -64,6 +64,17 @@
       { sheet: 'bosses', index: bossRows[key] * 5 + column };
   };
 
+  const arenaEnemyRows = { reef: 0, greed: 1, diva: 2, vortex: 3 };
+  V.arenaEnemyFrame = function (s, enemy, reduced) {
+    const biome = arenaEnemyRows[s.biome];
+    if (biome === undefined) return null;
+    const pose = enemy.attackState === 'active' || enemy.leap ? 3 : enemy.attackState === 'tell' ? 2 :
+      !reduced && enemy.moving && Math.floor((enemy.stride ?? 0) / 8) % 2 ? 1 : 0;
+    if (enemy.key === 'hunter') return { sheet: 'hunters-v23', index: (enemy.hunterSkin ?? biome) * 4 + pose };
+    if (enemy.variant || enemy.reinforcement || enemyRows[enemy.key] === undefined) return null;
+    return { sheet: biome < 2 ? 'reef-v23' : 'storm-v23', index: ((biome % 2) * 3 + enemyRows[enemy.key]) * 4 + pose };
+  };
+
   V.enemySpriteFrame = function (s, enemy, art, reduced) {
     const state = enemy.attackState;
     const moving = !reduced && enemy.moving && Math.floor((enemy.stride ?? 0) / 7) % 2 === 1;

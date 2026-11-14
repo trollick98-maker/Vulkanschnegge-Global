@@ -307,7 +307,7 @@
           p.dashCooldown = 0;
           p.airDash = true;
         }
-        V.chargeUltimate(s, 10);
+        V.chargeUltimate(s, 2);
         V.hitFeedback(s, 'parry', q.x, q.y);
         s.score += 80;
       }

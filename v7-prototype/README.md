@@ -6,7 +6,7 @@ Entpacke die ZIP und öffne `v7-boss-overhaul/index.html`. Im Quellstand liegt d
 
 Beim Kampagnenstart wählst du Figur und Startwaffe. Zur Wahl stehen Glutkatana, Riffspieß, Ankerbeil und Kriegshammer. Die gewählte Waffe ist sofort ausgerüstet. In laufenden Kampagnen gibt es den Hammer in der Schmiede.
 
-Der Kriegshammer trifft beim Landen in Gegnerleveln und Bossarenen. Je höher die Fallgeschwindigkeit, desto mehr Schaden. Mit **S** oder **↓** in der Luft beschleunigst du den Sturz. Beim Dash bleibt es beim Grundschaden. Bei voller Ulti-Leiste startet **F** den Donnerschlag. Schnegg verschwindet nach oben und bleibt knapp zwei Sekunden über dem Bild. In der Zeit richtest du die kleiner werdenden Zielringe mit **A/D** oder den Pfeiltasten aus. Der Blitz schlägt in einem engen Bereich ein und kann bis zu 1.900 HP abziehen. Bossphasen begrenzen den Schaden an der nächsten Phasenschwelle.
+Der Kriegshammer trifft beim Landen in Gegnerleveln und Bossarenen. Der Schaden hängt von der Fallgeschwindigkeit und der tatsächlich gefallenen Höhe ab. Kurze Hüpfer machen deutlich weniger Schaden als ein Sturz von einer hohen Plattform. Mit **S** oder **↓** in der Luft beschleunigst du den Sturz. Beim Dash bleibt es beim Grundschaden. Bei voller Ulti-Leiste startet **F** den Donnerschlag. Schnegg verschwindet nach oben und bleibt knapp zwei Sekunden über dem Bild. In der Zeit richtest du die kleiner werdenden Zielringe mit **A/D** oder den Pfeiltasten aus. Der Blitz schlägt in einem engen Bereich ein und kann bis zu 1.900 HP abziehen. Bossphasen begrenzen den Schaden an der nächsten Phasenschwelle.
 
 ## Spielen
 
@@ -27,11 +27,11 @@ Die Weltkarte verwendet 38 eigene Pixel-Sprites für Navigation, Kartenmarkierun
 
 ## Kampf und Perks
 
-- Gegnerlevel führen über sieben oder acht Inseln mit Aufstiegen und Abstiegen. Die Kamera folgt dir auch in der Höhe. Besiege alle Gegner und erreiche das Tor am Ende der Strecke. Ein Sturz kostet ein Herz und setzt dich auf die letzte erreichte Insel zurück.
+- Gegnerlevel führen je nach Seed über sechs bis neun Inseln mit steilen Aufstiegen und tiefen Senken. Die Kamera folgt dir auch in der Höhe. Besiege alle Gegner und erreiche das Tor am Ende der Strecke. Ein Sturz kostet ein Herz und setzt dich auf die letzte erreichte Insel zurück.
 - Im Riff schnappen Muscheln zu, im Tresor fahren Goldstacheln aus, bei der Diva markieren Scheinwerfer ihre Trefferzone und im Wrack schleudern Wasserfontänen dich hoch. Jede Falle warnt vor dem Angriff und hat eigene Sprites für Ruhe und Aktivierung.
-- In Arenen entspricht der Panzer-Dash-Schaden dem Tempo beim Start geteilt durch drei. Das standardmäßig ausgerüstete Glutkatana multipliziert diesen Wert mit 1,75. Sein Grundschaden greift bei wenig Tempo. Mehr Tempo macht denselben 144-Pixel-Dash schneller. Schneckenzorn verlängert die Strecke unabhängig vom Tempo. Gegnerkontakt oder ein Treffer kostet 35 % des aktuellen Tempos.
-- Krabbler starten mit 100 HP, Springer mit 80 HP und gepanzerte Gegner mit 175 HP. Der Lebensbalken sitzt über jedem Gegner. In Zone vier haben sie 225 % ihrer Start-HP.
-- Krabbler stürmen in die angekündigte Richtung, Springer markieren ihre Landestelle und gepanzerte Gegner feuern eine Bodenwelle. Ein Dash-Treffer unterbricht ihren Angriff.
+- In Gegnerleveln wird der Waffenschaden beim Dash in den frühen Zonen stärker gedämpft. Das angerechnete Starttempo hat eine Obergrenze, die über die Kampagnenzonen steigt. Mehr Tempo macht denselben 144-Pixel-Dash schneller. Schneckenzorn verlängert die Strecke unabhängig vom Tempo. Gegnerkontakt oder ein Treffer kostet 35 % des aktuellen Tempos.
+- Krabbler starten mit 180 HP, Springer mit 155 HP, Jäger mit 205 HP und gepanzerte Gegner mit 265 HP. In Zone vier haben sie 225 % ihrer Start-HP.
+- Krabbler stürmen in die markierte Richtung. Springer markieren ihre Landestelle. Gepanzerte Gegner feuern Bodenwellen und reduzieren Schaden von vorne. Jäger verfolgen dich über Zwischenplattformen und auf höhere Ebenen. 72 neue Sprite-Frames zeigen bei 18 Designs die Ruhepose, Bewegung, das Ausholen und den Angriff.
 - Landungen, Dash und Wind-ups verformen die Sprites kurz. Konter und Treffer zeigen Partikel. In Gegnerleveln kommt ein kurzer Trefferstopp dazu. Die Systemeinstellung für reduzierte Bewegung schaltet die zusätzlichen Verformungen, Nachbilder und Partikel ab.
 - Zeitpolster verlängert den Eingabepuffer, Kettenreaktion lädt den Dash beim Treffer auf und Durchschlag erhöht den Schaden. Münzschwarm kann pro Abschnitt ein Herz heilen. Bestehende Perks und offene Perk-Auswahlen nutzen dieselben IDs und laden mit ihren überarbeiteten Effekten.
 
@@ -85,7 +85,7 @@ Fünf Tiefsee-Panoramen bewegen sich hinter Wegen, Gegnerleveln und Bossarenen m
 
 ## Waffen-Ultimates
 
-In Gegner- und Bossarenen steht **ULTI** oben mittig unter den Spielmenü-Tasten. Schadende Dashes, besiegte Gegner und abgewehrte Bossgeschosse laden den Balken. Bei 100 Prozent löst **F** oder ein Klick auf **ULTI** die Attacke aus. Auf Touch-Geräten gibt es zusätzlich **ULT** neben den Bewegungstasten. Das Spiel und die Musik halten für den Schnitt an. Danach läuft der Kampf weiter.
+In Gegner- und Bossarenen steht **ULTI** oben mittig unter den Spielmenü-Tasten. Treffer laden den Balken je nach Schaden um 1 bis 3 Punkte, besiegte Gegner geben 4 zusätzliche Punkte und abgewehrte Bossgeschosse 2. Der Fortschritt gehört zum Kampagnenspielstand und bleibt zwischen Levels, beim Waffenwechsel und nach dem Neuladen erhalten. Bei 100 Prozent löst **F** oder ein Klick auf **ULTI** die Attacke aus. Auf Touch-Geräten gibt es zusätzlich **ULT** neben den Bewegungstasten. Das Spiel und die Musik halten für den Schnitt an. Danach läuft der Kampf weiter.
 
 - **Glutkatana · Nullschnitt** blendet die Arena aus und zoomt langsam auf die Figur. Nach dem Schlag und dem Herauszoomen erscheinen die Schnitte Gegner für Gegner. Zwei Sekunden nach dem letzten Schnitt fallen alle markierten Gegner gleichzeitig. Ein sichtbarer Boss bekommt acht Schnitte und nimmt zum selben Zeitpunkt Schaden.
 - **Riffspieß · Flutlanze** durchstößt Gegner vor der Figur auf ihrer Höhe bis zum Bildrand.
@@ -95,7 +95,7 @@ In Bossarenen kommen regionale Verstärkungen vom Bildrand. GOD.EXE wechselt ihr
 
 ## Prozedurale Plattformwege
 
-Seed und Level-ID bestimmen Inselbreiten, Plattformhöhen und Abstände. Jedes Biom hat eigene Folgen aus steigenden und fallenden Plattformen. Die Strecke bleibt beim Neustart reproduzierbar, auch mit einem anderen Perk-Build. Höhlen und zweite Ebenen haben eigene Gegner. An den Seiten führen Stufen nach oben. Brücken fahren seitlich, Lifte senkrecht und Laufbänder schieben in Pfeilrichtung.
+Seed und Level-ID bestimmen Inselbreiten, Plattformhöhen und Abstände. Der Generator würfelt Inselanzahl, Hochpunkte, Senken, Zwischenplattformen, Nebenebenen und Hindernisse. Jedes Biom gibt eigene Höhenbereiche und Wahrscheinlichkeiten vor. Die Strecke bleibt beim Neustart reproduzierbar, auch mit einem anderen Perk-Build. Höhlen und zweite Ebenen haben eigene Gegner. An den Seiten führen Stufen nach oben. Brücken fahren seitlich, Lifte senkrecht und Laufbänder schieben in Pfeilrichtung.
 
 Die maximale Höhe eines Grundsprungs ist `v₀² / (2g)`. Für ein Ziel, das um `Δh` höher liegt, ist die Flugzeit bis zur Landung auf dem absteigenden Teil der Sprungkurve `(v₀ + √(v₀² − 2gΔh)) / g`. Daraus ergibt sich die horizontale Reichweite vom Stand bis zum Lauftempo. Der Generator rechnet mit dem niedrigsten Lauftempo und der höchsten Schwerkraft der Grundfiguren, nimmt die kleinere Reichweite beider Richtungen und verwendet höchstens 72 Prozent davon. Bei beweglichen Plattformen berücksichtigt der Generator die weiteste Stellung.
 

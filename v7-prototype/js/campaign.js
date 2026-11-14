@@ -69,7 +69,7 @@
       version: 1, seed: label || Date.now().toString(36) + Math.floor(Math.random() * 46656).toString(36),
       character: Object.hasOwn(V.characters, character) ? character : 'snail',
       position: START, cleared: [START], travelled: [], build: {}, arrival: null, pending: null,
-      coins: 0, purchases: weapon === 'katana' ? [] : [weapon], weapon, supply: null, loadoutChosen: starter !== undefined,
+      coins: 0, purchases: weapon === 'katana' ? [] : [weapon], weapon, supply: null, ultimateCharge: 0, loadoutChosen: starter !== undefined,
       story: { intro: false, rift: false, source: false, rescue: false }
     };
   };
@@ -135,6 +135,15 @@
     return true;
   };
 
+  V.saveUltimateProgress = function (campaign, level) {
+    if (level.kind !== 'arena' && level.kind !== 'boss' && level.kind !== 'boss-chase') return false;
+    const charge = level.ultimateCharge ?? 0;
+    if (charge === campaign.ultimateCharge) return false;
+    campaign.ultimateCharge = charge;
+    V.saveCampaign(campaign);
+    return true;
+  };
+
   V.saveCampaign = function (campaign) {
     if (V.state?.testMode) return;
     try { localStorage.setItem(KEY, JSON.stringify(campaign)); } catch (_) { /* play continues with memory state */ }
@@ -171,6 +180,7 @@
         }
       }
       V.loadShop(campaign, saved, graph);
+      if (Number.isFinite(saved.ultimateCharge)) campaign.ultimateCharge = V.clamp(Math.floor(saved.ultimateCharge), 0, 100);
       campaign.loadoutChosen = saved.loadoutChosen === true || campaign.travelled.length > 0 ||
         campaign.cleared.length > 1 || !!campaign.arrival || campaign.story.intro || campaign.weapon !== 'katana';
       return campaign;

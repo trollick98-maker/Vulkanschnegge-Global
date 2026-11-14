@@ -3,9 +3,10 @@
   'use strict';
   const V = window.VS7;
   const kinds = {
-    crawler: { w: 42, h: 30, baseHp: 100, color: '#f7a665', range: 155, windup: .42, active: .29, recovery: .58, travel: 132 },
-    jumper: { w: 34, h: 38, baseHp: 80, color: '#e3a3fc', range: 208, windup: .50, active: .60, recovery: .56, travel: 198 },
-    armored: { w: 51, h: 40, baseHp: 175, color: '#82dadd', range: 245, windup: .68, active: .20, recovery: .85, travel: 0 }
+    crawler: { w: 42, h: 30, baseHp: 180, color: '#f7a665', range: 155, windup: .42, active: .29, recovery: .58, travel: 132 },
+    jumper: { w: 34, h: 38, baseHp: 155, color: '#e3a3fc', range: 208, windup: .50, active: .60, recovery: .56, travel: 198 },
+    armored: { w: 51, h: 40, baseHp: 265, color: '#82dadd', range: 245, windup: .68, active: .20, recovery: .85, travel: 0 },
+    hunter: { w: 43, h: 36, baseHp: 205, color: '#ff9161', range: 150, windup: .43, active: .49, recovery: .62, travel: 170 }
   };
   const healthByTier = [1, 1.35, 1.75, 2.25];
 
@@ -14,18 +15,22 @@
     const islands = [...s.platforms.filter(platform => platform.ground).slice(1), ...s.upperDecks.filter(deck => deck.upper === 'floor')];
     islands.forEach((island, index) => {
       const lastGround = island.worldX + island.w === s.worldWidth;
-      if (!island.upper && index % 3 === 2 && !lastGround) return;
-      const hasTrap = s.traps.some(trap => trap.x > island.worldX && trap.x < island.worldX + island.w);
-      const count = island.upper ? 1 : !hasTrap && s.node.tier >= 3 && index % 2 === 1 ? 3 : 2;
+      if (!island.upper && index > 1 && index % 3 === 2 && !lastGround && random() < .48) return;
+      const hasTrap = s.traps.some(trap => trap.y === island.y && trap.x > island.worldX && trap.x < island.worldX + island.w);
+      const count = island.upper ? 1 : index === 0 ? 2 : !hasTrap && s.node.tier >= 3 && random() < .5 ? 3 : 2;
       for (let i = 0; i < count; i++) {
         const tunnelGuard = s.node.id === 'reef-side' && lastGround && i === count - 1;
-        const key = s.node.tier === 1 && i === 0 ? 'crawler' :
-          (tunnelGuard || random() < (s.node.tier - 1) * .19) ? 'armored' : random() < .48 ? 'jumper' : 'crawler';
+        const hunter = index === 1 && i === 0 || index > 1 && i === 0 && random() < .27 + s.node.tier * .04;
+        const key = tunnelGuard ? 'armored' : hunter ? 'hunter' : random() < .10 + (s.node.tier - 1) * .16 && index > 0 ?
+          'armored' : i === 0 || random() < .38 ? 'crawler' : 'jumper';
         const type = kinds[key];
         const fraction = hasTrap ? (i === 0 ? .25 : .78) : (i + 1) / (count + 1);
         const x = island.worldX + island.w * fraction - type.w / 2;
         const hp = Math.round(type.baseHp * healthByTier[s.node.tier - 1]);
-        s.enemies.push({ ...type, key, variant: tunnelGuard || (index + i) % 3 !== 2, x, y: island.y - type.h, floorY: island.y, facing: -1,
+        const eliteSkin = s.node.optional ? 5 : s.node.tier >= 3 ? 4 : undefined;
+        const hunterSkin = key === 'hunter' && random() < .22 ? eliteSkin : undefined;
+        const variant = key !== 'hunter' && (tunnelGuard || random() < .24);
+        s.enemies.push({ ...type, key, deck: island, hunterSkin, variant, x, y: island.y - type.h, floorY: island.y, facing: -1,
           hp, maxHp: hp, touching: false, attackState: 'ready',
           left: island.worldX + 15, right: island.worldX + island.w - type.w - 15,
           attackLeft: .30 + i * .19 + random() * .20 });
@@ -67,8 +72,87 @@
     return s;
   };
 
+  function standOn(enemy, deck) {
+    if (enemy.deck === deck && enemy.deckX !== undefined) enemy.x += deck.worldX - enemy.deckX;
+    enemy.deck = deck;
+    enemy.deckX = deck.worldX;
+    enemy.floorY = deck.y;
+    enemy.y = deck.y - enemy.h;
+    enemy.left = deck.worldX + 5;
+    enemy.right = deck.worldX + deck.w - enemy.w - 5;
+    enemy.x = V.clamp(enemy.x, enemy.left, enemy.right);
+  }
+
+  // Hunters follow walkable platforms, including the side steps up to upper decks.
+  function jumpEdge(from, to) {
+    const gap = Math.max(0, from.worldX - to.worldX - to.w, to.worldX - from.worldX - from.w);
+    return gap <= 205 && from.y - to.y <= 128 && to.y - from.y <= 208;
+  }
+
+  function nextDeck(decks, from, destination) {
+    if (!from || !destination || from === destination) return null;
+    const paths = new Map([[from, null]]);
+    const queue = [from];
+    for (let i = 0; i < queue.length; i++) {
+      const deck = queue[i];
+      for (const other of decks) {
+        if (paths.has(other) || !jumpEdge(deck, other)) continue;
+        const first = paths.get(deck) ?? other;
+        if (other === destination) return first;
+        paths.set(other, first);
+        queue.push(other);
+      }
+    }
+    return null;
+  }
+
+  function pursue(s, enemy, dt) {
+    const p = s.player;
+    const center = p.x + p.w / 2;
+    const own = enemy.x + enemy.w / 2;
+    if (enemy.leap) {
+      const leap = enemy.leap;
+      const t = V.clamp((s.elapsed - leap.at) / leap.duration, 0, 1);
+      const x = V.clamp(leap.x, leap.deck.worldX + enemy.w / 2 + 5, leap.deck.worldX + leap.deck.w - enemy.w / 2 - 5);
+      enemy.x = V.lerp(leap.fromX, x - enemy.w / 2, t);
+      enemy.y = V.lerp(leap.fromY, leap.deck.y - enemy.h, t) - Math.sin(Math.PI * t) * 135;
+      if (t < 1) return true;
+      standOn(enemy, leap.deck);
+      enemy.leap = null;
+      enemy.pathAt = s.elapsed;
+      if (enemy.attackState === 'ready') enemy.attackLeft = .20;
+      return true;
+    }
+    standOn(enemy, enemy.deck);
+    if (enemy.attackState !== 'ready' || Math.abs(center - own) > 680 || Math.abs(p.y + p.h - enemy.floorY) > 415) return false;
+    if (s.elapsed >= (enemy.pathAt ?? 0)) {
+      const decks = s.platforms.filter(deck => deck.enabled !== false && Math.abs(deck.worldX + deck.w / 2 - own) < 940);
+      const feet = p.y + p.h;
+      const destination = decks.filter(deck => center >= deck.worldX - 7 && center <= deck.worldX + deck.w + 7 && deck.y >= feet - 14)
+        .sort((a, b) => a.y - b.y)[0];
+      enemy.nextDeck = nextDeck(decks, enemy.deck, destination);
+      enemy.pathAt = s.elapsed + .32;
+    }
+    const next = enemy.nextDeck;
+    if (!next || !jumpEdge(enemy.deck, next)) return false;
+    const mid = enemy.deck.worldX + enemy.deck.w / 2;
+    const toward = next.worldX + next.w / 2 >= mid ? 1 : -1;
+    const overlaps = next.worldX < enemy.deck.worldX + enemy.deck.w && next.worldX + next.w > enemy.deck.worldX;
+    const landing = V.clamp(own + toward * 150, next.worldX + enemy.w / 2 + 7, next.worldX + next.w - enemy.w / 2 - 7);
+    const takeoff = overlaps ? V.clamp(landing, enemy.left + enemy.w / 2, enemy.right + enemy.w / 2) :
+      (toward > 0 ? enemy.right : enemy.left) + enemy.w / 2;
+    enemy.facing = Math.sign(landing - own) || toward;
+    if (Math.abs(takeoff - own) > 7) {
+      enemy.x += V.clamp(takeoff - own, -188 * dt, 188 * dt);
+      return true;
+    }
+    enemy.leap = { deck: next, x: landing, fromX: enemy.x, fromY: enemy.y, at: s.elapsed,
+      duration: V.clamp(Math.abs(landing - own) / 340, .39, .70) };
+    enemy.nextDeck = null;
+    return true;
+  }
+
   function updateEnemy(s, enemy, dt) {
-    const ground = enemy.floorY - enemy.h;
     enemy.flash = Math.max(0, (enemy.flash ?? 0) - dt);
     if (enemy.entering) {
       enemy.x += enemy.facing * 232 * dt;
@@ -79,6 +163,8 @@
       return;
     }
     enemy.attackLeft -= dt;
+    if (enemy.key === 'hunter' && enemy.deck && (enemy.leap || enemy.attackState === 'ready') && pursue(s, enemy, dt)) return;
+    const ground = enemy.floorY - enemy.h;
     if (enemy.attackState === 'tell') {
       if (enemy.attackLeft > 0) return;
       enemy.attackState = 'active';
@@ -93,7 +179,7 @@
     if (enemy.attackState === 'active') {
       const progress = 1 - Math.max(0, enemy.attackLeft) / enemy.active;
       enemy.x = V.lerp(enemy.attackX, enemy.targetX, progress);
-      if (enemy.key === 'jumper') enemy.y = ground - Math.sin(Math.PI * progress) * 103;
+      if (enemy.key === 'jumper' || enemy.key === 'hunter') enemy.y = ground - Math.sin(Math.PI * progress) * 103;
       if (enemy.attackLeft > 0) return;
       enemy.attackState = 'recover';
       enemy.attackLeft = enemy.recovery;
@@ -112,7 +198,7 @@
     const target = s.player.x + (s.player.w - enemy.w) / 2;
     const distance = target - enemy.x;
     enemy.facing = Math.sign(distance) || enemy.facing;
-    if (Math.abs(distance) > enemy.range * .7) enemy.x = V.clamp(enemy.x + enemy.facing * 69 * dt, enemy.left, enemy.right);
+    if (Math.abs(distance) > enemy.range * .7) enemy.x = V.clamp(enemy.x + enemy.facing * (enemy.key === 'hunter' ? 138 : 69) * dt, enemy.left, enemy.right);
     if (enemy.attackLeft <= 0 && Math.abs(distance) <= enemy.range) {
       enemy.attackState = 'tell';
       enemy.attackLeft = enemy.windup;
@@ -143,19 +229,21 @@
   };
 
   function hitEnemy(s, enemy, damage) {
-    const amount = V.damageEnemy(s, enemy, damage);
+    const guarded = enemy.key === 'armored' && enemy.attackState !== 'recover' &&
+      Math.sign(s.player.previousX + s.player.w / 2 - enemy.x - enemy.w / 2) === enemy.facing;
+    const amount = V.damageEnemy(s, enemy, guarded ? Math.round(damage * .48) : damage);
     if (!s.player.swing) V.rebound(s);
     else if (s.chainDash) {
       s.player.dashCooldown = 0;
       s.player.airDash = true;
     }
     if (amount > 0) {
-      V.chargeDash(s, damage);
-      if (enemy.hp === 0) V.chargeUltimate(s, 22);
+      V.chargeDash(s, amount);
+      if (enemy.hp === 0) V.chargeUltimate(s, 4);
     }
     V.hitFeedback(s, amount > 0 ? 'hit' : 'guard', enemy.x + enemy.w / 2, enemy.y + enemy.h / 2,
       { amount, direction: s.player.facing, heavy: enemy.hp === 0 });
-    V.say(s, amount > 0 ? s.weapon.name + ' · −' + amount + ' HP' : 'Mehr Anlauf!');
+    V.say(s, amount > 0 ? (guarded ? 'Panzer · ' : s.weapon.name + ' · ') + '−' + amount + ' HP' : 'Mehr Anlauf!');
   }
 
   const reinforcementArt = {
@@ -225,11 +313,11 @@
     V.moveArenaDecks(s, dt);
     V.movePlayer(s, dt, actions);
     const p = s.player;
-    if (p.y > s.supportY + 300) {
+    if (p.y > s.supportY + 300 && p.y > V.arenaFallLimit(s)) {
       p.invuln = 0;
       V.hurt(s);
       Object.assign(p, { x: s.checkpointX, y: s.checkpointY - p.h, vx: 0, vy: 0, grounded: true,
-        jumps: 0, airDash: true, dashBuffer: 0, jumpBuffer: 0, dashCooldown: 0, angle: 0, landTime: 0, swing: null, hammerDive: false });
+        jumps: 0, airDash: true, dashBuffer: 0, jumpBuffer: 0, dashCooldown: 0, angle: 0, landTime: 0, swing: null, hammerDive: false, hammerApex: undefined });
       s.cameraX = V.arenaCameraTarget(s);
       s.cameraY = s.checkpointY - 405;
       s.supportY = s.checkpointY;

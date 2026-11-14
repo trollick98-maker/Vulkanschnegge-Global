@@ -142,6 +142,7 @@
   }
 
   const animationCells = {
+    'reef-v23': [4, 88], 'storm-v23': [4, 88], 'hunters-v23': [4, 88],
     bosses: [5, 144], shadow: [5, 144], dimensions: [4, 144], reinforcements: [6, 84], variants: [9, 84],
     reef: [4, 84], greed: [4, 84], diva: [4, 84], vortex: [4, 84]
   };
@@ -428,7 +429,7 @@
       g.translate(x + w / 2, y + h);
       const variant = enemy.variant && !enemy.reinforcement;
       const art = enemy.reinforcement ? V.reinforcementArt(s) : s.biome + '-' + enemy.key;
-      const frame = V.enemySpriteFrame(s, enemy, art, reducedMotion);
+      const frame = V.arenaEnemyFrame(s, enemy, reducedMotion) ?? V.enemySpriteFrame(s, enemy, art, reducedMotion);
       const orientation = enemy.variant && !enemy.reinforcement ? enemy.facing : -enemy.facing;
       g.scale(orientation * (1 + crouch * .4 + settling * .5 - fade * .16), 1 - crouch - settling - fade * .56);
       if (death) g.globalAlpha = 1 - fade;
@@ -452,14 +453,18 @@
       }
       g.fillStyle = '#111827';
       g.fillRect(x - 1, y - 10, w + 2, 7);
-      g.fillStyle = enemy.key === 'armored' ? '#85dcff' : '#ff7c97';
+      g.fillStyle = enemy.key === 'armored' ? '#85dcff' : enemy.key === 'hunter' ? '#ffbf6a' : '#ff7c97';
       g.fillRect(x + 1, y - 8, (w - 2) * (enemy.hp / enemy.maxHp), 3);
+      if (enemy.key === 'armored' && enemy.attackState !== 'recover') {
+        g.fillStyle = '#adf6ff';
+        g.fillRect(enemy.facing > 0 ? x + w + 2 : x - 5, y + 11, 3, h * .45);
+      }
       if (windingUp) {
         const progress = 1 - enemy.attackLeft / enemy.windup;
         g.fillStyle = '#ffd080';
         g.fillRect(x + w / 2 - 12, y - 15, 24 * progress, 3);
         g.globalAlpha = .28 + progress * .46;
-        if (enemy.key === 'jumper') {
+        if (enemy.key === 'jumper' || enemy.key === 'hunter') {
           g.strokeStyle = '#ffb6d9';
           g.strokeRect(enemy.targetX - 6, enemy.floorY - 9, w + 12, 8);
         } else {

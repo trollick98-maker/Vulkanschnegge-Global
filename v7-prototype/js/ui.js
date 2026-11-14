@@ -319,7 +319,8 @@
 
   function refreshWallet(campaign) {
     content('wallet-coins', campaign.coins + ' Münzen');
-    content('shop-loadout', V.shopLoadout(campaign));
+    const charge = campaign.ultimateCharge ?? 0;
+    content('shop-loadout', V.shopLoadout(campaign) + ' · Ulti ' + charge + ' %');
     const weapon = V.weapons[campaign.weapon];
     const art = get('hero-weapon');
     if (art.dataset.weapon !== weapon.id) {
