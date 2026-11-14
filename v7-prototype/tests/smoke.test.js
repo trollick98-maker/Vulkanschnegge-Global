@@ -2294,3 +2294,10 @@ test('cinematic sound allows the listed cues only and preserves their individual
   audio.stop();
   assert.ok(players.every(player => player.paused));
 });
+
+// Regression: a disabled spear landing platform must never initiate a dash.
+test('gladiator cancels a charged spear when its deck disappears', () => {
+  const source = read('js/boss-stage.js');
+  assert.match(source, /else if \(spear\.deck\.enabled === false\)/);
+  assert.match(source, /attack\.spear = null;[\s\S]*?attack\.recoverUntil = s\.elapsed \+ \.45;/);
+});
