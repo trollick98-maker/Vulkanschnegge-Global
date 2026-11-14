@@ -5,7 +5,11 @@
   const playing = new Set();
   const failed = new Set();
   const effects = new Map();
-  const effectNames = ['hit', 'hurt', 'guard', 'parry', 'dash', 'dash-fast', 'skid'];
+  const effectGains = new WeakMap();
+  const effectNames = ['hit', 'hurt', 'guard', 'parry', 'dash', 'dash-fast', 'skid', 'katana',
+    'reef-charge', 'greed-strike', 'diva-note', 'vortex-slam', 'god-fault', 'god-morph', 'god-collapse', 'god-arena-glitch', 'boss-break',
+    'gladiator-charge', 'gladiator-swing', 'gladiator-slam', 'hammer-land', 'ultimate-hammer', 'ultimate-katana', 'ultimate-spear', 'ultimate-axe', 'weapon-spear', 'weapon-axe', 'ultimate-ready', 'katana-charge', 'katana-mark', 'katana-release', 'spear-charge', 'spear-break',
+    'axe-charge', 'axe-break', 'hammer-rise', 'hammer-lock', 'jump', 'land', 'coin', 'trap-armed', 'trap-snap', 'enemy-leap', 'portal-open', 'clear-travel', 'clear-arena', 'clear-boss', 'clear-finale'];
   let scene = null;
   let wanted = null;
   let active = null;
@@ -13,6 +17,7 @@
   let effectsEnabled = true;
   let volume = .30;
   let zoneTime = 0;
+  let cinematicSounds = null;
 
   function pause() {
     for (const voice of playing) voice.audio.pause();
@@ -24,8 +29,15 @@
     }
   }
 
+  function createEffect(key) {
+    const audio = new Audio();
+    audio.preload = 'auto';
+    audio.src = 'assets/sfx/' + key + '.wav';
+    return audio;
+  }
+
   function play(voice) {
-    if (!scene || (!enabled && scene !== 'boss') || document.hidden) return Promise.resolve(false);
+    if (cinematicSounds || !scene || (!enabled && scene !== 'boss') || document.hidden) return Promise.resolve(false);
     return voice.audio.play().then(() => true, () => false);
   }
 
@@ -61,7 +73,7 @@
     const voice = voiceFor(active);
     const bossTrack = scene === 'boss' && active === wanted;
     voice.audio.muted = !enabled;
-    voice.audio.loop = scene === 'menu' || (!bossTrack && !V.soundtracks[active].once);
+    voice.audio.loop = scene === 'menu' || scene === 'boss' || !V.soundtracks[active].once;
     if (!playing.has(voice)) {
       voice.gain = scene === 'menu' || bossTrack ? 1 : 0;
       voice.audio.volume = enabled ? volume * voice.gain : 0;
@@ -82,6 +94,11 @@
       if (voice && !voice.audio.paused) return Promise.resolve(true);
       return select(wanted);
     },
+    startClear(kind) {
+      this.stop();
+      scene = 'clear';
+      this.effect('clear-' + kind);
+    },
     updateRunner(speed, dt) {
       if (scene !== 'arcade') return;
       zoneTime += dt;
@@ -93,17 +110,31 @@
         select('fast');
       }
     },
+    cinematic(on, sounds) {
+      cinematicSounds = on ? new Set(Array.isArray(sounds) ? sounds : [sounds]) : null;
+      if (on) {
+        pause();
+        pauseEffects();
+        if (effectsEnabled) {
+          for (const sound of cinematicSounds) {
+            if (effectNames.includes(sound) && !effects.has(sound)) effects.set(sound, [createEffect(sound)]);
+          }
+        }
+        return;
+      }
+      const voice = voices.get(active);
+      if (voice) {
+        voice.gain = 0;
+        voice.audio.volume = 0;
+        play(voice);
+      }
+    },
     current: () => active,
-    bossClock(fallbackTime) {
+    bossClock() {
       if (scene !== 'boss' || active !== wanted) return null;
       const audio = voices.get(active)?.audio;
-      if (!audio || (!audio.ended && (audio.paused || (audio.readyState < 2 && audio.currentTime === 0)))) return null;
-      const duration = Number.isFinite(audio.duration) ? audio.duration : 0;
-      // If playback only became available after the fallback clock started, join the live fight.
-      if (!audio.ended && audio.currentTime + .28 < fallbackTime) {
-        audio.currentTime = Math.min(fallbackTime, duration || fallbackTime);
-      }
-      return { time: audio.currentTime, duration, ended: audio.ended };
+      if (!audio || audio.paused || audio.readyState < 2) return null;
+      return { time: audio.currentTime, duration: Number.isFinite(audio.duration) ? audio.duration : 0 };
     },
     isEnabled: () => enabled,
     effectsEnabled: () => effectsEnabled,
@@ -111,22 +142,19 @@
       effectsEnabled = Boolean(on);
       if (!effectsEnabled) pauseEffects();
     },
-    effect(key, heavy = false) {
-      if (!scene || scene === 'story' || scene === 'menu' || !effectsEnabled || volume === 0 || document.hidden || !effectNames.includes(key)) return;
+    effect(key, heavy = false, gain = 1) {
+      if ((cinematicSounds && !cinematicSounds.has(key)) || !scene || scene === 'story' || scene === 'menu' || !effectsEnabled || volume === 0 || document.hidden || !effectNames.includes(key)) return;
       if (!effects.has(key)) effects.set(key, []);
       const pool = effects.get(key);
       const idle = pool.findIndex(voice => voice.paused);
       let audio;
       if (idle >= 0) audio = pool.splice(idle, 1)[0];
       else if (pool.length === 2) audio = pool.shift();
-      else {
-        audio = new Audio();
-        audio.preload = 'auto';
-        audio.src = 'assets/sfx/' + key + '.wav';
-      }
+      else audio = createEffect(key);
       pool.push(audio);
       if (audio.readyState > 0) audio.currentTime = 0;
-      audio.volume = volume * .92;
+      effectGains.set(audio, gain);
+      audio.volume = volume * .92 * gain;
       audio.playbackRate = heavy ? .82 : 1;
       audio.play().catch(() => {});
     },
@@ -143,10 +171,12 @@
     volume(value) {
       volume = V.clamp(value, 0, 1);
       for (const pool of effects.values()) {
-        for (const audio of pool) audio.volume = volume * .92;
+        for (const audio of pool) audio.volume = volume * .92 * (effectGains.get(audio) ?? 1);
       }
     },
     stop() {
+      pauseEffects();
+      cinematicSounds = null;
       scene = null;
       wanted = null;
       active = null;
@@ -159,7 +189,7 @@
       playing.clear();
     },
     tick(dt) {
-      if (!scene || (!enabled && scene !== 'boss') || document.hidden) return;
+      if (cinematicSounds || !scene || (!enabled && scene !== 'boss') || document.hidden) return;
       for (const voice of playing) {
         const target = voices.get(active) === voice ? 1 : 0;
         voice.gain = V.clamp(voice.gain + (target ? 1 : -1) * dt / 1.1, 0, 1);

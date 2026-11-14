@@ -7,8 +7,9 @@
     otter:{name:'Otter im Eimer',detail:'🧲 +20% Münz-Reichweite · 🐬 Schneller Antritt',hp:0,speed:0,acceleration:2150,gravity:1,magnet:1.2},
     frog:{name:'Frogo',detail:'🦘 −20% Schwerkraft · 🐇 Mittlerer Antritt',hp:0,speed:0,acceleration:1900,gravity:.8,magnet:1}
   };
-  const KEY='vulkanschnegge-v7-profile-v1';
-  let saved={};try{saved=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(_ignored){}
+  const KEY='vulkanschnegge-v7-overhaul-profile-v1';
+  const LEGACY_KEY='vulkanschnegge-v7-profile-v1';
+  let saved={};try{saved=JSON.parse(localStorage.getItem(KEY)??localStorage.getItem(LEGACY_KEY)??'{}')||{};}catch(_ignored){}
   const oldName=(()=>{try{return localStorage.getItem('vulkanschneggePlayerName')||'';}catch(_ignored){return '';}})();
   V.profile={name:typeof saved.name==='string'?saved.name.slice(0,24):oldName.slice(0,24),character:Object.hasOwn(V.characters,saved.character)?saved.character:'snail'};
   V.classicHighscore=(()=>{try{return Number(localStorage.getItem('vulkanschneckeHighscore'))||0;}catch(_ignored){return 0;}})();
