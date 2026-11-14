@@ -5,7 +5,7 @@
   const world = get('world-ui');
   const game = get('game-panel');
   const plot = get('map-plot');
-  const dialogs = ['upgrade-overlay', 'leaderboard-overlay', 'result', 'clear-overlay', 'story-overlay', 'boss-intro', 'shop-overlay'].map(get);
+  const dialogs = ['upgrade-overlay', 'leaderboard-overlay', 'result', 'clear-overlay', 'story-overlay', 'boss-intro', 'shop-overlay', 'campaign-setup'].map(get);
   const NS = 'http://www.w3.org/2000/svg';
   const difficultyLabels = { common: 'Häufig', rare: 'Selten', epic: 'Episch' };
   const kinds = { travel: 'REISE', arena: 'GEGNERLEVEL', arcade: 'ENDLOS', 'boss-chase': 'VERFOLGUNG' };
@@ -69,6 +69,59 @@
     }
     get('hero-figure').dataset.heroCharacter = character;
     content('character-detail', V.characters[character].detail);
+  }
+
+  function campaignSetup(character, weapon, first, start) {
+    const figures = get('setup-characters');
+    const weapons = get('setup-weapons');
+    const cancel = get('setup-cancel');
+    figures.replaceChildren();
+    weapons.replaceChildren();
+    cancel.classList.toggle('hidden', first);
+    cancel.onclick = closeCampaignSetup;
+    const choose = (container, id, choices, select) => {
+      const controls = [];
+      for (const [key, name, art, detail] of choices) {
+        const control = document.createElement('button');
+        control.type = 'button';
+        control.className = 'setup-choice';
+        control.dataset.choice = key;
+        const icon = document.createElement('img');
+        icon.src = V.imagePath(art);
+        icon.alt = '';
+        const copy = document.createElement('span');
+        const title = document.createElement('strong');
+        title.textContent = name;
+        copy.append(title);
+        if (detail) {
+          const caption = document.createElement('small');
+          caption.textContent = detail;
+          copy.append(caption);
+        }
+        control.append(icon, copy);
+        control.addEventListener('click', () => {
+          mark(key);
+          select(key);
+        });
+        controls.push(control);
+        container.append(control);
+      }
+      function mark(id) {
+        for (const control of controls) control.setAttribute('aria-pressed', String(control.dataset.choice === id));
+      }
+      mark(id);
+    };
+    choose(figures, character, Object.entries(V.characters).map(([key, c]) => [key, c.name, key]), id => { character = id; });
+    choose(weapons, weapon, Object.entries(V.starterWeapons).map(([key, detail]) =>
+      [key, V.weapons[key].name, V.weapons[key].sprite, detail]), id => { weapon = id; });
+    get('setup-start').onclick = () => start(character, weapon);
+    dialog('campaign-setup');
+  }
+
+  function closeCampaignSetup() {
+    if (get('setup-cancel').classList.contains('hidden')) return;
+    dialog(null);
+    get('campaign-form').querySelector('button')?.focus({ preventScroll: true });
   }
 
   function drawMapTerrain(campaign, graph) {
@@ -224,6 +277,8 @@
     content('hud-life', s.hp + ' / ' + s.maxHp);
     content('hud-coins', '◈ ' + s.coinsTaken);
     content('hud-dash', dashReady ? 'bereit' : 'lädt');
+    const hammer = local && s.weapon.hammer;
+    get('touch-drop').classList.toggle('hidden', !hammer);
     const ability = V.ultimateAbility(s);
     const charge = s.ultimateCharge ?? 0;
     const ready = Boolean(ability && charge >= 100 && !s.ultimate && b?.state !== 'defeated');
@@ -254,7 +309,7 @@
     const effects = b ? Object.keys(s.arenaFX).map(key => V.bossArenaEffects[key]) : [];
     const warning = b?.plan?.followUp ? 'KOMBO · ' + b.plan.attack.name : b?.plan?.attack.name ?? chase?.warning?.hint;
     const stageAlert = b && s.zones.some(z => z.stage && z.at > s.elapsed) ? 'Arena-Gefahr markiert' : '';
-    content('level-message', [s.feedbackTime > 0 ? s.feedback : '', warning, stageAlert, ...effects].filter(Boolean).join(' · '));
+    content('level-message', [s.feedbackTime > 0 ? s.feedback : hammer ? '↓ / S in der Luft · Hammersturz' : '', warning, stageAlert, ...effects].filter(Boolean).join(' · '));
   }
 
   const shopLabels = {
@@ -522,5 +577,5 @@
   }
   refreshCharacters();
 
-  V.ui = { map, showGame, hud, shop, closeShop, reward, result, showClear, showSlide, bossIntro, dialog };
+  V.ui = { campaignSetup, closeCampaignSetup, map, showGame, hud, shop, closeShop, reward, result, showClear, showSlide, bossIntro, dialog };
 })();

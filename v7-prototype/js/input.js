@@ -1,31 +1,31 @@
 (function () {
   'use strict';
   const V = window.VS7;
-  const I = V.input = { left: false, right: false, jump: false, dash: false, jumpQueued: false, dashQueued: false, ultimateQueued: false };
-  const held = { left: new Set(), right: new Set(), jump: new Set(), dash: new Set(), ultimate: new Set() };
+  const I = V.input = { left: false, right: false, jump: false, dash: false, jumpQueued: false, dashQueued: false, dropQueued: false, ultimateQueued: false };
+  const held = { left: new Set(), right: new Set(), jump: new Set(), dash: new Set(), drop: new Set(), ultimate: new Set() };
   const translate = {
     ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right',
-    Space: 'jump', ArrowUp: 'jump', KeyW: 'jump', KeyJ: 'dash', KeyX: 'dash', KeyF: 'ultimate'
+    ArrowDown: 'drop', KeyS: 'drop', Space: 'jump', ArrowUp: 'jump', KeyW: 'jump', KeyJ: 'dash', KeyX: 'dash', KeyF: 'ultimate'
   };
 
   function set(key, source, on) {
     const sources = held[key];
     if (!sources) return;
     if (on) {
-      if (!sources.size && (key === 'jump' || key === 'dash' || key === 'ultimate')) I[key + 'Queued'] = true;
+      if (!sources.size && (key === 'jump' || key === 'dash' || key === 'drop' || key === 'ultimate')) I[key + 'Queued'] = true;
       sources.add(source);
     } else sources.delete(source);
     I[key] = sources.size > 0;
   }
 
   window.addEventListener('keydown', event => {
-    if (/^(INPUT|TEXTAREA)$/.test(event.target?.tagName)) return;
+    if (/^(INPUT|TEXTAREA|SELECT)$/.test(event.target?.tagName)) return;
     if (event.code === 'Escape' && !event.repeat) {
       V.backToMap?.();
       return;
     }
     const key = translate[event.code];
-    if (!key || V.state?.mode !== 'play' || /^(BUTTON|A)$/.test(event.target?.tagName)) return;
+    if ((key === 'drop' && !V.state?.level?.weapon?.hammer) || !key || V.state?.mode !== 'play' || /^(BUTTON|A)$/.test(event.target?.tagName)) return;
     event.preventDefault();
     set(key, 'key:' + event.code, true);
   });
@@ -36,8 +36,8 @@
   });
 
   I.consume = () => {
-    const actions = { left: I.left, right: I.right, jump: I.jumpQueued, dash: I.dashQueued };
-    I.jumpQueued = I.dashQueued = false;
+    const actions = { left: I.left, right: I.right, jump: I.jumpQueued, dash: I.dashQueued, drop: I.dropQueued };
+    I.jumpQueued = I.dashQueued = I.dropQueued = false;
     return actions;
   };
   I.reset = () => {
@@ -45,7 +45,7 @@
       held[key].clear();
       I[key] = false;
     }
-    I.jumpQueued = I.dashQueued = I.ultimateQueued = false;
+    I.jumpQueued = I.dashQueued = I.dropQueued = I.ultimateQueued = false;
   };
   window.addEventListener('blur', I.reset);
 

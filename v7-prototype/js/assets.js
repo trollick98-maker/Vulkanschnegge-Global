@@ -44,6 +44,8 @@
     images['clear-boss-' + biome] = 'clear/boss-' + biome + '.webp';
     if (biome !== 'god') images['clear-' + biome] = 'clear/' + biome + '.webp';
   }
+  V.weaponArt = ['war-hammer', 'weapon-lightning', 'weapon-shock', 'weapon-dust', 'weapon-slash', 'weapon-thrust'];
+  for (const art of V.weaponArt) images[art] = 'waffen/' + art + '.png';
   V.godForms = ['god-echo', 'god-overwrite', 'god-panic'];
   for (const form of V.godForms) images[form] = 'god-exe/' + form.slice(4) + '.png';
   V.arenaGlitchArt = ['panorama', 'boss', 'deck', 'ground', 'prop-a', 'prop-b', 'shot', 'hazard', 'warning', 'burst'];

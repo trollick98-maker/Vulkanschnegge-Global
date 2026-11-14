@@ -133,10 +133,21 @@
       </div>
       <div id="touch-controls" class="touch-controls">
         <div><button data-key="left" aria-label="Links">◀</button><button data-key="right" aria-label="Rechts">▶</button></div>
-        <div><button data-key="ultimate" id="touch-ultimate" type="button" class="hidden" aria-label="Ultimate" aria-describedby="ultimate-status" disabled>ULT</button><button data-key="jump" aria-label="Springen">↥</button><button data-key="dash" aria-label="Dash">⚡</button></div>
+        <div><button data-key="ultimate" id="touch-ultimate" type="button" class="hidden" aria-label="Ultimate" aria-describedby="ultimate-status" disabled>ULT</button><button data-key="drop" id="touch-drop" type="button" class="hidden" aria-label="Hammersturz">↓</button><button data-key="jump" aria-label="Springen">↥</button><button data-key="dash" aria-label="Dash">⚡</button></div>
       </div>
     </section>
 
+    <section id="campaign-setup" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="setup-title">
+      <div class="overlay-card setup-card">
+        <h2 id="setup-title">Neue Kampagne</h2>
+        <fieldset><legend>Figur</legend><div id="setup-characters" class="setup-characters"></div></fieldset>
+        <fieldset><legend>Startwaffe</legend><div id="setup-weapons" class="setup-weapons"></div></fieldset>
+        <div class="setup-actions">
+          <button id="setup-cancel" class="quiet" type="button">Zur Karte</button>
+          <button id="setup-start" class="primary" type="button">Kampagne starten</button>
+        </div>
+      </div>
+    </section>
     <section id="shop-overlay" class="overlay hidden" role="dialog" aria-modal="true" aria-labelledby="shop-title">
       <div class="overlay-card shop-card">
         <div class="shop-top">

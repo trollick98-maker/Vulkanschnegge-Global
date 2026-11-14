@@ -7,7 +7,7 @@
   const effects = new Map();
   const effectNames = ['hit', 'hurt', 'guard', 'parry', 'dash', 'dash-fast', 'skid', 'katana',
     'reef-charge', 'greed-strike', 'diva-note', 'vortex-slam', 'god-fault', 'god-morph', 'god-collapse', 'god-arena-glitch', 'boss-break',
-    'gladiator-charge', 'gladiator-swing', 'gladiator-slam', 'ultimate-katana', 'ultimate-spear', 'ultimate-axe', 'clear-travel', 'clear-arena', 'clear-boss', 'clear-finale'];
+    'gladiator-charge', 'gladiator-swing', 'gladiator-slam', 'hammer-land', 'ultimate-hammer', 'ultimate-katana', 'ultimate-spear', 'ultimate-axe', 'clear-travel', 'clear-arena', 'clear-boss', 'clear-finale'];
   let scene = null;
   let wanted = null;
   let active = null;

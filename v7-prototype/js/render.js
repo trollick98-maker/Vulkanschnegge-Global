@@ -1164,10 +1164,89 @@
     for (const q of s.projectiles) drawProjectile(q);
   }
 
+  function drawHammer(s) {
+    const p = s.player;
+    const cut = s.ultimate?.hammer;
+    const strike = s.hammerImpactFx;
+    const falling = p.hammerDive || (cut && s.ultimate.time >= V.hammerTiming.lock && !p.grounded) ||
+      (!p.grounded && p.vy > 315);
+    const planted = strike && s.elapsed - strike.at < .16 && p.grounded;
+    const pose = planted ? Math.PI * .79 : falling ? Math.PI : cut ? -.48 : -.64;
+    g.save();
+    g.translate(p.x + p.w * (.5 + p.facing * (falling ? .06 : .25)), p.y + p.h * .58);
+    g.scale(p.facing, 1);
+    if (falling && !reducedMotion) {
+      g.globalAlpha = .38;
+      fittedSprite('weapon-lightning', -20, -96, 40, 104);
+      g.globalAlpha = 1;
+    }
+    g.rotate(pose);
+    const y = falling || planted ? -46 : -38;
+    if (!sprite('war-hammer', -16, y, 32, 56)) {
+      g.fillStyle = '#bd865d';
+      g.fillRect(-3, -23, 6, 33);
+      g.fillStyle = '#a7eeff';
+      g.fillRect(-15, -37, 30, 16);
+    }
+    g.restore();
+  }
+
+  function drawHammerTarget(s, cut) {
+    const { target } = cut.hammer;
+    const timing = V.hammerTiming;
+    const charge = V.clamp(cut.time / timing.lock, 0, 1);
+    const radius = V.lerp(118, 28, charge);
+    g.save();
+    g.translate(target.x, target.y - 3);
+    g.strokeStyle = '#cff9ff';
+    g.fillStyle = '#a7eeff';
+    for (let ring = 0; ring < 3; ring++) {
+      g.globalAlpha = (.30 + charge * .62) * (1 - ring * .17);
+      const r = Math.max(9, radius - 11 * ring);
+      g.lineWidth = ring === 0 ? 2 + charge * 2 : 1.5;
+      g.beginPath();
+      g.ellipse(0, 0, r, r * .24, 0, 0, Math.PI * 2);
+      g.stroke();
+    }
+    g.globalAlpha = .65 + charge * .34;
+    g.fillRect(-12, -1.5, 24, 3);
+    g.fillRect(-1.5, -7, 3, 14);
+    g.restore();
+  }
+
+  function drawHammerImpact(s, impact, age) {
+    if (age < 0 || age > .47) return;
+    const { x, y, radius, ultimate } = impact;
+    g.save();
+    const progress = age / .47;
+    g.globalAlpha = (1 - progress) * .95;
+    if (ultimate && age < .23) {
+      g.globalAlpha = .94 * (1 - age / .24);
+      if (reducedMotion) {
+        g.fillStyle = '#b6f2ff';
+        g.fillRect(x - 3, y - 68, 6, 68);
+      } else sprite('weapon-lightning', x - 65, (s.cameraY ?? 0) - 40, 130, y - (s.cameraY ?? 0) + 40);
+    }
+    g.globalAlpha = 1 - progress;
+    const span = radius * (1 + progress * .56);
+    fittedSprite('weapon-shock', x - span, y - 66, span * 2, 69, true);
+    if (!reducedMotion) fittedSprite('weapon-dust', x - radius, y - 43, radius * 2, 48, true);
+    g.strokeStyle = '#b6f2ff';
+    g.lineWidth = 2;
+    g.beginPath();
+    g.ellipse(x, y - 2, span, 5 + radius * .15, 0, 0, Math.PI * 2);
+    g.stroke();
+    g.restore();
+  }
+
   function drawWeapon(s) {
     const p = s.player;
     const weapon = s.weapon;
     if (!weapon.sprite) return;
+    if (weapon.hammer) {
+      drawHammer(s);
+      return;
+    }
     const swing = p.swing;
     const pose = V.weaponPose(s, swing?.time ?? 0);
     const length = swing ? weapon.reach : weapon.reach * .68;
@@ -1213,7 +1292,10 @@
     }
     if (swing) {
       g.globalAlpha = .85 * (1 - swing.time / weapon.duration);
-      fittedSprite('fx-katana-cut', length - 19, -18, 34, 36);
+      const traceWidth = weapon.id === 'reef-spear' ? 65 : weapon.id === 'anchor-axe' ? 56 : 45;
+      fittedSprite(weapon.trail, length - traceWidth * .45, -24, traceWidth, 48);
+      g.globalAlpha *= .7;
+      fittedSprite('fx-katana-cut', length - 14, -15, 28, 30);
     }
     g.restore();
   }
@@ -1472,7 +1554,8 @@
     skin = V.arenaGlitchThemes[skinKey];
     const arena = section.kind === 'arena';
     const local = V.usesMomentum(section);
-    const ultimate = section.ultimate ? ultimateView(section) : null;
+    const hammer = section.ultimate?.hammer;
+    const ultimate = section.ultimate && !hammer ? ultimateView(section) : null;
     const view = ultimate ?? V.cameraView(section);
     if (view) {
       g.save();
@@ -1506,8 +1589,17 @@
       drawBoss(section);
     }
     drawMovementEffects(section);
-    drawPlayer(section);
-    drawWeapon(section);
+    if (hammer && hammer.landedAt === undefined) drawHammerTarget(section, section.ultimate);
+    const p = section.player;
+    if (!hammer || p.y + p.h >= section.cameraY) {
+      drawPlayer(section);
+      drawWeapon(section);
+    }
+    if (section.hammerImpactFx) {
+      const age = hammer && hammer.landedAt !== undefined ? section.ultimate.time - hammer.landedAt :
+        section.elapsed - section.hammerImpactFx.at;
+      drawHammerImpact(section, section.hammerImpactFx, age);
+    }
     drawParticles(section, false);
     drawImpacts(section);
     drawUltimateMarks(section);

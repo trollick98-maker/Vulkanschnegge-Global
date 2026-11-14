@@ -23,6 +23,8 @@
           detail: 'Gerader Stoß mit großer Reichweite. 1,35-facher Dash-Schaden.' },
         { id: 'anchor-axe', kind: 'weapon', name: 'Ankerbeil', art: 'shop-axe', price: 105, weapon: 'anchor-axe',
           detail: 'Breiter Hieb auf kurze Distanz. 2,05-facher Dash-Schaden.' },
+        { id: 'war-hammer', kind: 'weapon', name: 'Kriegshammer', art: 'war-hammer', price: 95, weapon: 'war-hammer',
+          detail: 'Landungen treffen mit der Fallgeschwindigkeit. Mit ↓ oder S aus der Luft stürzen. Ulti: Donnerschlag.' },
         { id: 'smith-seal', kind: 'perk', name: 'Schmiedesiegel', art: 'shop-seal', price: 92, perk: 'turboHunter',
           detail: 'Dauerhaft +25 % Dash-Schaden. Bosskonter räumen ein weiteres Geschoss ab.' }
       ] },

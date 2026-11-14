@@ -229,7 +229,7 @@
       p.invuln = 0;
       V.hurt(s);
       Object.assign(p, { x: s.checkpointX, y: s.checkpointY - p.h, vx: 0, vy: 0, grounded: true,
-        jumps: 0, airDash: true, dashBuffer: 0, jumpBuffer: 0, dashCooldown: 0, angle: 0, landTime: 0, swing: null });
+        jumps: 0, airDash: true, dashBuffer: 0, jumpBuffer: 0, dashCooldown: 0, angle: 0, landTime: 0, swing: null, hammerDive: false });
       s.cameraX = V.arenaCameraTarget(s);
       s.cameraY = s.checkpointY - 405;
       s.supportY = s.checkpointY;

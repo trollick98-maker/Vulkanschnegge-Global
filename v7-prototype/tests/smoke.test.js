@@ -1591,7 +1591,7 @@ test('the traders, wares and weapon sprites are available in the offline package
   const art = ['shop-purse', ...Object.values(V.shops).flatMap(stall => [
     stall.portrait, ...stall.items.map(item => item.art)
   ])];
-  assert.equal(art.length, 13);
+  assert.equal(art.length, 14);
   for (const id of art) {
     const bytes = fs.readFileSync(path.join(root, V.imagePath(id)));
     assert.equal(bytes[25], 6, id);
@@ -2065,4 +2065,91 @@ test('enemy animation sheets cover every biome, variant, and dimension reinforce
     const data = fs.readFileSync(path.join(root, V.imagePath('anim-' + sheet)));
     assert.equal(data.toString('ascii', 8, 12), 'WEBP', sheet);
   }
+});
+
+test('all four starters can be selected for free and the equipped weapon survives reloading', () => {
+  const { V } = logic();
+  for (const id of Object.keys(V.starterWeapons)) {
+    const campaign = V.createCampaign('choose-' + id, 'otter', id);
+    assert.equal(campaign.weapon, id);
+    assert.equal(campaign.character, 'otter');
+    assert.equal(campaign.coins, 0);
+    V.saveCampaign(campaign);
+    assert.equal(V.loadCampaign().weapon, id);
+    assert.equal(V.loadCampaign().loadoutChosen, true);
+  }
+  const fresh = V.createCampaign('fresh', 'snail');
+  V.saveCampaign(fresh);
+  assert.equal(V.loadCampaign().loadoutChosen, false);
+  fresh.story.intro = true;
+  V.saveCampaign(fresh);
+  assert.equal(V.loadCampaign().loadoutChosen, true);
+});
+
+test('hammer dash is unarmed and landings deal more damage with faster falls', () => {
+  const { V } = logic();
+  const seed = 'hammer-drop';
+  const graph = V.generateMap(seed);
+  const make = () => {
+    const s = V.newArena(graph.byId['reef-arena'], 'snail', {}, seed);
+    s.weapon = V.weapons['war-hammer'];
+    Object.assign(s.player, { x: 173, vx: 300 });
+    s.enemies = [{ x: 195, y: V.GROUND - 30, w: 36, h: 30, hp: 700 }];
+    return s;
+  };
+  const s = make();
+  V.movePlayer(s, V.rules.step, { dash: true });
+  assert.equal(s.player.swing, null);
+  assert.equal(s.player.dashPower, V.dashDamage(s, 300));
+  assert.equal(s.enemies[0].hp, 700);
+  const hits = [];
+  for (const amount of [250, 450, 875]) {
+    const run = make();
+    const p = run.player;
+    Object.assign(p, { grounded: false, vx: 0, vy: amount, y: V.GROUND - p.h - 1 });
+    V.movePlayer(run, V.rules.step, idle);
+    assert.ok(p.grounded);
+    hits.push(700 - run.enemies[0].hp);
+    V.movePlayer(run, V.rules.step, idle);
+    assert.equal(700 - run.enemies[0].hp, hits.at(-1));
+  }
+  assert.equal(hits[0], 0);
+  assert.ok(hits[1] > 0 && hits[2] > hits[1]);
+  const diving = make();
+  const p = diving.player;
+  Object.assign(p, { grounded: false, y: V.GROUND - p.h - 48, vy: -95, vx: 0 });
+  V.movePlayer(diving, V.rules.step, { drop: true, dash: true, jump: true });
+  assert.ok(p.hammerDive && p.vy > 365 && !p.dashTime && !p.swing);
+  for (let i = 0; i < 25 && !p.grounded; i++) V.movePlayer(diving, V.rules.step, idle);
+  assert.ok(p.grounded && !p.hammerDive);
+  assert.ok(diving.enemies[0].hp < 700 && diving.ultimateCharge > 0);
+});
+
+test('hammer ultimate leaves the screen, can be aimed and strikes once in a small area', () => {
+  const { V } = logic();
+  const seed = 'hammer-ultimate';
+  const s = V.newCombat(V.generateMap(seed).byId.god, 'snail', {}, seed);
+  const p = s.player;
+  s.weapon = V.weapons['war-hammer'];
+  Object.assign(p, { x: 300, y: V.GROUND - p.h });
+  Object.assign(s.boss, { x: 385, y: V.GROUND - s.boss.h, phase: 2, hp: 2500 });
+  s.enemies = [
+    { x: 453, y: V.GROUND - 25, w: 32, h: 25, hp: 200 },
+    { x: 730, y: V.GROUND - 25, w: 32, h: 25, hp: 200 },
+    { x: 453, y: V.GROUND - 202, w: 32, h: 25, hp: 200 }
+  ];
+  V.chargeUltimate(s, 100);
+  assert.ok(V.beginUltimate(s));
+  const origin = s.ultimate.hammer.origin;
+  for (let i = 0; i < 36; i++) V.updateUltimate(s, V.rules.step, { right: true });
+  assert.ok(p.y + p.h < s.cameraY);
+  assert.ok(s.ultimate.hammer.target.x > origin + 100);
+  assert.equal(s.boss.hp, 2500);
+  while (s.ultimate) V.updateUltimate(s, V.rules.step, idle);
+  assert.equal(p.y + p.h, s.hammerImpactFx.y);
+  assert.ok(p.grounded);
+  assert.equal(s.boss.hp, 600);
+  assert.deepEqual(s.enemies.map(e => e.hp).join(','), '0,200,200');
+  assert.equal(s.elapsed, 0);
+  assert.equal(s.ultimateCharge, 0);
 });

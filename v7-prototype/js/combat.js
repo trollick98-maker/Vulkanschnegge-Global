@@ -346,6 +346,7 @@
     V.updateArenaGlitch(s);
     V.moveBossDecks(s, dt);
     V.movePlayer(s, dt, actions);
+    if (b.state === 'defeated') return;
     if (s.snaredUntil > s.elapsed) s.player.vx *= .90;
     s.cameraX = V.lerp(s.cameraX, V.arenaCameraTarget(s), Math.min(1, dt * 8));
     const [dx, dy] = updateBoss(s, dt, clock);

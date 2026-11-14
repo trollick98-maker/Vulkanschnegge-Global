@@ -62,13 +62,14 @@
     return { nodes, edges, byId, lastGod: entrance, final: LAST };
   };
 
-  V.createCampaign = function (seed, character) {
+  V.createCampaign = function (seed, character, starter) {
     const label = String(seed || '').trim().slice(0, 40);
+    const weapon = Object.hasOwn(V.starterWeapons ?? {}, starter) ? starter : 'katana';
     return {
       version: 1, seed: label || Date.now().toString(36) + Math.floor(Math.random() * 46656).toString(36),
       character: Object.hasOwn(V.characters, character) ? character : 'snail',
       position: START, cleared: [START], travelled: [], build: {}, arrival: null, pending: null,
-      coins: 0, purchases: [], weapon: 'katana', supply: null,
+      coins: 0, purchases: weapon === 'katana' ? [] : [weapon], weapon, supply: null, loadoutChosen: starter !== undefined,
       story: { intro: false, rift: false, source: false, rescue: false }
     };
   };
@@ -170,6 +171,8 @@
         }
       }
       V.loadShop(campaign, saved, graph);
+      campaign.loadoutChosen = saved.loadoutChosen === true || campaign.travelled.length > 0 ||
+        campaign.cleared.length > 1 || !!campaign.arrival || campaign.story.intro || campaign.weapon !== 'katana';
       return campaign;
     } catch (_) {
       return null;

@@ -5,9 +5,11 @@
     katana: { name: 'Nullschnitt', damage: 460, bossDamage: 500, color: '#fff1bd', hits: 8, sound: 'ultimate-katana' },
     'reef-spear': { name: 'Flutlanze', damage: 390, bossDamage: 580, color: '#a3fff2', hits: 3, sound: 'ultimate-spear',
       reaches: (dx, dy, facing) => dx * facing >= -25 && Math.abs(dy) <= 120 },
+    'war-hammer': { name: 'Donnerschlag', color: '#a7eeff', hammer: true, sound: 'ultimate-hammer' },
     'anchor-axe': { name: 'Ankerbeben', damage: 540, bossDamage: 620, color: '#ffac79', hits: 4, sound: 'ultimate-axe',
       reaches: (dx, dy) => Math.hypot(dx, dy * 1.25) <= 290 }
   };
+  const hammerTiming = V.hammerTiming = { rise: .25, lock: 1.24, impact: 1.47, end: 1.88 };
   V.ultimateTiming = { focus: .24, swing: .76, retreat: .92, end: 1.19 };
   V.ultimateAbility = s => V.usesMomentum(s) ? abilities[s.weapon.id] : null;
   V.chargeUltimate = function (s, points) {
@@ -18,9 +20,21 @@
   V.beginUltimate = function (s) {
     const ability = V.ultimateAbility(s);
     if (!ability || s.ultimate || (s.ultimateCharge ?? 0) < 100 || s.outcome !== null || s.boss?.state === 'defeated') return false;
+    const p = s.player;
+    const cut = { ability, time: 0, facing: p.facing };
+    if (ability.hammer) {
+      const origin = p.x + p.w / 2;
+      const target = hammerTarget(s, origin, p.y + p.h);
+      if (!target) return false;
+      cut.hammer = { target, origin, y: p.y, sky: (s.cameraY ?? 0) - V.H * .66 };
+      p.hammerDive = false;
+      p.dashTime = p.dashLeft = p.dashBuffer = p.jumpBuffer = 0;
+      p.swing = null;
+      p.angle = 0;
+    }
     s.ultimateCharge = 0;
     s.cameraCue = null;
-    s.ultimate = { ability, time: 0, facing: s.player.facing };
+    s.ultimate = cut;
     V.audio?.cinematic?.(true, ability.sound);
     return true;
   };
@@ -53,10 +67,78 @@
     }
   }
 
-  V.updateUltimate = function (s, dt) {
+  function hammerTarget(s, x, feet, requireUnderfoot = false) {
+    const p = s.player;
+    const margin = p.w / 2 + 6;
+    let best;
+    let bestDistance = Infinity;
+    for (const deck of s.platforms) {
+      if (deck.enabled === false || deck.y < s.cameraY + 65 || deck.y > s.cameraY + V.H - 20 ||
+          deck.worldX + deck.w < s.cameraX + margin || deck.worldX > s.cameraX + V.W - margin) continue;
+      const half = Math.min(p.w * .34, deck.w / 2);
+      const left = Math.max(deck.worldX + half, s.cameraX + margin);
+      const right = Math.min(deck.worldX + deck.w - half, s.cameraX + V.W - margin);
+      if (right < left || (requireUnderfoot && (x < left || x > right))) continue;
+      const center = V.clamp(x, left, right);
+      const distance = Math.abs(center - x) * 2 + Math.abs(deck.y - feet) + (deck.y + 2 < feet ? 75 : 0);
+      if (distance >= bestDistance) continue;
+      best = { x: center, y: deck.y, ground: deck.ground, checkpoint: deck.worldX + 54 };
+      bestDistance = distance;
+    }
+    return best;
+  }
+
+  function updateHammer(s, dt, input) {
+    const { hammer, time } = s.ultimate;
+    const p = s.player;
+    if (time < hammerTiming.lock) {
+      const direction = Number(Boolean(input.right)) - Number(Boolean(input.left));
+      if (direction) {
+        const target = hammerTarget(s, hammer.target.x + direction * 275 * dt, hammer.target.y, true);
+        if (target) hammer.target = target;
+      }
+    }
+    const target = hammer.target;
+    const pastRise = time >= hammerTiming.rise;
+    const rise = V.clamp(time / hammerTiming.rise, 0, 1);
+    const fall = V.clamp((time - hammerTiming.lock) / (hammerTiming.impact - hammerTiming.lock), 0, 1);
+    p.x = V.lerp(hammer.origin, target.x, rise) - p.w / 2;
+    const end = target.y - p.h;
+    if (fall >= 1) p.y = end;
+    else if (pastRise) p.y = V.lerp(hammer.sky, end, fall ** 1.45);
+    else p.y = V.lerp(hammer.y, hammer.sky, 1 - (1 - rise) ** 2);
+    p.vx = p.vy = 0;
+    p.grounded = time >= hammerTiming.impact;
+    if (p.grounded && hammer.landedAt === undefined) {
+      hammer.landedAt = time;
+      p.airDash = true;
+      p.jumps = 0;
+      p.coyote = 0;
+      p.landTime = .13;
+      p.invuln = Math.max(p.invuln, .26);
+      if (s.kind === 'arena') {
+        s.supportY = target.y;
+        if (target.ground) {
+          s.checkpointX = target.checkpoint;
+          s.checkpointY = target.y;
+        }
+      }
+      V.hammerImpact(s, target.x, target.y, 0, true);
+    }
+    if (time < hammerTiming.end) return;
+    s.hammerImpactFx.at = s.elapsed - (time - hammer.landedAt);
+    V.audio?.cinematic?.(false);
+    s.ultimate = null;
+  }
+
+  V.updateUltimate = function (s, dt, input = {}) {
     const cut = s.ultimate;
     const previous = cut.time;
     cut.time += dt;
+    if (cut.hammer) {
+      updateHammer(s, dt, input);
+      return;
+    }
     if (previous < V.ultimateTiming.swing && cut.time >= V.ultimateTiming.swing) V.audio?.effect?.(cut.ability.sound);
     if (cut.time < V.ultimateTiming.end) return;
     V.audio?.cinematic?.(false);

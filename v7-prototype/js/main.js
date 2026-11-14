@@ -57,7 +57,9 @@
       atlas.scrollIntoView({ block: 'start' });
       if (fromTitle) atlas.focus({ preventScroll: true });
     }
-    if (!campaign.story.rescue &&
+    if (!campaign.loadoutChosen && !state.testMode) {
+      chooseCampaign(campaign.seed, true);
+    } else if (!campaign.story.rescue &&
       (campaign.pending?.node === graph.final || campaign.cleared.includes(graph.final))) {
       endStory();
     } else if (campaign.pending) {
@@ -132,6 +134,7 @@
       state.level = V.newBossChase(section.node, campaign.character, campaign.build, campaign.seed);
     }
     if (section.kind !== 'arcade') V.applyShopLoadout(state.level, campaign);
+    for (const art of V.weaponArt) V.image(art);
     if (section.kind !== 'arcade') V.image('clear-' + V.clearArt(state.level));
     if (section.kind === 'arena' || state.level.chase) {
       for (const part of V.expansionArt) V.image('exp-' + part);
@@ -246,9 +249,9 @@
       V.beginUltimate(level);
     }
     if (level.ultimate) {
-      V.input.consume();
+      const actions = V.input.consume();
       carry = 0;
-      V.updateUltimate(level, dt);
+      V.updateUltimate(level, dt, actions);
       get('game-panel').classList.toggle('ultimate-active', Boolean(level.ultimate));
       ui.hud(level);
       V.render(level);
@@ -288,7 +291,8 @@
   }
 
   V.backToMap = function () {
-    if (!get('shop-overlay').classList.contains('hidden')) ui.closeShop();
+    if (!get('campaign-setup').classList.contains('hidden')) ui.closeCampaignSetup();
+    else if (!get('shop-overlay').classList.contains('hidden')) ui.closeShop();
     else if (!get('leaderboard-overlay').classList.contains('hidden')) ui.dialog(null);
     else if (['play', 'boss-intro', 'result', 'clear'].includes(state.mode)) showMap();
   };
@@ -341,6 +345,17 @@
     level.outcome = true;
     finish();
   });
+  function chooseCampaign(seed, first = false) {
+    ui.campaignSetup(first ? campaign.character : V.profile.character, campaign.weapon, first, (character, weapon) => {
+      campaign = V.createCampaign(seed, character, weapon);
+      V.profile.character = character;
+      V.saveProfile();
+      graph = V.generateMap(campaign.seed);
+      V.saveCampaign(campaign);
+      showMap();
+    });
+  }
+
   get('campaign-form').addEventListener('submit', event => {
     event.preventDefault();
     const seedInput = get('seed-input');
@@ -361,10 +376,7 @@
     }
     if ((campaign.travelled.length || campaign.arrival) &&
       !window.confirm('Eine neue Kampagne ersetzt diesen Kampagnenspielstand. Neu starten?')) return;
-    campaign = V.createCampaign(seedInput.value, V.profile.character);
-    graph = V.generateMap(campaign.seed);
-    V.saveCampaign(campaign);
-    showMap();
+    chooseCampaign(seedInput.value);
   });
   get('story-next').addEventListener('click', () => {
     const story = state.story;

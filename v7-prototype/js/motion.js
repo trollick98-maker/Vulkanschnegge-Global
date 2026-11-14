@@ -42,14 +42,14 @@
     V.emitParticles(s, 'impact', x, y, { color });
   };
 
-  V.hitFeedback = function (s, kind, x, y, { amount, heavy = false, direction = 1 } = {}) {
+  V.hitFeedback = function (s, kind, x, y, { amount, heavy = false, direction = 1, silent = false } = {}) {
     const look = hitLooks[kind];
     const life = kind === 'hurt' ? .46 : .39;
     const size = look.size * (heavy ? 1.36 : 1);
     const stop = s.kind === 'arena' ? look.stop + (heavy ? .013 : 0) : 0;
     addEffect(s, { kind, x, y, color: look.color, size, amount, direction, left: life, life }, stop);
     V.emitParticles(s, kind, x, y, { color: look.color, heavy, direction });
-    V.audio?.effect?.(kind, heavy);
+    if (!silent) V.audio?.effect?.(kind, heavy);
   };
 
   function movementFeedback(s, kind, direction, speed, p = s.player) {
@@ -133,6 +133,7 @@
     if (V.usesMomentum(s)) V.slowOnImpact(s);
     else p.vx = direction * 220;
     p.dashTime = 0;
+    p.hammerDive = false;
     p.swing = null;
     V.hitFeedback(s, 'hurt', p.x + p.w / 2, p.y + p.h / 2, { amount, direction });
     V.say(s, 'Treffer!');
@@ -156,7 +157,7 @@
     const wasGrounded = p.grounded;
     const previousBottom = p.y + p.h;
     p.grounded = false;
-    p.vy += p.gravity * (s.gravityFactor ?? 1) * dt;
+    p.vy += p.gravity * (s.gravityFactor ?? 1) * (p.hammerDive ? 2.8 : 1) * dt;
     p.y += p.vy * dt;
     let floor = s.kind === 'arena' ? Infinity : G;
     let landed;
@@ -171,6 +172,7 @@
       }
     }
     if (p.y + p.h >= floor) {
+      const fallSpeed = p.vy;
       if (!wasGrounded && p.vy > 220) {
         p.landTime = .16;
         V.emitParticles(s, 'land', p.x + p.w / 2, floor - 3, { spread: p.w });
@@ -187,6 +189,10 @@
           s.checkpointY = floor;
         }
       }
+      if (!wasGrounded && local && s.weapon.hammer && s.outcome === null && s.boss?.state !== 'defeated') {
+        V.hammerImpact(s, p.x + p.w / 2, floor, fallSpeed);
+      }
+      p.hammerDive = false;
     }
     if (!local && p.y < -70) {
       p.y = -70;
@@ -255,7 +261,12 @@
       s.effects[i].left -= dt;
       if (s.effects[i].left <= 0) s.effects.splice(i, 1);
     }
-    if (p.jumpBuffer > 0 && p.jumps < 2 + s.extraJumps) {
+    if (actions.drop && local && s.weapon.hammer && !p.grounded && !p.hammerDive) {
+      p.hammerDive = true;
+      p.vy = Math.max(365, p.vy);
+      p.dashTime = p.dashLeft = p.dashBuffer = p.jumpBuffer = 0;
+    }
+    if (!p.hammerDive && p.jumpBuffer > 0 && p.jumps < 2 + s.extraJumps) {
       if (!p.grounded && p.coyote <= 0 && p.jumps === 0) p.jumps = 1;
       if (s.airSpring && p.jumps === 1) p.airDash = true;
       p.vy = p.jumps === 0 ? -motion.jump : -660 * p.doubleJumpBoost;
@@ -263,7 +274,7 @@
       p.coyote = p.jumpBuffer = p.landTime = 0;
       p.jumps++;
     }
-    const launch = p.dashBuffer > 0 && p.dashCooldown <= 0 && p.dashTime <= 0 && (!local || p.airDash);
+    const launch = !p.hammerDive && p.dashBuffer > 0 && p.dashCooldown <= 0 && p.dashTime <= 0 && (!local || p.airDash);
     V.updateSkid(s, p, local && p.dashTime <= 0 && !launch, direction);
     if (local && p.dashTime <= 0 && !launch) accelerate(s, direction, dt);
     if (!local && direction) p.facing = direction;

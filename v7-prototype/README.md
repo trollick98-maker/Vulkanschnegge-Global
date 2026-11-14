@@ -2,6 +2,12 @@
 
 Entpacke die ZIP und öffne `v7-boss-overhaul/index.html`. Im Quellstand liegt das Spiel in `v7-prototype/`. Der Offline-Build enthält alle zehn MP3s und alle Grafiken. Alternativ im Spielordner `python -m http.server 8000` ausführen und im Browser `http://localhost:8000` öffnen. Der lokale Server gibt dem Spielstand einen festen Browser-Ursprung. Der Overhaul speichert Kampagne und Profil separat. Ein V7-Spielstand am selben Browser-Ursprung kann beim ersten Start übernommen werden. Das Schneggboard liest die Online-Rangliste nur auf Knopfdruck und braucht dafür Internet.
 
+## Kriegshammer und Startwaffe
+
+Beim Kampagnenstart wählst du Figur und Startwaffe. Zur Wahl stehen Glutkatana, Riffspieß, Ankerbeil und Kriegshammer. Die gewählte Waffe ist sofort ausgerüstet. In laufenden Kampagnen gibt es den Hammer in der Schmiede.
+
+Der Kriegshammer trifft beim Landen in Gegnerleveln und Bossarenen. Je höher die Fallgeschwindigkeit, desto mehr Schaden. Mit **S** oder **↓** in der Luft beschleunigst du den Sturz. Beim Dash bleibt es beim Grundschaden. Bei voller Ulti-Leiste startet **F** den Donnerschlag. Schnegg verschwindet nach oben und du richtest die kleiner werdenden Zielringe mit **A/D** oder den Pfeiltasten aus. Der Blitz schlägt in einem engen Bereich ein und kann bis zu 1.900 HP abziehen. Bossphasen begrenzen den Schaden an der nächsten Phasenschwelle.
+
 ## Spielen
 
 Beim Öffnen des Spiels erscheint **LAUNCH** auf schwarzem Grund. Ein Klick oder Tipp startet „Home, At Last“ und das Titelbild. Der Pixel-Titel sinkt acht Sekunden lang vor Schnegg und den fünf Götter-Sternbildern ins Bild. Ein weiterer Klick oder Tipp beschleunigt den Flug. Sobald der Titel angekommen ist, erscheint **Start** und führt direkt zur Weltkarte. Die Musik läuft dabei an derselben Stelle weiter. Der Prolog beginnt vor der ersten Reise.

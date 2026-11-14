@@ -282,6 +282,7 @@ a.primary:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
   filter: drop-shadow(0 3px 2px #02060ccf);
 }
 .hero-weapon[data-weapon="reef-spear"] { width: 77%; transform: translateY(-50%) rotate(-53deg); }
+.hero-weapon[data-weapon="war-hammer"] { width: 41%; transform: translateY(-62%) rotate(28deg); }
 .hero-weapon[data-weapon="anchor-axe"] { width: 54%; transform: translateY(-50%) rotate(-42deg); }
 .campaign-hero::after {
   z-index: -1;
@@ -888,3 +889,33 @@ kbd { padding: 2px 5px; background: #132439; border: 1px solid #3f596e; border-r
 .ultimate-active .game-hud,
 .ultimate-active .game-bottom,
 .ultimate-active #dimension-glitch { visibility: hidden; }
+
+.setup-card { width: min(625px, 100%); }
+.setup-card fieldset { padding: 0; margin: 0 0 14px; border: 0; }
+.setup-card legend { padding: 0; margin: 0 0 7px; color: #b8dbdd; font-size: 13px; font-weight: 700; }
+.setup-characters, .setup-weapons { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
+.setup-weapons { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.setup-choice {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 51px;
+  padding: 7px;
+  background: #101d30;
+  border: 1px solid #446473;
+  border-radius: 7px;
+  color: #e3edf1;
+  text-align: left;
+}
+.setup-choice[aria-pressed="true"] { background: #2d2933; border-color: #f5c079; color: #ffe1a0; }
+.setup-choice img { width: 32px; height: 35px; object-fit: contain; image-rendering: pixelated; flex: 0 0 auto; }
+.setup-choice small { display: block; margin-top: 4px; font-size: 11px; line-height: 1.3; color: #bacbd0; }
+.setup-actions { display: flex; justify-content: flex-end; gap: 8px; }
+#touch-drop { color: #bcf4ff; margin-left: 0; }
+@media (max-width: 480px) {
+  .setup-card { padding: 16px; }
+  .setup-choice { gap: 4px; padding: 5px; font-size: 12px; }
+  .setup-choice img { width: 24px; height: 29px; }
+  .touch-controls > div { gap: 5px; }
+  .touch-controls button { width: clamp(37px, 12vw, 52px); }
+}
