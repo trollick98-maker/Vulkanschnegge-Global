@@ -1,7 +1,8 @@
 (function () {
   'use strict';
   const V = window.VS7;
-  const KEY = 'vulkanschnegge-v7-campaign-v1';
+  const KEY = 'vulkanschnegge-v7-overhaul-campaign-v1';
+  const LEGACY_KEY = 'vulkanschnegge-v7-campaign-v1';
   const START = 'harbor';
   const LAST = 'god';
   const musicByZone = ['slow', 'mid', 'mid', 'fast', 'fast'];
@@ -53,7 +54,7 @@
       connect(side, region.id, region.id, entrance);
       entrance = region.id;
     });
-    nodes.push({ id: LAST, kind: 'boss', name: 'GOD.EXE', x: 950, y: 171, color: '#a6ff82',
+    nodes.push({ id: LAST, kind: 'boss', name: 'GOD.EXE', x: 950, y: 171, color: '#e27778',
       biome: LAST, gate: entrance, tier: 5, music: musicByZone[4] });
     connect(entrance, LAST, LAST, entrance);
     const byId = Object.fromEntries(nodes.map(node => [node.id, node]));
@@ -61,13 +62,15 @@
     return { nodes, edges, byId, lastGod: entrance, final: LAST };
   };
 
-  V.createCampaign = function (seed, character) {
+  V.createCampaign = function (seed, character, starter) {
     const label = String(seed || '').trim().slice(0, 40);
+    const weapon = Object.hasOwn(V.starterWeapons ?? {}, starter) ? starter : 'katana';
     return {
       version: 1, seed: label || Date.now().toString(36) + Math.floor(Math.random() * 46656).toString(36),
       character: Object.hasOwn(V.characters, character) ? character : 'snail',
       position: START, cleared: [START], travelled: [], build: {}, arrival: null, pending: null,
-      story: { intro: false, rift: false, source: false, ending: false }
+      coins: 0, purchases: weapon === 'katana' ? [] : [weapon], weapon, supply: null, loadoutChosen: starter !== undefined,
+      story: { intro: false, rift: false, source: false, rescue: false }
     };
   };
 
@@ -91,22 +94,32 @@
     });
   };
 
-  V.arrive = function (campaign, graph, route) {
-    const valid = V.routesFrom(campaign, graph).some(next => next.edge.id === route.edge.id && next.to === route.to);
+  function followRoute(campaign, graph, route) {
+    const valid = V.routesFrom(campaign, graph).find(next => next.edge.id === route.edge.id && next.to === route.to);
     if (!valid) return false;
-    if (!campaign.travelled.includes(route.edge.id)) campaign.travelled.push(route.edge.id);
-    campaign.position = route.to;
-    campaign.arrival = campaign.cleared.includes(route.to) ? null : { from: route.from, edge: route.edge.id };
+    if (!campaign.travelled.includes(valid.edge.id)) campaign.travelled.push(valid.edge.id);
+    campaign.position = valid.to;
+    campaign.arrival = campaign.cleared.includes(valid.to) ? null : { from: valid.from, edge: valid.edge.id };
+    return true;
+  }
+
+  V.arrive = function (campaign, graph, route, coins = 0) {
+    if (!followRoute(campaign, graph, route)) return false;
+    V.depositCoins(campaign, coins);
     V.saveCampaign(campaign);
     return true;
   };
 
-  V.completeNode = function (campaign, graph, id, random = Math.random) {
-    if (campaign.pending || !campaign.arrival || campaign.position !== id || campaign.cleared.includes(id)) return false;
+  V.completeNode = function (campaign, graph, id, random = Math.random, { coins = 0, route } = {}) {
     const node = graph.byId[id];
-    if (!node || node.kind === 'start') return false;
+    if (campaign.pending || !node || node.kind === 'start' || campaign.cleared.includes(id)) return false;
+    if (route) {
+      if (node.kind !== 'boss' || route.to !== id || !followRoute(campaign, graph, route)) return false;
+    } else if (!campaign.arrival || campaign.position !== id) return false;
     const choices = V.chooseUpgrades(campaign.build, campaign.character, node.kind === 'boss', random);
     campaign.pending = { node: id, choices: choices.map(perk => perk.id) };
+    V.depositCoins(campaign, coins);
+    campaign.supply = null;
     V.saveCampaign(campaign);
     return true;
   };
@@ -129,7 +142,7 @@
 
   V.loadCampaign = function () {
     try {
-      const saved = JSON.parse(localStorage.getItem(KEY) || 'null');
+      const saved = JSON.parse(localStorage.getItem(KEY) ?? localStorage.getItem(LEGACY_KEY) ?? 'null');
       if (saved?.version !== 1 || typeof saved.seed !== 'string' || !saved.seed.trim()) return null;
       const campaign = V.createCampaign(saved.seed, saved.character);
       const graph = V.generateMap(campaign.seed);
@@ -157,6 +170,9 @@
           campaign.pending = { node: campaign.position, choices: choices.length ? choices : ['freehit'] };
         }
       }
+      V.loadShop(campaign, saved, graph);
+      campaign.loadoutChosen = saved.loadoutChosen === true || campaign.travelled.length > 0 ||
+        campaign.cleared.length > 1 || !!campaign.arrival || campaign.story.intro || campaign.weapon !== 'katana';
       return campaign;
     } catch (_) {
       return null;

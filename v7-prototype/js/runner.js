@@ -5,7 +5,7 @@
   const padding = 530;
 
   function segment(s, index) {
-    const pool = s.kind === 'boss' ? data.boss : data.road;
+    const pool = data.road;
     return pool[Math.floor(V.randomFor(s.seed + ':segment:' + index)() * pool.length)];
   }
 
@@ -16,7 +16,7 @@
       const n = cursors.terrain++;
       const x = padding + n * data.span;
       const piece = segment(s, n);
-      for (const [offset, h, fragile] of piece.obstacles) {
+      for (const [offset, h, fragile] of s.chase ? [] : piece.obstacles) {
         s.obstacles.push({ worldX: x + offset, w: fragile ? 51 : 45, h, fragile, dead: false });
       }
       for (const [offset, y, w] of piece.platforms) s.platforms.push({ worldX: x + offset, y, w, h: 17 });
@@ -84,6 +84,7 @@
     s.dist += (s.speed + (s.player.dashTime > 0 ? 170 : 0)) * dt;
     s.score += s.speed * .1 * dt;
     V.updateCourse(s);
+    if (s.chase && s.outcome === null) V.updateChaseAttacks(s, dt);
     if (s.outcome === null && s.elapsed + 1e-7 >= s.duration) {
       s.elapsed = s.duration;
       s.outcome = true;

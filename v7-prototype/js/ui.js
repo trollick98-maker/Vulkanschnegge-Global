@@ -5,21 +5,36 @@
   const world = get('world-ui');
   const game = get('game-panel');
   const plot = get('map-plot');
-  const dialogs = ['upgrade-overlay', 'leaderboard-overlay', 'result', 'story-overlay', 'boss-intro'].map(get);
+  const dialogs = ['upgrade-overlay', 'leaderboard-overlay', 'result', 'clear-overlay', 'story-overlay', 'boss-intro', 'shop-overlay', 'campaign-setup'].map(get);
   const NS = 'http://www.w3.org/2000/svg';
   const difficultyLabels = { common: 'Häufig', rare: 'Selten', epic: 'Episch' };
-  const kinds = { travel: 'REISE', arena: 'GEGNERLEVEL', arcade: 'ENDLOS' };
+  const kinds = { travel: 'REISE', arena: 'GEGNERLEVEL', arcade: 'ENDLOS', 'boss-chase': 'VERFOLGUNG' };
+  const motionPreference = window.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const artVersions = new WeakMap();
 
   function content(id, value) {
     const element = get(id);
     if (element.textContent !== value) element.textContent = value;
   }
 
-  function button(label, className, action) {
+  function menuIcon(name) {
+    const icon = document.createElement('img');
+    icon.className = 'menu-icon';
+    icon.src = V.imagePath('menu-' + name);
+    icon.alt = '';
+    return icon;
+  }
+
+  function button(label, className, action, icon) {
     const control = document.createElement('button');
     control.type = 'button';
     control.className = className;
-    control.textContent = label;
+    if (icon) {
+      const text = document.createElement('span');
+      text.textContent = label;
+      control.classList.add('icon-button');
+      control.append(menuIcon(icon), text);
+    } else control.textContent = label;
     control.addEventListener('click', action);
     return control;
   }
@@ -29,7 +44,7 @@
   }
 
   function routeDuration(campaign, route) {
-    return V.isBossRoute(campaign, route) ? 'Boss · ' + duration(Math.ceil(V.bossRhythms[route.node.biome].duration)) :
+    return V.isBossRoute(campaign, route) ? V.rules.bossChaseSeconds + ' s Verfolgung · Bosskampf' :
       'Reise · ' + duration(route.edge.seconds);
   }
 
@@ -52,7 +67,61 @@
       art.dataset.playerArt = character;
       art.src = V.imagePath(character);
     }
+    get('hero-figure').dataset.heroCharacter = character;
     content('character-detail', V.characters[character].detail);
+  }
+
+  function campaignSetup(character, weapon, first, start) {
+    const figures = get('setup-characters');
+    const weapons = get('setup-weapons');
+    const cancel = get('setup-cancel');
+    figures.replaceChildren();
+    weapons.replaceChildren();
+    cancel.classList.toggle('hidden', first);
+    cancel.onclick = closeCampaignSetup;
+    const choose = (container, id, choices, select) => {
+      const controls = [];
+      for (const [key, name, art, detail] of choices) {
+        const control = document.createElement('button');
+        control.type = 'button';
+        control.className = 'setup-choice';
+        control.dataset.choice = key;
+        const icon = document.createElement('img');
+        icon.src = V.imagePath(art);
+        icon.alt = '';
+        const copy = document.createElement('span');
+        const title = document.createElement('strong');
+        title.textContent = name;
+        copy.append(title);
+        if (detail) {
+          const caption = document.createElement('small');
+          caption.textContent = detail;
+          copy.append(caption);
+        }
+        control.append(icon, copy);
+        control.addEventListener('click', () => {
+          mark(key);
+          select(key);
+        });
+        controls.push(control);
+        container.append(control);
+      }
+      function mark(id) {
+        for (const control of controls) control.setAttribute('aria-pressed', String(control.dataset.choice === id));
+      }
+      mark(id);
+    };
+    choose(figures, character, Object.entries(V.characters).map(([key, c]) => [key, c.name, key]), id => { character = id; });
+    choose(weapons, weapon, Object.entries(V.starterWeapons).map(([key, detail]) =>
+      [key, V.weapons[key].name, V.weapons[key].sprite, detail]), id => { weapon = id; });
+    get('setup-start').onclick = () => start(character, weapon);
+    dialog('campaign-setup');
+  }
+
+  function closeCampaignSetup() {
+    if (get('setup-cancel').classList.contains('hidden')) return;
+    dialog(null);
+    get('campaign-form').querySelector('button')?.focus({ preventScroll: true });
   }
 
   function drawMapTerrain(campaign, graph) {
@@ -105,7 +174,7 @@
       const cleared = campaign.cleared.includes(node.id);
       const route = byTarget.get(node.id);
       const canEnter = current && campaign.arrival && !campaign.pending;
-      const symbol = current ? '◉' : cleared ? '✓' : node.kind === 'boss' ? '✦' : '◆';
+      const role = node.kind === 'start' ? 'harbor' : node.optional ? 'tunnel' : node.kind;
       const marker = button('', 'map-node ' + (current ? 'current ' : '') + (route || canEnter ? 'open ' : '') +
         (cleared ? 'done ' : '') + (node.kind === 'boss' ? 'boss' : ''), () => {
         if (canEnter) handlers.enter();
@@ -121,18 +190,20 @@
       if (current) marker.setAttribute('aria-current', 'location');
       const icon = document.createElement('span');
       icon.className = 'node-symbol';
-      icon.textContent = symbol;
-      if (node.id === 'reef-side' || (node.kind === 'boss' && node.biome !== 'reef')) {
+      const roleIcon = menuIcon(role);
+      if (node.kind === 'boss' || node.id === 'reef-side') {
         const art = document.createElement('img');
         art.className = 'node-landmark';
         art.alt = '';
-        art.addEventListener('error', () => { icon.textContent = symbol; });
-        art.src = V.imagePath('landmark-' + node.biome);
-        const badge = document.createElement('span');
-        badge.className = 'node-badge';
-        badge.textContent = symbol;
-        icon.textContent = '';
-        icon.append(art, badge);
+        art.addEventListener('error', () => { icon.replaceChildren(roleIcon); }, { once: true });
+        art.src = V.imagePath((node.kind === 'boss' ? 'boss-badge-' : 'landmark-') + node.biome);
+        icon.append(art);
+      } else icon.append(roleIcon);
+      const badge = current ? 'current' : cleared ? 'cleared' : marker.disabled ? 'locked' : '';
+      if (badge) {
+        const stateIcon = menuIcon(badge);
+        stateIcon.className = 'node-badge';
+        marker.append(stateIcon);
       }
       const label = document.createElement('span');
       label.className = 'node-name';
@@ -141,19 +212,21 @@
       plot.append(marker);
     }
 
+    refreshWallet(campaign);
     content('seed-badge', 'SEED ' + campaign.seed);
     content('map-location', graph.byId[campaign.position].name);
     const bosses = graph.nodes.filter(node => node.kind === 'boss' && campaign.cleared.includes(node.id)).length;
     content('map-caption', V.characters[campaign.character].name + ' · ' + bosses + ' / ' +
       (campaign.story.rift ? '5' : '4') + ' Bosse bezwungen');
-    content('location-label', campaign.story.ending ? 'KAMPAGNE ABGESCHLOSSEN' : 'AKTUELLER STANDORT');
+    content('location-label', campaign.story.rescue ? 'KAMPAGNE ABGESCHLOSSEN' : 'AKTUELLER STANDORT');
 
     const choices = get('route-choices');
     choices.replaceChildren();
-    if (campaign.arrival && !campaign.pending) choices.append(button('Kampf starten', 'primary', handlers.enter));
+    if (campaign.arrival && !campaign.pending) choices.append(button('Kampf starten', 'primary', handlers.enter, 'arena'));
     for (const route of routes) {
       const label = (route.edge.hidden ? 'Tunnel · ' : '') + route.node.name + ' · ' + routeDuration(campaign, route);
-      const control = button(label, 'quiet', () => handlers.travel(route));
+      const control = button(label, 'quiet', () => handlers.travel(route),
+        route.edge.hidden ? 'tunnel' : V.isBossRoute(campaign, route) ? 'boss' : 'route');
       control.dataset.travel = route.to;
       choices.append(control);
     }
@@ -186,37 +259,141 @@
   function hud(s) {
     const p = s.player;
     const local = V.usesMomentum(s);
-    const finale = s.boss?.stage === 'arena';
-    const chasing = s.boss?.stage === 'chase';
-    content('level-kind', finale ? 'BOSSARENA · 2/2' : chasing ? 'VERFOLGUNG · 1/2' : kinds[s.kind]);
-    content('level-tip', s.boss ? s.boss.definition.tip :
+    const b = s.boss;
+    const chase = s.chase;
+    const glitch = s.arenaGlitch?.active;
+    game.dataset.arenaGlitch = glitch ?? '';
+    const timed = Boolean(chase) || s.kind === 'travel';
+    const kind = b ? 'BOSS · PHASE ' + (b.phase + 1) + ' / 3' : kinds[s.kind];
+    const dimension = glitch ? V.arenaGlitchThemes[glitch].title : s.arenaGlitch?.endsAt ? 'Turbinenhalle' : '';
+    content('level-kind', [kind, dimension, s.supplyName].filter(Boolean).join(' · '));
+    content('level-tip', glitch === 'race' ? 'Über den Wagen springen · markierte Plattformen verlassen' :
+      glitch === 'inferno' ? V.gladiatorHint(b) :
+      b ? b.plan?.attack.hint ?? (b.phase ? V.bossStages[s.biome].hints[b.phase - 1] : b.definition.tip) :
+      chase ? 'Helle Kugeln per Dash abwehren · Ulti ab der Bossarena' :
       local ? 'Anlauf nehmen · Gegner besiegen · Ziel rechts' : 'Springen · Kisten per Dash zerlegen');
-    content('test-skip-btn', chasing ? 'Zur Bossarena' : 'Abschnitt überspringen');
+    content('test-skip-btn', chase ? 'Zur Bossarena springen' : 'Abschnitt überspringen');
     const dashReady = p.dashCooldown <= 0 && (p.dashTime <= 0 || (local && p.dashLeft <= 0)) && (!local || p.airDash);
-    content('hud-stats', '♥ ' + s.hp + ' / ' + s.maxHp + '    ◈ ' + s.coinsTaken + '    ⚡ ' +
-      (dashReady ? 'bereit' : 'lädt'));
-    const dash = s.kind === 'arena' ? ' · Dash ' + (p.dashTime > 0 ? p.dashPower : V.dashDamage(s, s.speed)) : '';
-    content('hud-score', Math.floor(s.score) + ' P · ×' + s.multiplier + ' · ' + Math.round(s.speed) + ' Tempo' + dash);
+    content('hud-life', s.hp + ' / ' + s.maxHp);
+    content('hud-coins', '◈ ' + s.coinsTaken);
+    content('hud-dash', dashReady ? 'bereit' : 'lädt');
+    const hammer = local && s.weapon.hammer;
+    get('touch-drop').classList.toggle('hidden', !hammer);
+    const ability = V.ultimateAbility(s);
+    const charge = s.ultimateCharge ?? 0;
+    const ready = Boolean(ability && charge >= 100 && !s.ultimate && b?.state !== 'defeated');
+    get('hud-ultimate').classList.toggle('hidden', !ability);
+    get('touch-ultimate').classList.toggle('hidden', !ability);
+    get('ultimate-button').disabled = get('touch-ultimate').disabled = !ready;
+    if (ability) {
+      get('ultimate-meter').value = charge;
+      get('hud-ultimate').classList.toggle('ready', ready);
+      content('ultimate-name', ability.name);
+      content('ultimate-status', ready ? 'Bereit' : charge + ' %');
+    }
+    const dash = local ? ' · ' + s.weapon.name + ' ' + (p.dashTime > 0 ? p.dashPower : V.weaponDamage(s, s.speed)) : '';
+    content('hud-score', Math.floor(s.score) + ' P · ' + Math.round(s.speed) + ' Tempo' + dash);
     const alive = s.kind === 'arena' ? s.enemies.filter(enemy => enemy.hp > 0).length : 0;
-    const label = s.boss ? 'BIS SONGENDE · PHASE ' + (s.boss.phase + 1) :
-      s.kind === 'travel' ? 'REISEZEIT' : s.kind === 'arena' ? 'KAMPFSTRECKE' : 'DISTANZ';
-    const value = s.boss ? duration(Math.max(0, Math.ceil(s.duration - s.songTime))) : s.kind === 'travel' ?
+    const label = b ? b.definition.phases[b.phase].toUpperCase() + ' · BOSS-HP' :
+      chase ? 'BIS ZUR ARENA' : timed ? 'REISEZEIT' : s.kind === 'arena' ? 'KAMPFSTRECKE' : 'DISTANZ';
+    const value = b ? b.hp + ' / ' + b.maxHp : timed ?
       duration(Math.max(0, Math.ceil(s.duration - s.elapsed))) : s.kind === 'arena' ?
         (alive ? alive + ' Gegner' : 'Zum Ziel →') : Math.floor(s.dist) + ' m';
-    const ratio = s.boss ? s.songTime / s.duration : s.kind === 'travel' ?
+    const ratio = b ? b.hp / b.maxHp : timed ?
       s.elapsed / s.duration : s.kind === 'arena' ? 1 - alive / s.enemies.length : 0;
     content('hud-number', value);
     content('hud-label', label);
+    get('hud-track').classList.toggle('boss-hp', Boolean(b));
     const width = Math.min(100, Math.round(ratio * 100)) + '%';
     if (get('hud-meter').style.width !== width) get('hud-meter').style.width = width;
-    const tell = s.boss?.tell;
-    content('level-message', tell ? V.bossAttacks[tell.key].warning : s.feedbackTime > 0 ? s.feedback : '');
+    const effects = b ? Object.keys(s.arenaFX).map(key => V.bossArenaEffects[key]) : [];
+    const warning = b?.plan?.followUp ? 'KOMBO · ' + b.plan.attack.name : b?.plan?.attack.name ?? chase?.warning?.hint;
+    const stageAlert = b && s.zones.some(z => z.stage && z.at > s.elapsed) ? 'Arena-Gefahr markiert' : '';
+    content('level-message', [s.feedbackTime > 0 ? s.feedback : hammer ? '↓ / S in der Luft · Hammersturz' : '', warning, stageAlert, ...effects].filter(Boolean).join(' · '));
+  }
+
+  const shopLabels = {
+    equip: 'Ausrüsten', equipped: 'Ausgerüstet', ready: 'Bereit', 'supply-full': 'Proviantplatz belegt',
+    owned: 'Gekauft', maxed: 'Bereits ausgebaut', poor: 'Münzen fehlen'
+  };
+
+  function refreshWallet(campaign) {
+    content('wallet-coins', campaign.coins + ' Münzen');
+    content('shop-loadout', V.shopLoadout(campaign));
+    const weapon = V.weapons[campaign.weapon];
+    const art = get('hero-weapon');
+    if (art.dataset.weapon !== weapon.id) {
+      art.dataset.weapon = weapon.id;
+      art.src = V.imagePath(weapon.sprite);
+    }
+    content('hero-weapon-name', weapon.name);
+  }
+
+  function shopItem(campaign, graph, id, item) {
+    const card = document.createElement('article');
+    card.className = 'shop-item';
+    const art = document.createElement('img');
+    art.src = V.imagePath(item.art);
+    art.alt = '';
+    const title = document.createElement('h4');
+    title.textContent = item.name;
+    const detail = document.createElement('p');
+    detail.textContent = item.detail;
+    const price = document.createElement('span');
+    price.className = 'shop-price';
+    price.textContent = item.price ? item.price + ' Münzen' : 'Startausrüstung';
+    const status = V.shopStatus(campaign, graph, item.id);
+    const control = button(status === 'buy' ? 'Kaufen' : shopLabels[status] ?? 'Gesperrt', 'quiet', () => {
+      if (!V.shopPurchase(campaign, graph, item.id)) return;
+      const message = item.weapon ? item.name + ' ausgerüstet.' : item.name + ' gekauft.';
+      shop(campaign, graph, id, message, 'shop-item-' + item.id);
+    });
+    control.id = 'shop-item-' + item.id;
+    control.dataset.item = item.id;
+    control.disabled = status !== 'buy' && status !== 'equip';
+    control.setAttribute('aria-label', item.name + ' · ' + control.textContent + ' · ' + price.textContent);
+    card.append(art, title, detail, price, control);
+    return card;
+  }
+
+  function shop(campaign, graph, id = 'supplies', message = '', focus = '') {
+    const stall = V.shops[id];
+    const unlocked = V.shopOpen(stall, campaign, graph);
+    refreshWallet(campaign);
+    content('shop-wallet', campaign.coins + ' Münzen');
+    content('shop-category', stall.name.toUpperCase());
+    content('shop-keeper', stall.keeper);
+    content('shop-line', stall.line);
+    content('shop-status', unlocked ? message || V.shopLoadout(campaign) : 'Freischaltung · ' + stall.lock);
+    get('shop-portrait').src = V.imagePath(stall.portrait);
+    const tabs = get('shop-stalls');
+    tabs.replaceChildren();
+    for (const [key, option] of Object.entries(V.shops)) {
+      const suffix = V.shopOpen(option, campaign, graph) ? '' : ' · gesperrt';
+      const tab = button(option.name + suffix, 'quiet shop-stall', () => shop(campaign, graph, key, '', 'shop-tab-' + key), key);
+      tab.id = 'shop-tab-' + key;
+      tab.dataset.shop = key;
+      tab.setAttribute('aria-pressed', String(id === key));
+      tabs.append(tab);
+    }
+    const stock = get('shop-stock');
+    stock.replaceChildren(...stall.items.map(item => shopItem(campaign, graph, id, item)));
+    if (get('shop-overlay').classList.contains('hidden')) dialog('shop-overlay');
+    else if (focus) {
+      const target = get(focus);
+      (target && !target.disabled ? target : get('shop-tab-' + id))?.focus({ preventScroll: true });
+    }
+  }
+
+  function closeShop() {
+    dialog(null);
+    get('shop-btn').focus({ preventScroll: true });
   }
 
   function reward(campaign, graph, select) {
     const pending = campaign.pending;
     const node = graph.byId[pending.node];
-    content('reward-tag', node.name.toUpperCase() + ' · ' + (node.kind === 'boss' ? 'BOSS BESIEGT' : 'LEVEL ABGESCHLOSSEN'));
+    content('reward-tag', node.name.toUpperCase() + ' · BELOHNUNG');
     const choices = get('upgrade-choices');
     choices.replaceChildren();
     for (const id of pending.choices) {
@@ -243,10 +420,52 @@
     dialog('result');
   }
 
+  function frameArt(art, src, shot, duration, crossfade = false) {
+    const frame = art.parentElement;
+    const previous = frame.querySelector('.story-previous');
+    const [tone, focus, x, y, from, to] = shot;
+    const version = (artVersions.get(art) ?? 0) + 1;
+    artVersions.set(art, version);
+    const animate = art.animate && !motionPreference?.matches;
+    if (previous) {
+      previous.hidden = !(animate && crossfade && art.complete && art.naturalWidth > 0);
+      if (!previous.hidden) {
+        previous.src = art.currentSrc;
+        previous.style.transform = getComputedStyle(art).transform;
+        previous.style.transformOrigin = getComputedStyle(art).transformOrigin;
+      }
+    }
+    for (const animation of art.getAnimations?.() ?? []) animation.cancel();
+    frame.dataset.tone = tone;
+    art.style.transformOrigin = focus;
+    art.src = src;
+    art.classList.toggle('art-loading', Boolean(previous && !previous.hidden));
+    if (!animate) return;
+
+    const reveal = () => {
+      if (artVersions.get(art) !== version) return;
+      art.classList.remove('art-loading');
+      if (!motionPreference?.matches) {
+        art.animate([
+          { transform: `translate(${x}%, ${y}%) scale(${from})` },
+          { transform: `translate(${-x / 2}%, ${-y / 2}%) scale(${to})` }
+        ], { duration, easing: 'cubic-bezier(.17,.63,.33,1)', fill: 'both' });
+        if (previous && !previous.hidden) {
+          art.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 400, easing: 'ease-out' }).onfinish = () => {
+            if (artVersions.get(art) === version) previous.hidden = true;
+          };
+        }
+      } else if (previous) previous.hidden = true;
+    };
+    if (art.decode) art.decode().then(reveal, reveal);
+    else reveal();
+  }
+
   function showSlide(slide) {
     const art = get('story-illustration');
     art.alt = slide.alt;
-    art.src = V.imagePath('story-' + slide.art);
+    frameArt(art, V.imagePath('story-' + slide.art), V.storyShots[slide.art], slide.art === 'rescue-home' ? 15500 : 8200,
+      !get('story-overlay').classList.contains('hidden'));
     content('story-label', slide.label);
     content('story-line', slide.line);
     content('story-note', slide.note || '');
@@ -256,11 +475,25 @@
 
   function bossIntro(s) {
     const art = get('boss-intro-image');
-    art.alt = 'Der winzige Schnegg steht vor ' + s.title + '.';
-    art.src = V.imagePath('boss-intro-' + s.biome);
-    content('boss-intro-name', s.title);
+    const name = s.chase.definition.name;
+    art.alt = 'Der winzige Schnegg steht vor ' + name + '.';
+    const tone = { reef: 'cyan', greed: 'gold', diva: 'violet', vortex: 'cyan', god: 'scarlet' }[s.biome];
+    frameArt(art, V.imagePath('boss-intro-' + s.biome), [tone, '57% 65%', 4, -1, 1.17, 1.09], 2850);
+    content('boss-intro-name', name);
     content('boss-intro-place', 'BOSS · ' + s.node.name.toUpperCase());
     dialog('boss-intro');
+  }
+
+  function showClear(s, payout, title, buttonText) {
+    const key = V.clearArt(s);
+    const art = get('clear-illustration');
+    frameArt(art, V.imagePath('clear-' + key), V.clearShots[key], s.boss ? 5200 : 4100);
+    content('clear-label', s.boss ? 'BOSS BESIEGT' : s.kind === 'travel' ? 'ZIEL ERREICHT' : 'LEVEL CLEARED');
+    content('clear-title', title);
+    content('clear-coins', '+' + payout);
+    content('clear-time', duration(Math.floor(s.elapsed + (s.trackOffset ?? 0))));
+    content('clear-next', buttonText);
+    dialog('clear-overlay');
   }
 
   function recordRow(target, name, score) {
@@ -307,6 +540,7 @@
   });
 
   get('board-btn').addEventListener('click', showBoard);
+  get('shop-close').addEventListener('click', closeShop);
   get('board-close').addEventListener('click', () => dialog(null));
   get('fullscreen-btn').addEventListener('click', async () => {
     try {
@@ -343,5 +577,5 @@
   }
   refreshCharacters();
 
-  V.ui = { map, showGame, hud, reward, result, showSlide, bossIntro, dialog };
+  V.ui = { campaignSetup, closeCampaignSetup, map, showGame, hud, shop, closeShop, reward, result, showClear, showSlide, bossIntro, dialog };
 })();

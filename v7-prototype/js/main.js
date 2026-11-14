@@ -4,7 +4,7 @@
   const ui = V.ui;
   const state = V.state = { mode: 'launch', level: null, section: null, story: null, testMode: false };
   const step = V.rules.step;
-  const updates = { travel: V.updateRunner, arcade: V.updateRunner, arena: V.updateArena, boss: V.updateCombat };
+  const updates = { travel: V.updateRunner, arcade: V.updateRunner, arena: V.updateArena, 'boss-chase': V.updateRunner, boss: V.updateCombat };
   const get = id => document.getElementById(id);
   let campaign = V.loadCampaign() || V.createCampaign('', V.profile.character);
   let regularCampaign;
@@ -16,8 +16,9 @@
 
   function transition(mode, keepMusic = false) {
     state.mode = mode;
-    get('restart-btn').disabled = mode === 'outro';
+    get('game-panel').classList.remove('ultimate-active');
     get('test-skip-btn').classList.toggle('hidden', !canSkip());
+    if (mode !== 'clear') state.clearNext = null;
     frameAt = 0;
     carry = 0;
     V.input.reset();
@@ -56,7 +57,12 @@
       atlas.scrollIntoView({ block: 'start' });
       if (fromTitle) atlas.focus({ preventScroll: true });
     }
-    if (campaign.pending) {
+    if (!campaign.loadoutChosen && !state.testMode) {
+      chooseCampaign(campaign.seed, true);
+    } else if (!campaign.story.rescue &&
+      (campaign.pending?.node === graph.final || campaign.cleared.includes(graph.final))) {
+      endStory();
+    } else if (campaign.pending) {
       ui.reward(campaign, graph, id => {
         if (V.claimPerk(campaign, id)) showMap();
       });
@@ -66,8 +72,6 @@
         V.saveCampaign(campaign);
         showMap();
       });
-    } else if (!campaign.story.ending && campaign.cleared.includes(graph.final)) {
-      endStory();
     }
   }
 
@@ -91,7 +95,7 @@
   function endStory() {
     showStory('ending', () => {
       showStory('credits', () => {
-        campaign.story.ending = true;
+        campaign.story.rescue = true;
         V.saveCampaign(campaign);
         showMap();
       });
@@ -127,10 +131,34 @@
     } else if (section.kind === 'arena') {
       state.level = V.newArena(section.node, campaign.character, campaign.build, campaign.seed);
     } else {
-      state.level = V.newCombat(section.node, campaign.character, campaign.build, campaign.seed);
+      state.level = V.newBossChase(section.node, campaign.character, campaign.build, campaign.seed);
+    }
+    if (section.kind !== 'arcade') V.applyShopLoadout(state.level, campaign);
+    for (const art of V.weaponArt) V.image(art);
+    if (section.kind !== 'arcade') V.image('clear-' + V.clearArt(state.level));
+    if (section.kind === 'arena' || state.level.chase) {
+      for (const part of V.expansionArt) V.image('exp-' + part);
+    }
+    if (section.kind === 'arena') {
+      V.image('anim-' + section.node.biome);
+      V.image('anim-variants');
+    }
+    if (state.level.chase) {
+      V.image('anim-bosses');
+      V.image('anim-reinforcements');
+    }
+    if (state.level.chase?.definition.sprite === 'god') {
+      for (const form of V.godForms) V.image(form);
+      V.image('gladiator-atlas');
+      V.image('anim-shadow');
+      V.image('anim-dimensions');
+      for (const theme of Object.keys(V.arenaGlitchThemes)) {
+        for (const part of V.arenaGlitchArt) V.image('glitch-' + theme + '-' + part);
+      }
     }
     const zone = section.route ? graph.byId[section.route.edge.b] : section.node;
-    if (!intro) V.audio.startLevel(section.kind, state.level.boss?.definition.track ?? zone?.music);
+    if (!intro && !skipIntro) V.startCameraCue(state.level);
+    if (!intro) V.audio.startLevel(section.kind, state.level.chase?.definition.track ?? zone?.music);
     ui.showGame(state.level);
     V.render(state.level);
     hudAt = 0;
@@ -145,46 +173,61 @@
     state.mode = 'play';
     frameAt = carry = 0;
     V.input.reset();
-    V.audio.startLevel('boss', state.level.boss.definition.track);
+    V.audio.startLevel('boss', state.level.chase.definition.track);
+    V.startCameraCue(state.level);
     get('test-skip-btn').classList.toggle('hidden', !canSkip());
     ui.showGame(state.level);
+  }
+
+  function enterBossArena(chase) {
+    const s = V.newCombat(state.section.node, campaign.character, campaign.build, campaign.seed);
+    V.applyShopLoadout(s, campaign);
+    Object.assign(s, { hp: chase.hp, score: chase.score, coinsTaken: chase.coinsTaken,
+      healAtCoins: chase.healAtCoins, trackOffset: chase.elapsed });
+    V.startCameraCue(s);
+    state.level = s;
+    hudAt = 0;
+    // Keep playing the same audio voice and keep held inputs through the handoff.
+    ui.showGame(s);
+    V.render(s);
+  }
+
+  function showClear(level, payout, title, button, next, final = false) {
+    transition('clear', true);
+    state.clearNext = next;
+    ui.showClear(level, payout, title, button);
+    V.audio.startClear(final ? 'finale' : level.kind);
   }
 
   function finish() {
     const level = state.level;
     const section = state.section;
-    transition('result');
+    if (level.chase && level.outcome) {
+      enterBossArena(level);
+      return;
+    }
     if (!state.testMode) V.recordRun(section.kind, level);
-    if (!level.outcome) {
+    if (!level.outcome || section.kind === 'arcade') {
+      transition('result');
       ui.hud(level);
       V.render(level);
       ui.result(level);
-    } else if (section.kind === 'travel') {
-      if (V.arrive(campaign, graph, section.route) && campaign.arrival) enterNode();
-      else showMap();
-    } else {
-      if (section.route && !V.arrive(campaign, graph, section.route)) {
-        showMap();
-        return;
-      }
-      V.completeNode(campaign, graph, section.node.id);
-      if (section.node.id === graph.final) {
-        level.player.dashBuffer = level.player.jumpBuffer = 0;
-        level.player.vx = level.player.dashTime = level.speed = 0;
-        state.outroLeft = 1.1;
-        transition('outro');
-      }
-      else showMap();
+      return;
     }
-  }
 
-  function outro(level, dt) {
-    level.elapsed += dt;
-    state.outroLeft -= dt;
-    V.movePlayer(level, dt, {});
-    ui.hud(level);
-    V.render(level);
-    if (state.outroLeft <= 0) showMap();
+    const payout = V.sectionPayout(level);
+    if (section.kind === 'travel') {
+      if (!V.arrive(campaign, graph, section.route, payout)) return showMap();
+      const next = campaign.arrival ? enterNode : showMap;
+      showClear(level, payout, section.route.node.name, campaign.arrival ? 'Kampf starten' : 'Zur Weltkarte', next);
+      return;
+    }
+    if (!V.completeNode(campaign, graph, section.node.id, undefined, { route: section.route, coins: payout })) {
+      showMap();
+      return;
+    }
+    const final = section.node.id === graph.final;
+    showClear(level, payout, level.title, final ? 'Zur Befreiung' : 'Perk wählen', final ? endStory : showMap, final);
   }
 
   function frame(ms) {
@@ -198,13 +241,24 @@
       if (state.bossIntroLeft <= 0) startBossChase();
       return;
     }
-    if (state.mode === 'outro') {
-      outro(state.level, dt);
-      return;
-    }
     if (state.mode !== 'play') return;
 
     const level = state.level;
+    if (V.input.ultimateQueued) {
+      V.input.ultimateQueued = false;
+      V.beginUltimate(level);
+    }
+    if (level.ultimate) {
+      const actions = V.input.consume();
+      carry = 0;
+      V.updateUltimate(level, dt, actions);
+      get('game-panel').classList.toggle('ultimate-active', Boolean(level.ultimate));
+      ui.hud(level);
+      V.render(level);
+      return;
+    }
+    V.updateCameraCue(level, dt, V.input);
+    V.tickParticles(level, dt);
     if (level.hitStop > 0) {
       level.hitStop = Math.max(0, level.hitStop - dt);
       V.render(level);
@@ -215,7 +269,7 @@
       return;
     }
     carry += dt;
-    const clock = level.boss ? V.audio.bossClock(level.songTime) : null;
+    const clock = level.boss ? V.audio.bossClock() : null;
     while (carry + 1e-9 >= step) {
       carry -= step;
       updates[level.kind](level, step, V.input.consume(), clock);
@@ -237,8 +291,10 @@
   }
 
   V.backToMap = function () {
-    if (!get('leaderboard-overlay').classList.contains('hidden')) ui.dialog(null);
-    else if (state.mode === 'play' || state.mode === 'boss-intro' || state.mode === 'result' || state.mode === 'outro') showMap();
+    if (!get('campaign-setup').classList.contains('hidden')) ui.closeCampaignSetup();
+    else if (!get('shop-overlay').classList.contains('hidden')) ui.closeShop();
+    else if (!get('leaderboard-overlay').classList.contains('hidden')) ui.dialog(null);
+    else if (['play', 'boss-intro', 'result', 'clear'].includes(state.mode)) showMap();
   };
   get('launch-screen').addEventListener('click', event => {
     if (state.mode !== 'launch') return;
@@ -264,7 +320,16 @@
   get('title-start').addEventListener('click', () => {
     if (state.mode === 'title') showMap();
   });
+  get('shop-btn').addEventListener('click', () => {
+    if (state.mode === 'map' && !campaign.pending) ui.shop(campaign, graph);
+  });
   get('boss-intro-next').addEventListener('click', startBossChase);
+  get('clear-next').addEventListener('click', () => {
+    const next = state.clearNext;
+    if (state.mode !== 'clear' || !next) return;
+    state.clearNext = null;
+    next();
+  });
   get('back-btn').addEventListener('click', V.backToMap);
   get('home').addEventListener('click', showMap);
   function retry() {
@@ -276,17 +341,21 @@
   get('test-skip-btn').addEventListener('click', () => {
     if (!canSkip()) return;
     const level = state.level;
-    if (level.boss?.stage === 'chase') {
-      level.hitStop = 0;
-      V.input.reset();
-      V.enterBossArena(level);
-      ui.hud(level);
-      V.render(level);
-      return;
-    }
+    if (level.boss) V.defeatBoss(level);
     level.outcome = true;
     finish();
   });
+  function chooseCampaign(seed, first = false) {
+    ui.campaignSetup(first ? campaign.character : V.profile.character, campaign.weapon, first, (character, weapon) => {
+      campaign = V.createCampaign(seed, character, weapon);
+      V.profile.character = character;
+      V.saveProfile();
+      graph = V.generateMap(campaign.seed);
+      V.saveCampaign(campaign);
+      showMap();
+    });
+  }
+
   get('campaign-form').addEventListener('submit', event => {
     event.preventDefault();
     const seedInput = get('seed-input');
@@ -307,10 +376,7 @@
     }
     if ((campaign.travelled.length || campaign.arrival) &&
       !window.confirm('Eine neue Kampagne ersetzt diesen Kampagnenspielstand. Neu starten?')) return;
-    campaign = V.createCampaign(seedInput.value, V.profile.character);
-    graph = V.generateMap(campaign.seed);
-    V.saveCampaign(campaign);
-    showMap();
+    chooseCampaign(seedInput.value);
   });
   get('story-next').addEventListener('click', () => {
     const story = state.story;

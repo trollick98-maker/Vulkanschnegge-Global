@@ -13,14 +13,15 @@
   V.newSection = function ({ kind, character, build = {}, biome = 'reef', seed, hp = 3, title }) {
     const traits = V.characters[character];
     const section = {
-      kind, character, title, biome, seed, elapsed: 0, dist: 0, speed: 0, score: 0,
+      kind, character, title, biome, seed, weapon: V.equippedWeapon(character), elapsed: 0, dist: 0, speed: 0, score: 0,
       maxHp: hp + traits.hp, magnetRange: traits.magnet, coinsTaken: 0, coinSerial: 0,
       coins: [], obstacles: [], platforms: [], projectiles: [], effects: [], hitStop: 0, outcome: null, feedback: '', feedbackTime: 0,
       player: { x: V.START_X, y: G - 43, w: 44, h: 43, vx: 0, vy: 0, facing: 1, jumps: 0,
         gravity: motion.gravity * traits.gravity, invuln: 0, dashTime: 0, dashCooldown: 0, angle: 0,
         grounded: true, airDash: true, skidding: false, dashPower: 0, dashLeft: 0, dashVelocity: 0, dashBuffer: 0, jumpBuffer: 0,
-        coyote: 0, landTime: 0 }
+        coyote: 0, landTime: 0, swing: null, weaponCooldown: 0 }
     };
+    V.initParticles(section);
     V.applyBuild(section, build);
     return section;
   };
@@ -38,40 +39,41 @@
 
   V.impact = function (s, x, y, color) {
     addEffect(s, { x, y, color, left: .3, life: .3 }, 0);
+    V.emitParticles(s, 'impact', x, y, { color });
   };
 
-  V.hitFeedback = function (s, kind, x, y, { amount, heavy = false, direction = 1 } = {}) {
+  V.hitFeedback = function (s, kind, x, y, { amount, heavy = false, direction = 1, silent = false } = {}) {
     const look = hitLooks[kind];
     const life = kind === 'hurt' ? .46 : .39;
     const size = look.size * (heavy ? 1.36 : 1);
     const stop = s.kind === 'arena' ? look.stop + (heavy ? .013 : 0) : 0;
     addEffect(s, { kind, x, y, color: look.color, size, amount, direction, left: life, life }, stop);
-    V.audio?.effect?.(kind, heavy);
+    V.emitParticles(s, kind, x, y, { color: look.color, heavy, direction });
+    if (!silent) V.audio?.effect?.(kind, heavy);
   };
 
-  function movementFeedback(s, kind, direction, speed) {
-    const p = s.player;
+  function movementFeedback(s, kind, direction, speed, p = s.player) {
     const skid = kind === 'skid';
     const life = skid ? .34 : .24;
     const size = skid ? V.clamp(65 + (speed - 380) * .07, 65, 106) : kind === 'dash-fast' ? 111 : 82;
     addEffect(s, {
-      kind, movement: true, direction, size, life, left: life,
+      kind, movement: true, direction, size, life, left: life, boss: p !== s.player,
       x: p.x + p.w / 2 - direction * (skid ? p.w * .12 : p.w * .39),
       y: p.y + p.h * (skid ? 1 : .55)
     }, 0);
+    V.emitParticles(s, kind, p.x + p.w / 2, p.y + p.h * (skid ? 1 : .57), { direction: -direction });
     V.audio?.effect?.(kind);
   }
 
-  function updateSkid(s, canBrake, direction) {
-    const p = s.player;
+  V.updateSkid = function (s, p, canBrake, direction) {
     const speed = Math.abs(p.vx);
     const skidding = canBrake && p.grounded && p.vx * direction <= 0 &&
       speed >= (p.skidding ? 185 : 380);
-    if (skidding && !p.skidding && !s.effects.some(effect => effect.kind === 'skid')) {
-      movementFeedback(s, 'skid', Math.sign(p.vx), speed);
+    if (skidding && !p.skidding && !s.effects.some(effect => effect.kind === 'skid' && effect.boss === (p !== s.player))) {
+      movementFeedback(s, 'skid', Math.sign(p.vx), speed, p);
     }
     p.skidding = skidding;
-  }
+  };
 
   V.projectileHits = function (player, shot, reach = 0) {
     const rx = shot.r * .77 + reach;
@@ -80,10 +82,11 @@
       player.y < shot.y + ry && player.y + player.h > shot.y - ry;
   };
 
-  V.usesMomentum = s => s.kind === 'arena' || s.boss?.stage === 'arena';
+  V.usesMomentum = s => s.kind === 'arena' || s.kind === 'boss';
   V.scrollX = (section, worldX) => V.START_X + worldX - section.dist;
   V.stageX = (section, worldX) => V.usesMomentum(section) ? worldX : V.scrollX(section, worldX);
-  V.dashDamage = (s, speed) => Math.round(speed / 3 * (1 + .25 * s.strikeBonus));
+  V.dashDamage = (s, speed, multiplier = 1, minimum = 0) =>
+    Math.round(Math.max(minimum, speed / 3 * (1 + .25 * s.strikeBonus)) * multiplier);
   V.slowOnImpact = s => { s.player.vx *= motion.retainedSpeed; };
 
   V.addCoin = function (s, x, y) {
@@ -95,6 +98,7 @@
   };
 
   V.collectCoins = function (s) {
+    if (s.outcome !== null) return;
     const p = s.player;
     for (const coin of s.coins) {
       if (coin.taken) continue;
@@ -105,6 +109,7 @@
         s.coinsTaken++;
         s.score += 10 * s.multiplier * s.coinValue;
         s.multiplier++;
+        V.emitParticles(s, 'coin', x, coin.y, { color: '#ffe48a' });
         if (s.healAtCoins && s.coinsTaken >= s.healAtCoins && s.hp < s.maxHp) {
           s.hp++;
           s.healAtCoins = 0;
@@ -118,16 +123,19 @@
     }
   };
 
-  V.hurt = function (s, direction = -1) {
+  V.hurt = function (s, direction = -1, damage = 1) {
     const p = s.player;
     if (p.invuln > 0 || s.outcome !== null) return;
-    s.hp--;
+    const amount = Math.min(s.hp, damage);
+    s.hp -= amount;
     p.invuln = 1.18;
     p.vy = -245;
     if (V.usesMomentum(s)) V.slowOnImpact(s);
     else p.vx = direction * 220;
     p.dashTime = 0;
-    V.hitFeedback(s, 'hurt', p.x + p.w / 2, p.y + p.h / 2, { amount: 1, direction });
+    p.hammerDive = false;
+    p.swing = null;
+    V.hitFeedback(s, 'hurt', p.x + p.w / 2, p.y + p.h / 2, { amount, direction });
     V.say(s, 'Treffer!');
     if (s.hp <= 0) s.outcome = false;
   };
@@ -149,14 +157,14 @@
     const wasGrounded = p.grounded;
     const previousBottom = p.y + p.h;
     p.grounded = false;
-    p.vy += p.gravity * dt;
+    p.vy += p.gravity * (s.gravityFactor ?? 1) * (p.hammerDive ? 2.8 : 1) * dt;
     p.y += p.vy * dt;
     let floor = s.kind === 'arena' ? Infinity : G;
     let landed;
     if (p.vy >= 0) {
       for (const platform of s.platforms) {
         const x = V.stageX(s, platform.worldX);
-        if (platform.y <= floor && p.x + p.w > x + 4 && p.x < x + platform.w - 4 &&
+        if (platform.enabled !== false && platform.y <= floor && p.x + p.w > x + 4 && p.x < x + platform.w - 4 &&
           previousBottom <= platform.y + 2 && p.y + p.h >= platform.y) {
           floor = platform.y;
           landed = platform;
@@ -164,7 +172,11 @@
       }
     }
     if (p.y + p.h >= floor) {
-      if (!wasGrounded && p.vy > 220) p.landTime = .16;
+      const fallSpeed = p.vy;
+      if (!wasGrounded && p.vy > 220) {
+        p.landTime = .16;
+        V.emitParticles(s, 'land', p.x + p.w / 2, floor - 3, { spread: p.w });
+      }
       p.y = floor - p.h;
       p.vy = 0;
       p.jumps = 0;
@@ -177,6 +189,10 @@
           s.checkpointY = floor;
         }
       }
+      if (!wasGrounded && local && s.weapon.hammer && s.outcome === null && s.boss?.state !== 'defeated') {
+        V.hammerImpact(s, p.x + p.w / 2, floor, fallSpeed);
+      }
+      p.hammerDive = false;
     }
     if (!local && p.y < -70) {
       p.y = -70;
@@ -184,15 +200,21 @@
     }
   }
 
+  V.accelerateBody = function (p, direction, dt, acceleration, speed, brake = motion.brake, counter = acceleration) {
+    if (!direction) {
+      p.vx += V.clamp(-p.vx, -brake * dt, brake * dt);
+    } else {
+      const excess = Math.max(0, p.vx * direction - motion.run - speed);
+      const force = p.vx * direction < 0 ? counter : acceleration;
+      p.vx += direction * force * dt / (1 + excess / 95) ** 2;
+    }
+  };
+
   function accelerate(s, direction, dt) {
     const p = s.player;
-    if (!direction) {
-      p.vx = Math.sign(p.vx) * Math.max(0, Math.abs(p.vx) - motion.brake * dt);
-    } else {
-      const trait = V.characters[s.character];
-      const excess = Math.max(0, p.vx * direction - motion.run - trait.speed);
-      const acceleration = trait.acceleration / (1 + excess / 95) ** 2;
-      p.vx += direction * acceleration * dt;
+    const trait = V.characters[s.character];
+    V.accelerateBody(p, direction, dt, trait.acceleration * (s.accelerationFactor ?? 1), trait.speed);
+    if (direction) {
       p.facing = direction;
     }
     p.vx += (s.wind || 0) * dt;
@@ -222,10 +244,11 @@
   V.movePlayer = function (s, dt, actions) {
     const p = s.player;
     const local = V.usesMomentum(s);
-    const boss = s.kind === 'boss' && !local;
     const direction = Number(Boolean(actions.right)) - Number(Boolean(actions.left));
     p.previousX = p.x;
     p.previousY = p.y;
+    if (p.swing?.time >= s.weapon.duration) p.swing = null;
+    p.weaponCooldown = Math.max(0, p.weaponCooldown - dt);
     p.invuln = Math.max(0, p.invuln - dt);
     p.dashTime = local && p.dashLeft <= 0 ? 0 : Math.max(0, p.dashTime - dt);
     p.dashCooldown = Math.max(0, p.dashCooldown - dt);
@@ -238,7 +261,12 @@
       s.effects[i].left -= dt;
       if (s.effects[i].left <= 0) s.effects.splice(i, 1);
     }
-    if (p.jumpBuffer > 0 && p.jumps < 2 + s.extraJumps) {
+    if (actions.drop && local && s.weapon.hammer && !p.grounded && !p.hammerDive) {
+      p.hammerDive = true;
+      p.vy = Math.max(365, p.vy);
+      p.dashTime = p.dashLeft = p.dashBuffer = p.jumpBuffer = 0;
+    }
+    if (!p.hammerDive && p.jumpBuffer > 0 && p.jumps < 2 + s.extraJumps) {
       if (!p.grounded && p.coyote <= 0 && p.jumps === 0) p.jumps = 1;
       if (s.airSpring && p.jumps === 1) p.airDash = true;
       p.vy = p.jumps === 0 ? -motion.jump : -660 * p.doubleJumpBoost;
@@ -246,28 +274,27 @@
       p.coyote = p.jumpBuffer = p.landTime = 0;
       p.jumps++;
     }
-    const launch = p.dashBuffer > 0 && p.dashCooldown <= 0 && p.dashTime <= 0 && (!local || p.airDash);
-    updateSkid(s, local && p.dashTime <= 0 && !launch, direction);
+    const launch = !p.hammerDive && p.dashBuffer > 0 && p.dashCooldown <= 0 && p.dashTime <= 0 && (!local || p.airDash);
+    V.updateSkid(s, p, local && p.dashTime <= 0 && !launch, direction);
     if (local && p.dashTime <= 0 && !launch) accelerate(s, direction, dt);
+    if (!local && direction) p.facing = direction;
     if (launch) {
       p.dashBuffer = 0;
-      p.dashTime = (boss ? .31 : .24) + s.dashExtension;
-      p.dashCooldown = (local ? .50 : boss ? .73 : 1.35) * s.dashFactor;
-      if (boss) {
-        p.facing = direction || 1;
-        p.vx = p.facing * 580;
-        p.vy *= .55;
-      }
+      p.dashTime = .24 + s.dashExtension;
+      p.dashCooldown = (local ? .50 : 1.35) * s.dashFactor;
       if (local) {
         p.facing = direction || Math.sign(p.vx) || p.facing;
         const momentum = Math.abs(p.vx);
-        p.dashPower = V.dashDamage(s, momentum);
+        p.dashPower = V.weaponDamage(s, momentum);
         p.dashVelocity = 650 + momentum * .95;
         p.dashLeft = motion.dashRange + 600 * s.dashExtension;
         p.vy *= .34;
         p.airDash = false;
       }
-      const fast = local ? Math.abs(p.vx) >= 460 : !boss && s.speed >= 625;
+      p.dashTarget = null;
+      if (s.kind === 'boss') p.invuln = Math.max(p.invuln, .09);
+      V.startWeaponSwing(s);
+      const fast = local ? Math.abs(p.vx) >= 460 : s.speed >= 625;
       movementFeedback(s, fast ? 'dash-fast' : 'dash', p.facing);
     }
     if (local) {
@@ -280,17 +307,16 @@
         p.vx = 0;
         p.dashLeft = 0;
       }
-    } else if (boss) {
-      if (direction && p.dashTime <= 0) p.facing = direction;
-      const swim = direction * 245 + (s.wind || 0);
-      p.vx = V.lerp(p.vx, swim, Math.min(1, dt * (p.dashTime > 0 ? 6 : 15)));
-      p.x = V.clamp(p.x + p.vx * dt, 104, 466);
     } else {
       const steer = direction * 165;
       const pull = direction ? 0 : (V.START_X - p.x) * .65;
       p.x = V.clamp(p.x + (steer + pull) * dt, 104, 425);
     }
     moveVertical(s, dt);
+    if (p.swing) {
+      p.swing.previousTime = p.swing.time;
+      p.swing.time = Math.min(s.weapon.duration, p.swing.time + dt);
+    }
     const spin = p.dashTime > 0 ? 1050 : p.jumps > 1 ? 680 : 0;
     if (spin) {
       p.angle = (p.angle + spin * p.spinBoost * dt) % 360;
