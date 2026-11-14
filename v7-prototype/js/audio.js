@@ -5,9 +5,11 @@
   const playing = new Set();
   const failed = new Set();
   const effects = new Map();
+  const effectGains = new WeakMap();
   const effectNames = ['hit', 'hurt', 'guard', 'parry', 'dash', 'dash-fast', 'skid', 'katana',
     'reef-charge', 'greed-strike', 'diva-note', 'vortex-slam', 'god-fault', 'god-morph', 'god-collapse', 'god-arena-glitch', 'boss-break',
-    'gladiator-charge', 'gladiator-swing', 'gladiator-slam', 'hammer-land', 'ultimate-hammer', 'ultimate-katana', 'ultimate-spear', 'ultimate-axe', 'clear-travel', 'clear-arena', 'clear-boss', 'clear-finale'];
+    'gladiator-charge', 'gladiator-swing', 'gladiator-slam', 'hammer-land', 'ultimate-hammer', 'ultimate-katana', 'ultimate-spear', 'ultimate-axe', 'weapon-spear', 'weapon-axe', 'ultimate-ready', 'katana-charge', 'katana-mark', 'katana-release', 'spear-charge', 'spear-break',
+    'axe-charge', 'axe-break', 'hammer-rise', 'hammer-lock', 'jump', 'land', 'coin', 'trap-armed', 'trap-snap', 'enemy-leap', 'portal-open', 'clear-travel', 'clear-arena', 'clear-boss', 'clear-finale'];
   let scene = null;
   let wanted = null;
   let active = null;
@@ -15,7 +17,7 @@
   let effectsEnabled = true;
   let volume = .30;
   let zoneTime = 0;
-  let cinematicSound = null;
+  let cinematicSounds = null;
 
   function pause() {
     for (const voice of playing) voice.audio.pause();
@@ -35,7 +37,7 @@
   }
 
   function play(voice) {
-    if (cinematicSound || !scene || (!enabled && scene !== 'boss') || document.hidden) return Promise.resolve(false);
+    if (cinematicSounds || !scene || (!enabled && scene !== 'boss') || document.hidden) return Promise.resolve(false);
     return voice.audio.play().then(() => true, () => false);
   }
 
@@ -108,12 +110,16 @@
         select('fast');
       }
     },
-    cinematic(on, sound) {
-      cinematicSound = on ? sound : null;
+    cinematic(on, sounds) {
+      cinematicSounds = on ? new Set(Array.isArray(sounds) ? sounds : [sounds]) : null;
       if (on) {
         pause();
         pauseEffects();
-        if (effectsEnabled && !effects.has(sound)) effects.set(sound, [createEffect(sound)]);
+        if (effectsEnabled) {
+          for (const sound of cinematicSounds) {
+            if (effectNames.includes(sound) && !effects.has(sound)) effects.set(sound, [createEffect(sound)]);
+          }
+        }
         return;
       }
       const voice = voices.get(active);
@@ -136,8 +142,8 @@
       effectsEnabled = Boolean(on);
       if (!effectsEnabled) pauseEffects();
     },
-    effect(key, heavy = false) {
-      if ((cinematicSound && key !== cinematicSound) || !scene || scene === 'story' || scene === 'menu' || !effectsEnabled || volume === 0 || document.hidden || !effectNames.includes(key)) return;
+    effect(key, heavy = false, gain = 1) {
+      if ((cinematicSounds && !cinematicSounds.has(key)) || !scene || scene === 'story' || scene === 'menu' || !effectsEnabled || volume === 0 || document.hidden || !effectNames.includes(key)) return;
       if (!effects.has(key)) effects.set(key, []);
       const pool = effects.get(key);
       const idle = pool.findIndex(voice => voice.paused);
@@ -147,7 +153,8 @@
       else audio = createEffect(key);
       pool.push(audio);
       if (audio.readyState > 0) audio.currentTime = 0;
-      audio.volume = volume * .92;
+      effectGains.set(audio, gain);
+      audio.volume = volume * .92 * gain;
       audio.playbackRate = heavy ? .82 : 1;
       audio.play().catch(() => {});
     },
@@ -164,12 +171,12 @@
     volume(value) {
       volume = V.clamp(value, 0, 1);
       for (const pool of effects.values()) {
-        for (const audio of pool) audio.volume = volume * .92;
+        for (const audio of pool) audio.volume = volume * .92 * (effectGains.get(audio) ?? 1);
       }
     },
     stop() {
       pauseEffects();
-      cinematicSound = null;
+      cinematicSounds = null;
       scene = null;
       wanted = null;
       active = null;
@@ -182,7 +189,7 @@
       playing.clear();
     },
     tick(dt) {
-      if (cinematicSound || !scene || (!enabled && scene !== 'boss') || document.hidden) return;
+      if (cinematicSounds || !scene || (!enabled && scene !== 'boss') || document.hidden) return;
       for (const voice of playing) {
         const target = voices.get(active) === voice ? 1 : 0;
         voice.gain = V.clamp(voice.gain + (target ? 1 : -1) * dt / 1.1, 0, 1);

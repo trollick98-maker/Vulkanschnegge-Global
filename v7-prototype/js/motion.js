@@ -37,6 +37,14 @@
     s.hitStop = Math.max(s.hitStop, stop);
   }
 
+  V.sceneEffect = function (s, cue, interval, gain) {
+    if (s.elapsed < (s.soundAt?.[cue] ?? -1)) return;
+    (s.soundAt ??= {})[cue] = s.elapsed + interval;
+    V.audio?.effect?.(cue, false, gain);
+  };
+
+  V.visualEffect = (s, art, x, y, size, life) => addEffect(s, { art, x, y, size, life, left: life }, 0);
+
   V.impact = function (s, x, y, color) {
     addEffect(s, { x, y, color, left: .3, life: .3 }, 0);
     V.emitParticles(s, 'impact', x, y, { color });
@@ -110,6 +118,8 @@
         s.score += 10 * s.multiplier * s.coinValue;
         s.multiplier++;
         V.emitParticles(s, 'coin', x, coin.y, { color: '#ffe48a' });
+        V.visualEffect(s, 'coin-glint', x, coin.y, 34, .28);
+        V.sceneEffect(s, 'coin', .07, .54);
         if (s.healAtCoins && s.coinsTaken >= s.healAtCoins && s.hp < s.maxHp) {
           s.hp++;
           s.healAtCoins = 0;
@@ -179,6 +189,8 @@
       if (!wasGrounded && p.vy > 220) {
         p.landTime = .16;
         V.emitParticles(s, 'land', p.x + p.w / 2, floor - 3, { spread: p.w });
+        V.visualEffect(s, 'landing-dust', p.x + p.w / 2, floor - 14, 63, .28);
+        if (!s.weapon.hammer || p.vy < 310) V.sceneEffect(s, 'land', .1, p.vy > 760 ? .66 : .39);
       }
       p.y = floor - p.h;
       p.vy = 0;
@@ -277,6 +289,7 @@
       p.grounded = false;
       p.coyote = p.jumpBuffer = p.landTime = 0;
       p.jumps++;
+      V.sceneEffect(s, 'jump', .065, p.jumps > 1 ? .56 : .42);
     }
     const launch = !p.hammerDive && p.dashBuffer > 0 && p.dashCooldown <= 0 && p.dashTime <= 0 && (!local || p.airDash);
     V.updateSkid(s, p, local && p.dashTime <= 0 && !launch, direction);

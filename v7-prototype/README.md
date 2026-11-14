@@ -83,11 +83,15 @@ Fünf Tiefsee-Panoramen bewegen sich hinter Wegen, Gegnerleveln und Bossarenen m
 
 50 weitere Sprites verteilen sich auf 12 Gegnervarianten, 18 Kulissen und 20 Partikelmotive. Korallen, Anker, Bühnenrequisiten, Fitnessgeräte und Serverteile stehen entlang der Strecken und in den Arenen. Beim Dash sprühen Glutspuren, Landungen wirbeln Staub auf und Münzen funkeln beim Einsammeln. Treffer, Konter und Bossangriffe nutzen regionale Partikel. Beim Boss-Finale kommt ein größerer Ausbruch dazu. Die zusätzlichen Partikel sind auf 220 gleichzeitig begrenzt und lassen sich über die Systemeinstellung für reduzierte Bewegung ausblenden.
 
+## Effekte und Sound
+
+Vier neue Atlasdateien enthalten 100 Pixelart-Frames. Sie animieren Ultis, Konter, Dash-Spuren, Landestaub, Münzglanz, Geschosse, Treffer, Fallen, Portale und Umgebungselemente. Landen, Springen, Münzen, Fallen und Jäger bekommen eigene Geräusche. Dazu kommen getrennte Effekte für Speer und Beil sowie Signale für volle Ulti-Ladung, Aufladen, Schnittmarkierungen, Zieleinrasten und Einschläge. Beim Nullschnitt bleiben die Sekunde zwischen der letzten Markierung und dem gemeinsamen Treffer still.
+
 ## Waffen-Ultimates
 
 In Gegner- und Bossarenen steht **ULTI** oben mittig unter den Spielmenü-Tasten. Treffer laden den Balken je nach Schaden um 1 bis 3 Punkte, besiegte Gegner geben 4 zusätzliche Punkte und abgewehrte Bossgeschosse 2. Der Fortschritt gehört zum Kampagnenspielstand und bleibt zwischen Levels, beim Waffenwechsel und nach dem Neuladen erhalten. Bei 100 Prozent löst **F** oder ein Klick auf **ULTI** die Attacke aus. Auf Touch-Geräten gibt es zusätzlich **ULT** neben den Bewegungstasten. Das Spiel und die Musik halten für den Schnitt an. Danach läuft der Kampf weiter.
 
-- **Glutkatana · Nullschnitt** blendet die Arena aus und zoomt langsam auf die Figur. Nach dem Schlag und dem Herauszoomen erscheinen die Schnitte Gegner für Gegner. Zwei Sekunden nach dem letzten Schnitt fallen alle markierten Gegner gleichzeitig. Ein sichtbarer Boss bekommt acht Schnitte und nimmt zum selben Zeitpunkt Schaden.
+- **Glutkatana · Nullschnitt** blendet die Arena aus und zoomt langsam auf die Figur. Nach dem Schlag und dem Herauszoomen erscheinen die Schnitte Gegner für Gegner. Jeder Schnitt wächst an und bleibt sichtbar. Eine Sekunde nach der letzten Schnittanimation fallen alle markierten Gegner gleichzeitig. Ein sichtbarer Boss bekommt acht Schnitte und nimmt zum selben Zeitpunkt Schaden.
 - **Riffspieß · Flutlanze** durchstößt Gegner vor der Figur auf ihrer Höhe bis zum Bildrand.
 - **Ankerbeil · Ankerbeben** trifft in einem Umkreis um die Figur auch ober- und unterhalb liegende Gegner.
 

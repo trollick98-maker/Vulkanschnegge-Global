@@ -18,12 +18,15 @@
           player.y + player.h >= trap.y - type.height - 45 && player.y < trap.y + 25) {
         trap.state = 'tell';
         trap.left = type.windup;
+        V.sceneEffect(s, 'trap-armed', .16, .48);
         V.say(s, type.name + ' · Vorsicht');
       } else if (trap.state === 'tell' && trap.left === 0) {
         trap.state = 'active';
         trap.left = type.active;
         trap.hit = false;
         V.impact(s, trap.x, trap.y - 12, type.color);
+        V.visualEffect(s, 'danger-sparks', trap.x, trap.y - 21, type.width, .33);
+        V.sceneEffect(s, 'trap-snap', .12, .68);
       } else if (trap.state === 'active' && trap.left === 0) {
         trap.state = 'idle';
         trap.left = type.rest;

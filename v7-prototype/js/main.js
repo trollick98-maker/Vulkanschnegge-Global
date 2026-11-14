@@ -134,6 +134,7 @@
       state.level = V.newBossChase(section.node, campaign.character, campaign.build, campaign.seed);
     }
     if (section.kind !== 'arcade') V.applyShopLoadout(state.level, campaign);
+    for (const sheet of Object.keys(V.fxSheets)) V.image('fx24-' + sheet);
     for (const art of V.weaponArt) V.image(art);
     if (section.kind !== 'arcade') V.image('clear-' + V.clearArt(state.level));
     if (section.kind === 'arena' || state.level.chase) {

@@ -44,6 +44,15 @@
     images['clear-boss-' + biome] = 'clear/boss-' + biome + '.webp';
     if (biome !== 'god') images['clear-' + biome] = 'clear/' + biome + '.webp';
   }
+  V.fxSheets = {
+    'ultimate-effects': ['katana-light', 'spear-light', 'axe-light', 'hammer-light', 'parry-stars'],
+    'motion-effects': ['dash-wake', 'landing-dust', 'coin-glint', 'hurt-sparks', 'spinning-bolt'],
+    'ambient-effects': ['coral-bloom', 'gold-mote', 'anemone-glow', 'seaweed-sway', 'glitch-orb'],
+    'impact-effects': ['strike-burst', 'guard-ring', 'danger-sparks', 'portal-vortex', 'rock-chips']
+  };
+  V.fxRows = Object.fromEntries(Object.entries(V.fxSheets).flatMap(([sheet, rows]) =>
+    rows.map((name, row) => [name, { sheet, row }])));
+  for (const sheet of Object.keys(V.fxSheets)) images['fx24-' + sheet] = 'animation/' + sheet + '.webp';
   V.weaponArt = ['war-hammer', 'weapon-lightning', 'weapon-shock', 'weapon-dust', 'weapon-slash', 'weapon-thrust'];
   for (const art of V.weaponArt) images[art] = 'waffen/' + art + '.png';
   V.godForms = ['god-echo', 'god-overwrite', 'god-panic'];

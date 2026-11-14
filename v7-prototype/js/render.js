@@ -157,6 +157,19 @@
     return true;
   }
 
+  function effectSprite(name, progress, x, y, w, h, frame = null) {
+    const row = V.fxRows[name];
+    if (!row) return false;
+    const image = V.readyImage('fx24-' + row.sheet);
+    if (!image) return false;
+    const cell = 100;
+    const column = frame ?? (reducedMotion ? 2 : Math.min(4, Math.floor(V.clamp(progress, 0, 1) * 5)));
+    g.drawImage(image, column * cell, row.row * cell, cell, cell, x, y, w, h);
+    return true;
+  }
+
+  const livingProps = { reef: 'coral-bloom', greed: 'gold-mote', diva: 'anemone-glow', vortex: 'seaweed-sway', god: 'glitch-orb' };
+
   function drawScenery(s, local) {
     const props = V.sceneryProps[s.biome];
     const spacing = 190;
@@ -169,6 +182,8 @@
       const size = 58 + (index % 3) * 11;
       const x = V.stageX(s, slot * spacing);
       const prop = props[(slot % props.length + props.length) % props.length];
+      if (!skin && slot % 3 === 1 &&
+        effectSprite(livingProps[s.biome], ((s.elapsed * .72 + index * .19) % 1), x - size / 2, floor - size, size, size)) return;
       const painted = slot % 5 !== 4 && fittedSprite('scenery-' + prop, x - size / 2, floor - size, size, size, true);
       if (!painted && s.biome !== 'god') surgeSprite(s.biome, index, x - size / 2, floor - size, size, size, true);
     };
@@ -488,6 +503,12 @@
       g.lineWidth = 3;
       g.strokeRect(x - 4, y - 64, 56, 64);
     }
+    if (s.exitOpen) {
+      g.save();
+      g.globalAlpha = .7;
+      effectSprite('portal-vortex', (s.elapsed * 1.9) % 1, x - 15, y - 83, 79, 82);
+      g.restore();
+    }
     g.fillStyle = color;
     g.font = 'bold 12px monospace';
     g.fillText(s.exitOpen ? 'ZIEL →' : 'ZU', x + 3, y - 79);
@@ -529,7 +550,7 @@
     glitch: 'warn-fault', replay: 'warn-fault', reset: 'warn-fault'
   };
 
-  function drawProjectile(q) {
+  function drawProjectile(q, time) {
     const { x, y, r } = q;
     const look = V.bossShots[q.key];
     const size = r * 2.74;
@@ -540,7 +561,9 @@
       g.translate(2 * x, 0);
       g.scale(-1, 1);
     }
-    const drawn = fittedSprite(art, x - size / 2, y - size / 2, size, size);
+    const animated = !skin && (q.reflected || q.key === 'star' || q.key === 'plasma');
+    const drawn = (animated && effectSprite('spinning-bolt', (time * 5 + Math.abs(q.vx) * .003) % 1,
+      x - size / 2, y - size / 2, size, size)) || fittedSprite(art, x - size / 2, y - size / 2, size, size);
     g.restore();
     if (!drawn) {
       g.fillStyle = look.color;
@@ -740,7 +763,7 @@
       }
       g.restore();
     }
-    for (const shot of s.projectiles) drawProjectile(shot);
+    for (const shot of s.projectiles) drawProjectile(shot, s.elapsed);
   }
 
   function drawBossFloor(s) {
@@ -1166,7 +1189,7 @@
       }
       g.globalAlpha = 1;
     }
-    for (const q of s.projectiles) drawProjectile(q);
+    for (const q of s.projectiles) drawProjectile(q, s.elapsed);
   }
 
   function drawHammer(s) {
@@ -1213,6 +1236,8 @@
       g.ellipse(0, 0, r, r * .24, 0, 0, Math.PI * 2);
       g.stroke();
     }
+    g.globalAlpha = .52 + charge * .33;
+    effectSprite('hammer-light', charge, -radius * .65, -radius * .36, radius * 1.3, radius * .5, charge < .48 ? 0 : 1);
     g.globalAlpha = .65 + charge * .34;
     g.fillRect(-12, -1.5, 24, 3);
     g.fillRect(-1.5, -7, 3, 14);
@@ -1230,12 +1255,19 @@
       if (reducedMotion) {
         g.fillStyle = '#b6f2ff';
         g.fillRect(x - 3, y - 68, 6, 68);
-      } else sprite('weapon-lightning', x - 65, (s.cameraY ?? 0) - 40, 130, y - (s.cameraY ?? 0) + 40);
+      } else {
+        const top = (s.cameraY ?? 0) - 40;
+        if (!effectSprite('hammer-light', 0, x - 65, top, 130, y - top, 2)) {
+          sprite('weapon-lightning', x - 65, top, 130, y - top);
+        }
+      }
     }
     g.globalAlpha = 1 - progress;
     const span = radius * (1 + progress * .56);
-    fittedSprite('weapon-shock', x - span, y - 66, span * 2, 69, true);
-    if (!reducedMotion) fittedSprite('weapon-dust', x - radius, y - 43, radius * 2, 48, true);
+    if (!effectSprite('hammer-light', progress, x - span, y - 62, span * 2, 69, progress < .45 ? 3 : 4)) {
+      fittedSprite('weapon-shock', x - span, y - 66, span * 2, 69, true);
+    }
+    if (!reducedMotion) effectSprite('rock-chips', progress, x - radius, y - 58, radius * 2, 62);
     g.strokeStyle = '#b6f2ff';
     g.lineWidth = 2;
     g.beginPath();
@@ -1317,7 +1349,9 @@
       g.globalAlpha = Math.min(1, effect.left * 9);
       g.translate(effect.x - effect.direction * age * (skid ? 26 : 38), effect.y);
       g.scale(effect.direction, 1);
-      if (!fittedSprite('movement-' + effect.kind, -width * .82, skid ? -height : -height / 2, width, height, skid)) {
+      const top = skid ? -height : -height / 2;
+      if (!effectSprite(skid ? 'landing-dust' : 'dash-wake', age, -width * .82, top, width, height) &&
+        !fittedSprite('movement-' + effect.kind, -width * .82, top, width, height, skid)) {
         g.fillStyle = skid ? '#d5c494' : effect.kind === 'dash-fast' ? '#ffb76d' : '#a6fff0';
         g.fillRect(-width * .62, skid ? -3 : -2, width * .52, 3);
       }
@@ -1325,10 +1359,19 @@
     }
   }
 
+  const impactArt = { parry: 'parry-stars', guard: 'guard-ring', hit: 'strike-burst', hurt: 'hurt-sparks' };
+
   function drawImpacts(s) {
     for (const effect of s.effects) {
       if (effect.movement) continue;
       const progress = 1 - effect.left / effect.life;
+      if (effect.art) {
+        g.save();
+        g.globalAlpha = 1 - progress * .65;
+        effectSprite(effect.art, progress, effect.x - effect.size / 2, effect.y - effect.size / 2, effect.size, effect.size);
+        g.restore();
+        continue;
+      }
       if (effect.kind) {
         const size = reducedMotion ? effect.size : effect.size * (.76 + .46 * Math.min(1, progress * 2.5));
         g.save();
@@ -1336,8 +1379,8 @@
         g.translate(effect.x, effect.y);
         g.save();
         g.scale(effect.direction < 0 ? -1 : 1, 1);
-        const parry = effect.kind === 'parry' && fittedSprite('fx-parry', -size / 2, -size / 2, size, size);
-        if (!parry && !fittedSprite('impact-' + effect.kind, -size / 2, -size / 2, size, size)) {
+        const animated = effectSprite(impactArt[effect.kind], progress, -size / 2, -size / 2, size, size);
+        if (!animated && !fittedSprite('impact-' + effect.kind, -size / 2, -size / 2, size, size)) {
           g.strokeStyle = effect.color;
           g.lineWidth = 3;
           g.strokeRect(-size * .23, -size * .23, size * .46, size * .46);
@@ -1514,14 +1557,19 @@
       g.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
     }
     g.translate(spear ? 8 - wind * 13 + strike * 33 : 10, -1);
-    if (cut.time >= swing && cut.time < swing + .23) {
+    if (cut.time < swing) {
       g.save();
-      g.globalAlpha = view.amount * (1 - (cut.time - swing) / .23);
-      if (weapon.id === 'katana') fittedSprite('exp-arc', -23, -55, 110, 112);
-      else if (spear) {
-        g.fillStyle = cut.ability.color;
-        g.fillRect(5, -2, 125, 4);
-      } else fittedSprite('exp-spark', 6, -21, 88, 65);
+      g.globalAlpha = view.amount * (.32 + .64 * wind);
+      effectSprite(cut.ability.art, wind, -54, -58, 105, 105, wind < .60 ? 0 : 1);
+      g.restore();
+    } else if (cut.time < swing + .31) {
+      const age = (cut.time - swing) / .31;
+      g.save();
+      g.globalAlpha = view.amount * (1 - age);
+      const frame = age < .42 ? 2 : age < .72 ? 3 : 4;
+      if (!effectSprite(cut.ability.art, age, -23, -55, 114, 112, frame)) {
+        fittedSprite(weapon.id === 'katana' ? 'exp-arc' : 'exp-spark', -23, -55, 110, 112);
+      }
       g.restore();
     }
     g.rotate(angle);
@@ -1544,19 +1592,27 @@
     const duration = V.ultimateMarkDuration;
     for (const mark of marks) {
       const age = time - mark.start;
-      if (age < 0 || age >= duration) continue;
+      if (age < 0 || (!sequence && age >= duration)) continue;
       const { boss, size } = mark;
+      const progress = V.clamp(age / duration, 0, 1);
+      const scale = sequence && !reducedMotion ? V.lerp(.32, 1, 1 - (1 - progress) ** 2) : 1;
       const x = boss ? boss.x + boss.w * mark.x : mark.x;
       const y = boss ? boss.y + boss.h * mark.y : mark.y;
       g.save();
       g.translate(x, y);
-      g.scale(mark.facing, 1);
-      g.globalAlpha = (1 - age / duration) ** .72;
-      fittedSprite('exp-slash', -size * .50, -size * .50, size, size);
+      g.scale(mark.facing * scale, scale);
+      g.globalAlpha = sequence ? 1 : (1 - progress) ** .72;
+      const frame = sequence || progress < .47 ? 3 : 4;
+      if (!effectSprite(mark.art, progress, -size / 2, -size / 2, size, size, frame)) {
+        fittedSprite('exp-slash', -size / 2, -size / 2, size, size);
+      }
       g.rotate(-.47);
       g.fillStyle = mark.color;
       g.fillRect(-size * .43, -1, size * .86, 2);
-      if (!boss && !reducedMotion) fittedSprite('exp-spark', -size * .38, -size * .26, size * .76, size * .52);
+      if (!boss && !reducedMotion && (!sequence || progress < 1)) {
+        g.globalAlpha *= 1 - progress;
+        fittedSprite('exp-spark', -size * .38, -size * .26, size * .76, size * .52);
+      }
       g.restore();
     }
   }
@@ -1592,7 +1648,7 @@
       drawTraps(section);
       drawEnemies(section);
       for (const shot of section.projectiles) {
-        if (shot.x + shot.r >= section.cameraX && shot.x - shot.r <= section.cameraX + W) drawProjectile(shot);
+        if (shot.x + shot.r >= section.cameraX && shot.x - shot.r <= section.cameraX + W) drawProjectile(shot, section.elapsed);
       }
     }
     if (section.chase) drawChase(section);

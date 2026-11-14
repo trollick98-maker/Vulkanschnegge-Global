@@ -2,11 +2,11 @@
   'use strict';
   const V = window.VS7;
   const abilities = {
-    katana: { name: 'Nullschnitt', sequence: true, bossDamage: 500, color: '#fff1bd', hits: 8, sound: 'ultimate-katana' },
-    'reef-spear': { name: 'Flutlanze', damage: 390, bossDamage: 580, color: '#a3fff2', hits: 3, sound: 'ultimate-spear',
+    katana: { name: 'Nullschnitt', sequence: true, bossDamage: 500, color: '#fff1bd', hits: 8, sound: 'ultimate-katana', chargeSound: 'katana-charge', finishSound: 'katana-release', markSound: 'katana-mark', art: 'katana-light' },
+    'reef-spear': { name: 'Flutlanze', damage: 390, bossDamage: 580, color: '#a3fff2', hits: 3, sound: 'ultimate-spear', chargeSound: 'spear-charge', finishSound: 'spear-break', art: 'spear-light',
       reaches: (dx, dy, facing) => dx * facing >= -25 && Math.abs(dy) <= 120 },
-    'war-hammer': { name: 'Donnerschlag', color: '#a7eeff', hammer: true, sound: 'ultimate-hammer' },
-    'anchor-axe': { name: 'Ankerbeben', damage: 540, bossDamage: 620, color: '#ffac79', hits: 4, sound: 'ultimate-axe',
+    'war-hammer': { name: 'Donnerschlag', color: '#a7eeff', hammer: true, sound: 'ultimate-hammer', chargeSound: 'hammer-rise', lockSound: 'hammer-lock', art: 'hammer-light' },
+    'anchor-axe': { name: 'Ankerbeben', damage: 540, bossDamage: 620, color: '#ffac79', hits: 4, sound: 'ultimate-axe', chargeSound: 'axe-charge', finishSound: 'axe-break', art: 'axe-light',
       reaches: (dx, dy) => Math.hypot(dx, dy * 1.25) <= 290 }
   };
   const hammerTiming = V.hammerTiming = { rise: .25, lock: 2.20, impact: 2.45, end: 2.86 };
@@ -16,7 +16,9 @@
   V.ultimateAbility = s => V.usesMomentum(s) ? abilities[s.weapon.id] : null;
   V.chargeUltimate = function (s, points) {
     if ((V.ultimateAbility(s) || (s.kind === 'boss-chase' && abilities[s.weapon.id])) && !s.ultimate) {
-      s.ultimateCharge = Math.min(100, (s.ultimateCharge ?? 0) + points);
+      const charge = s.ultimateCharge ?? 0;
+      s.ultimateCharge = Math.min(100, charge + points);
+      if (charge < 100 && s.ultimateCharge === 100 && V.ultimateAbility(s)) V.audio?.effect?.('ultimate-ready', false, .66);
     }
   };
   V.chargeDash = (s, damage) => V.chargeUltimate(s, 1 + Math.min(2, Math.floor(damage / 100)));
@@ -41,7 +43,9 @@
     s.cameraCue = null;
     s.ultimate = cut;
     if (ability.sequence) prepareSequence(s, cut);
-    V.audio?.cinematic?.(true, ability.sound);
+    const cues = [ability.sound, ability.chargeSound, ability.finishSound, ability.markSound, ability.lockSound].filter(Boolean);
+    V.audio?.cinematic?.(true, cues);
+    V.audio?.effect?.(ability.chargeSound, false, .72);
     return true;
   };
 
@@ -61,13 +65,13 @@
 
   function enemyMark(enemy, cut, start) {
     return { x: enemy.x + enemy.w / 2, y: enemy.y + enemy.h / 2,
-      facing: cut.facing, start, size: 88, color: cut.ability.color };
+      facing: cut.facing, start, size: 88, color: cut.ability.color, art: cut.ability.art };
   }
 
   function bossMarks(boss, cut, start) {
     return Array.from({ length: cut.ability.hits }, (_, i) => ({
       boss, x: .23 + (i * 3 % 7) * .09, y: .27 + (i * 5 % 7) * .085,
-      facing: i % 2 ? -cut.facing : cut.facing, start: start + i * .055, size: 56 + i % 3 * 12, color: cut.ability.color
+      facing: i % 2 ? -cut.facing : cut.facing, start: start + i * .055, size: 56 + i % 3 * 12, color: cut.ability.color, art: cut.ability.art
     }));
   }
 
@@ -77,13 +81,15 @@
     ordered.sort((a, b) => cut.facing * (a.x + a.w / 2 - b.x - b.w / 2) || a.y - b.y);
     let next = cut.timing.end;
     const marks = [];
+    const cueTimes = [];
     for (const target of ordered) {
       const cuts = target === targets.boss ? bossMarks(target, cut, next) : [enemyMark(target, cut, next)];
       marks.push(...cuts);
+      cueTimes.push(next);
       next = cuts.at(-1).start + V.ultimateMarkDuration + .09;
     }
     const last = marks.at(-1);
-    cut.sequence = { ...targets, marks, damageAt: last ? last.start + V.ultimateMarkDuration + 2 : cut.timing.end };
+    cut.sequence = { ...targets, marks, cueTimes, damageAt: last ? last.start + V.ultimateMarkDuration + 1 : cut.timing.end };
   }
 
   function strikeBoss(s, boss, ability) {
@@ -130,9 +136,10 @@
     return best;
   }
 
-  function updateHammer(s, dt, input) {
+  function updateHammer(s, dt, input, previous) {
     const { hammer, time } = s.ultimate;
     const p = s.player;
+    if (previous < hammerTiming.lock && time >= hammerTiming.lock) V.audio?.effect?.(s.ultimate.ability.lockSound, false, .76);
     if (time < hammerTiming.lock) {
       const direction = Number(Boolean(input.right)) - Number(Boolean(input.left));
       if (direction) {
@@ -178,12 +185,16 @@
     const previous = cut.time;
     cut.time += dt;
     if (cut.hammer) {
-      updateHammer(s, dt, input);
+      updateHammer(s, dt, input, previous);
       return;
     }
     const { swing, end } = cut.timing;
     if (previous < swing && cut.time >= swing) V.audio?.effect?.(cut.ability.sound);
+    for (const time of cut.sequence?.cueTimes ?? []) {
+      if (previous < time && cut.time >= time) V.audio?.effect?.(cut.ability.markSound, false, .56);
+    }
     if (cut.time < (cut.sequence?.damageAt ?? end)) return;
+    if (!cut.sequence || cut.sequence.marks.length) V.audio?.effect?.(cut.ability.finishSound, false, .86);
     V.audio?.cinematic?.(false);
     V.say(s, cut.ability.name);
     release(s, cut);

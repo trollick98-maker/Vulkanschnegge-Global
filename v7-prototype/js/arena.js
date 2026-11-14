@@ -149,6 +149,7 @@
     enemy.leap = { deck: next, x: landing, fromX: enemy.x, fromY: enemy.y, at: s.elapsed,
       duration: V.clamp(Math.abs(landing - own) / 340, .39, .70) };
     enemy.nextDeck = null;
+    V.sceneEffect(s, 'enemy-leap', .18, .45);
     return true;
   }
 
@@ -343,7 +344,10 @@
     s.score += s.speed * .1 * dt;
     V.collectCoins(s);
     if (s.outcome !== null) return;
-    s.exitOpen = s.enemies.every(enemy => enemy.hp <= 0);
+    if (!s.exitOpen && s.enemies.every(enemy => enemy.hp <= 0)) {
+      s.exitOpen = true;
+      V.sceneEffect(s, 'portal-open', .25, .78);
+    }
     if (!p.grounded || Math.abs(p.y + p.h - s.exitY) > 1 || p.x + p.w / 2 < s.exitX) return;
     if (s.exitOpen) s.outcome = true;
     else if (s.feedbackTime <= 0) V.say(s, 'Tor gesperrt · Gegner auf den Inseln besiegen');

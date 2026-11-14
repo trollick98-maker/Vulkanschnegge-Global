@@ -999,7 +999,7 @@ test('movement feedback follows actual dashes and fast ground braking', () => {
   assert.deepEqual(calls, ['katana', 'dash', 'katana', 'dash-fast', 'skid']);
   V.movePlayer(setup(520), step, { left: true, jump: true });
   V.movePlayer(setup(190), step, {});
-  assert.deepEqual(calls, ['katana', 'dash', 'katana', 'dash-fast', 'skid']);
+  assert.deepEqual(calls, ['katana', 'dash', 'katana', 'dash-fast', 'skid', 'jump']);
 });
 
 test('mobs scale with zone and travel has progressively faster starts', () => {
@@ -1843,7 +1843,7 @@ test('online board can retry a transient script failure and reads only scores', 
   assert.equal(reads, 1);
 });
 
-test('katana marks visible enemies in order and applies damage once after two seconds of silence', () => {
+test('katana marks visible enemies in order and applies damage once after one second of silence', () => {
   const { V } = logic();
   const seed = 'ultimate';
   const graph = V.generateMap(seed);
@@ -1859,7 +1859,7 @@ test('katana marks visible enemies in order and applies damage once after two se
   const above = makeEnemy(600, -50, 100);
   s.enemies.push(small, strong, outside, above);
   const cues = [];
-  V.audio = { cinematic: (...args) => cues.push(args), effect: (...args) => cues.push(args) };
+  V.audio = { cinematic: on => cues.push(on ? 'cinematic on' : 'cinematic off'), effect: name => cues.push(name) };
   const snapshot = [s.elapsed, s.player.x, s.boss.x, s.boss.hp];
   V.chargeUltimate(s, 100);
   assert.ok(V.beginUltimate(s));
@@ -1875,18 +1875,22 @@ test('katana marks visible enemies in order and applies damage once after two se
   assert.ok(enemyCuts[0].start >= timing.end);
   assert.equal(sequence.marks.filter(mark => mark.boss === s.boss).length, 8);
   const lastCutEnd = sequence.marks.at(-1).start + V.ultimateMarkDuration;
-  assert.ok(Math.abs(sequence.damageAt - lastCutEnd - 2) < 1e-9);
+  assert.ok(Math.abs(sequence.damageAt - lastCutEnd - 1) < 1e-9);
   advanceTo(timing.swing - .03);
-  assert.deepEqual(cues, [[true, 'ultimate-katana']]);
+  assert.deepEqual(cues, ['ultimate-ready', 'cinematic on', 'katana-charge']);
   advanceTo(timing.swing + .03);
-  assert.deepEqual(cues, [[true, 'ultimate-katana'], ['ultimate-katana']]);
+  assert.equal(cues.at(-1), 'ultimate-katana');
   for (const checkpoint of [enemyCuts[0].start + .1, enemyCuts[1].start + .1, lastCutEnd, sequence.damageAt - .01]) {
     advanceTo(checkpoint);
     assert.deepEqual([s.elapsed, s.player.x, s.boss.x, s.boss.hp], snapshot);
     assert.deepEqual(s.enemies.map(enemy => enemy.hp).join(','), '100,620,100,100');
     assert.equal(s.kills, 0);
   }
+  const beforeRelease = cues.length;
+  assert.equal(cues.filter(cue => cue === 'katana-mark').length, 3);
+  assert.equal(cues.at(-1), 'katana-mark');
   advanceTo(sequence.damageAt + .01);
+  assert.deepEqual(cues.slice(beforeRelease), ['katana-release', 'cinematic off']);
   assert.equal(s.ultimate, null);
   assert.equal(s.elapsed, snapshot[0]);
   assert.equal(s.boss.hp, snapshot[3] - 500);
@@ -1894,7 +1898,6 @@ test('katana marks visible enemies in order and applies damage once after two se
   assert.equal(small.defeatedAt, strong.defeatedAt);
   assert.equal(s.kills, 2);
   assert.equal(s.ultimateCharge, 0);
-  assert.deepEqual(cues.at(-1), [false]);
 });
 
 test('spear and axe ultimates use their own targeting and boss damage respects the phase floor', () => {
@@ -2251,4 +2254,43 @@ test('an arena hunter traverses gaps, climbs between decks, and starts an attack
   assert.equal(enemy.floorY, highDeck.y);
   assert.equal(enemy.attackState, 'tell');
   assert.ok(enemy.x > highDeck.worldX);
+});
+
+test('all visual effect sheets and new sound cues are packaged offline', () => {
+  const { V } = logic(undefined, ['config', 'assets']);
+  assert.equal(Object.keys(V.fxRows).length * 5, 100);
+  for (const [sheet, rows] of Object.entries(V.fxSheets)) {
+    assert.equal(rows.length, 5);
+    assert.equal(fs.readFileSync(path.join(root, V.imagePath('fx24-' + sheet))).toString('ascii', 8, 12), 'WEBP');
+  }
+  for (const name of ['weapon-spear', 'weapon-axe', 'ultimate-ready', 'katana-charge', 'katana-mark', 'katana-release',
+    'spear-charge', 'spear-break', 'axe-charge', 'axe-break', 'hammer-rise', 'hammer-lock', 'jump', 'land', 'coin',
+    'trap-armed', 'trap-snap', 'enemy-leap', 'portal-open']) {
+    const data = fs.readFileSync(path.join(root, 'assets/sfx/' + name + '.wav'));
+    assert.equal(data.toString('ascii', 8, 12), 'WAVE', name);
+    assert.ok(data.length > 1000, name);
+  }
+});
+
+test('cinematic sound allows the listed cues only and preserves their individual levels', async () => {
+  const { audio, players } = audioFixture();
+  await audio.startLevel('arena', 'slow');
+  const track = players[0];
+  audio.cinematic(true, ['hammer-rise', 'hammer-lock', 'ultimate-hammer']);
+  assert.ok(track.paused);
+  const rise = players.find(player => player.src.endsWith('hammer-rise.wav'));
+  const lock = players.find(player => player.src.endsWith('hammer-lock.wav'));
+  audio.effect('land');
+  assert.ok(players.every(player => !player.src.endsWith('land.wav')));
+  audio.effect('hammer-rise', false, .50);
+  audio.effect('hammer-lock', false, .72);
+  assert.equal(rise.paused, false);
+  assert.equal(lock.paused, false);
+  audio.volume(.4);
+  assert.ok(Math.abs(rise.volume - .184) < 1e-10);
+  assert.ok(Math.abs(lock.volume - .26496) < 1e-10);
+  audio.cinematic(false);
+  assert.equal(track.paused, false);
+  audio.stop();
+  assert.ok(players.every(player => player.paused));
 });
