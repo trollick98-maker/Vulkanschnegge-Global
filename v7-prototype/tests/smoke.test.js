@@ -2301,3 +2301,23 @@ test('gladiator cancels a charged spear when its deck disappears', () => {
   assert.match(source, /else if \(spear\.deck\.enabled === false\)/);
   assert.match(source, /attack\.spear = null;[\s\S]*?attack\.recoverUntil = s\.elapsed \+ \.45;/);
 });
+
+test('gladiator aborts spear charge when its landing deck becomes disabled', () => {
+  const { V, s, b, tick } = gladiatorFixture();
+  tick(1);
+  assert.ok(b.gladiator);
+  const deck = { enabled: false, worldX: b.x + 100, y: V.GROUND - 80 };
+  b.gladiator.spear = {
+    x: deck.worldX, y: deck.y, deck, offset: 0,
+    chargeUntil: s.elapsed - V.rules.step
+  };
+  b.gladiator.dash = null;
+  b.gladiator.aim = null;
+  b.state = 'spear-charge';
+  tick(1);
+  assert.equal(b.gladiator.spear, null);
+  assert.equal(b.gladiator.dash, null);
+  assert.equal(b.state, 'spear-recover');
+  assert.ok(b.gladiator.recoverUntil > s.elapsed);
+  assert.equal(b.gladiator.nextAt, b.gladiator.recoverUntil);
+});
